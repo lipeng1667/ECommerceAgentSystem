@@ -1,13 +1,15 @@
 import {
   AlertOutlined,
+  AppstoreOutlined,
   AuditOutlined,
-  BarChartOutlined,
   BellOutlined,
   BookOutlined,
   CheckSquareOutlined,
+  CloseOutlined,
   DashboardOutlined,
   DesktopOutlined,
   DollarOutlined,
+  ExperimentOutlined as LabOutlined,
   ExperimentOutlined,
   MoonOutlined,
   RobotOutlined,
@@ -17,8 +19,9 @@ import {
   SunOutlined,
   TeamOutlined
 } from '@ant-design/icons';
-import { Avatar, Badge, Button, Layout, Menu, Segmented, Space, Typography } from 'antd';
+import { Avatar, Badge, Button, Layout, Menu, Segmented, Space, Tag, Typography } from 'antd';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useDemoMode } from '../demoMode';
 import { useI18n } from '../i18n';
 import { useTheme } from '../theme';
 import { dashboardApi } from '../../api/dashboard';
@@ -27,22 +30,22 @@ import { useQuery } from '@tanstack/react-query';
 const { Header, Sider, Content } = Layout;
 
 const routeMenuPrefixes = [
-  '/exception-center',
-  '/approvals',
   '/orders',
+  '/products',
   '/stores',
   '/agents',
-  '/models',
-  '/operations',
-  '/audit-logs',
-  '/billing',
-  '/guide',
-  '/settings'
+  '/dashboard',
+  '/settings',
 ];
 
 function getSelectedMenuKey(pathname: string) {
   if (pathname === '/') return '/dashboard';
+  // settings sub-items match their exact path
   if (pathname.startsWith('/settings/')) return pathname;
+  // agents sub-items
+  if (pathname === '/agents/exceptions') return '/agents/exceptions';
+  if (pathname === '/agents/approvals') return '/agents/approvals';
+  if (pathname.startsWith('/agents/')) return '/agents';
   return routeMenuPrefixes.find((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) ?? pathname;
 }
 
@@ -51,6 +54,7 @@ export function AppShell() {
   const navigate = useNavigate();
   const { language, setLanguage, t } = useI18n();
   const { mode, setMode } = useTheme();
+  const { isDemo, exitDemo } = useDemoMode();
   const { data: dashboard } = useQuery({
     queryKey: ['dashboard'],
     queryFn: dashboardApi.getSummary,
@@ -60,42 +64,13 @@ export function AppShell() {
   const pendingApprovals = dashboard?.pendingApprovals ?? 0;
   const exceptionPending = dashboard?.exceptionCenterPending ?? 0;
   const orderExceptions = dashboard?.orderExceptions ?? 0;
-  const loginRequired = dashboard?.loginRequiredStores ?? 0;
   const selectedMenuKey = getSelectedMenuKey(location.pathname);
 
   const menuItems = [
-    // 1. 控制台 — 第一眼看到的全局概览
+    // 1. 经营总览
     { key: '/dashboard', icon: <DashboardOutlined />, label: t('nav.dashboard') },
 
-    // 2. 异常中心 — 最紧急的待处理异常
-    {
-      key: '/exception-center',
-      icon: <AlertOutlined />,
-      label: (
-        <span>
-          {t('nav.exceptions')}
-          {exceptionPending > 0 && (
-            <Badge count={exceptionPending} size="small" offset={[8, -2]} style={{ marginLeft: 8 }} />
-          )}
-        </span>
-      )
-    },
-
-    // 3. 审批中心 — 等待决策的高风险操作
-    {
-      key: '/approvals',
-      icon: <CheckSquareOutlined />,
-      label: (
-        <span>
-          {t('nav.approvals')}
-          {pendingApprovals > 0 && (
-            <Badge count={pendingApprovals} size="small" offset={[8, -2]} style={{ marginLeft: 8 }} />
-          )}
-        </span>
-      )
-    },
-
-    // 4. 订单自动化 — 日常订单处理
+    // 2. 订单管理 — 日常订单处理
     {
       key: '/orders',
       icon: <ShoppingCartOutlined />,
@@ -109,48 +84,62 @@ export function AppShell() {
       )
     },
 
-    // 5. 店铺管理 — 基础设施（连接店铺是一切的前提）
+    // 3. 商品管理
+    { key: '/products', icon: <AppstoreOutlined />, label: t('nav.products') },
+
+    // 4. Agent 中心
     {
-      key: '/stores',
-      icon: <ShopOutlined />,
-      label: (
-        <span>
-          {t('nav.stores')}
-          {loginRequired > 0 && (
-            <Badge count={loginRequired} size="small" offset={[8, -2]} style={{ marginLeft: 8 }} />
-          )}
-        </span>
-      )
+      key: '/agents',
+      icon: <RobotOutlined />,
+      label: t('nav.agents'),
+      children: [
+        {
+          key: '/agents',
+          icon: <RobotOutlined />,
+          label: t('nav.agentList')
+        },
+        {
+          key: '/agents/exceptions',
+          icon: <AlertOutlined />,
+          label: (
+            <span>
+              {t('nav.exceptionCenter')}
+              {exceptionPending > 0 && (
+                <Badge count={exceptionPending} size="small" offset={[8, -2]} style={{ marginLeft: 8 }} />
+              )}
+            </span>
+          )
+        },
+        {
+          key: '/agents/approvals',
+          icon: <CheckSquareOutlined />,
+          label: (
+            <span>
+              {t('nav.approvalCenter')}
+              {pendingApprovals > 0 && (
+                <Badge count={pendingApprovals} size="small" offset={[8, -2]} style={{ marginLeft: 8 }} />
+              )}
+            </span>
+          )
+        },
+      ]
     },
 
-    // 6. Agent 中心 — 自动化配置
-    { key: '/agents', icon: <RobotOutlined />, label: t('nav.agents') },
-
-    // 7. 模型中心 — AI 能力管理
-    { key: '/models', icon: <ExperimentOutlined />, label: t('nav.models') },
-
-    // 8. 经营中心 — 成本与产品分析
-    { key: '/operations', icon: <BarChartOutlined />, label: t('nav.operations') },
-
-    // 9. 审计日志 — 操作追溯
-    { key: '/audit-logs', icon: <AuditOutlined />, label: t('nav.auditLogs') },
-
-    // 10. 财务台账 — 费用与订阅
-    { key: '/billing', icon: <DollarOutlined />, label: t('nav.billing') },
-
-    // 11. 使用说明 — 帮助文档
-    { key: '/guide', icon: <BookOutlined />, label: t('nav.guide') },
-
-    // 12. 设置 — 团队与通知配置
+    // 5. 设置
     {
       key: 'settings',
       icon: <SettingOutlined />,
       label: t('nav.settings'),
       children: [
-        { key: '/settings/members', icon: <TeamOutlined />, label: t('nav.members') },
-        { key: '/settings/notifications', icon: <BellOutlined />, label: t('nav.notifications') }
+        { key: '/settings/stores', icon: <ShopOutlined />, label: t('nav.storeManagement') },
+        { key: '/settings/members', icon: <TeamOutlined />, label: t('nav.memberManagement') },
+        { key: '/settings/models', icon: <ExperimentOutlined />, label: t('nav.models') },
+        { key: '/settings/billing', icon: <DollarOutlined />, label: t('nav.billingFinance') },
+        { key: '/settings/audit-logs', icon: <AuditOutlined />, label: t('nav.auditLogs') },
+        { key: '/settings/notifications', icon: <BellOutlined />, label: t('nav.notificationSettings') },
+        { key: '/settings/guide', icon: <BookOutlined />, label: t('nav.usageGuide') },
       ]
-    }
+    },
   ];
 
   return (
@@ -168,6 +157,7 @@ export function AppShell() {
         <Menu
           mode="inline"
           selectedKeys={[selectedMenuKey]}
+          defaultOpenKeys={['/agents', 'settings']}
           items={menuItems}
           onClick={({ key }) => navigate(key)}
         />
@@ -203,6 +193,29 @@ export function AppShell() {
           </Space>
         </Header>
         <Content className="app-content">
+          {isDemo && (
+            <div style={{
+              background: 'linear-gradient(90deg, #fef3c7 0%, #fde68a 100%)',
+              borderBottom: '1px solid #f59e0b',
+              padding: '6px 24px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexShrink: 0,
+            }}>
+              <Space size={8}>
+                <LabOutlined style={{ color: '#d97706', fontSize: 14 }} />
+                <Typography.Text style={{ fontSize: 12, color: '#92400e', fontWeight: 500 }}>
+                  {t('app.demoBanner')}
+                </Typography.Text>
+                <Tag color="gold" style={{ fontSize: 10, margin: 0 }}>2 家店铺 · 12 个商品 · 10 个任务</Tag>
+              </Space>
+              <Button size="small" type="text" icon={<CloseOutlined />} onClick={exitDemo}
+                style={{ color: '#92400e', fontSize: 11 }}>
+                {t('app.exitDemo')}
+              </Button>
+            </div>
+          )}
           <Outlet />
         </Content>
       </Layout>

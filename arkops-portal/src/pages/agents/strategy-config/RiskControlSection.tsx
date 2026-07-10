@@ -11,8 +11,28 @@ interface RiskControlSectionProps {
   agent: AgentWithStrategyConfig;
 }
 
+/** 安全更新 strategyConfig 子段，触发 React 重新渲染 */
+function updateConfigSection(
+  queryClient: ReturnType<typeof useQueryClient>,
+  agent: AgentWithStrategyConfig,
+  sectionKey: string,
+  updater: (section: any) => any,
+) {
+  queryClient.setQueryData(['agent', agent.agentType], (prev: any) => {
+    if (!prev?.strategyConfig) return prev;
+    return {
+      ...prev,
+      strategyConfig: {
+        ...prev.strategyConfig,
+        [sectionKey]: updater(prev.strategyConfig[sectionKey]),
+      },
+    };
+  });
+}
+
 export function RiskControlSection({ agent }: RiskControlSectionProps) {
   const { t } = useI18n();
+  const queryClient = useQueryClient();
 
   return (
     <>
@@ -31,7 +51,12 @@ export function RiskControlSection({ agent }: RiskControlSectionProps) {
                         <Switch
                           size="small"
                           checked={agent.strategyConfig.riskControlConfig.compliance.adLawFilter}
-                          onChange={(v) => { if (agent.strategyConfig?.riskControlConfig) agent.strategyConfig.riskControlConfig.compliance.adLawFilter = v; }}
+                          onChange={(v) => {
+                            updateConfigSection(queryClient, agent, 'riskControlConfig', (rc) => ({
+                              ...rc,
+                              compliance: { ...rc.compliance, adLawFilter: v },
+                            }));
+                          }}
                         />
                         <Typography.Text style={{ fontSize: 13 }}>{t('agent.riskAdLaw')}</Typography.Text>
                       </Space>
@@ -39,7 +64,12 @@ export function RiskControlSection({ agent }: RiskControlSectionProps) {
                         <Switch
                           size="small"
                           checked={agent.strategyConfig.riskControlConfig.compliance.platformRuleCheck}
-                          onChange={(v) => { if (agent.strategyConfig?.riskControlConfig) agent.strategyConfig.riskControlConfig.compliance.platformRuleCheck = v; }}
+                          onChange={(v) => {
+                            updateConfigSection(queryClient, agent, 'riskControlConfig', (rc) => ({
+                              ...rc,
+                              compliance: { ...rc.compliance, platformRuleCheck: v },
+                            }));
+                          }}
                         />
                         <Typography.Text style={{ fontSize: 13 }}>{t('agent.riskPlatformRule')}</Typography.Text>
                       </Space>
@@ -47,7 +77,12 @@ export function RiskControlSection({ agent }: RiskControlSectionProps) {
                         <Switch
                           size="small"
                           checked={agent.strategyConfig.riskControlConfig.compliance.falseClaimDetection}
-                          onChange={(v) => { if (agent.strategyConfig?.riskControlConfig) agent.strategyConfig.riskControlConfig.compliance.falseClaimDetection = v; }}
+                          onChange={(v) => {
+                            updateConfigSection(queryClient, agent, 'riskControlConfig', (rc) => ({
+                              ...rc,
+                              compliance: { ...rc.compliance, falseClaimDetection: v },
+                            }));
+                          }}
                         />
                         <Typography.Text style={{ fontSize: 13 }}>{t('agent.riskFalseClaim')}</Typography.Text>
                       </Space>
@@ -66,7 +101,12 @@ export function RiskControlSection({ agent }: RiskControlSectionProps) {
                           size="small" min={0} step={0.1}
                           style={{ width: 70 }}
                           value={agent.strategyConfig.riskControlConfig.behavior.roiFloorThreshold}
-                          onChange={(v) => { if (agent.strategyConfig?.riskControlConfig) agent.strategyConfig.riskControlConfig.behavior.roiFloorThreshold = v ?? 1.2; }}
+                          onChange={(v) => {
+                            updateConfigSection(queryClient, agent, 'riskControlConfig', (rc) => ({
+                              ...rc,
+                              behavior: { ...rc.behavior, roiFloorThreshold: v ?? 1.2 },
+                            }));
+                          }}
                         />
                       </Space>
                       <Space>
@@ -76,7 +116,12 @@ export function RiskControlSection({ agent }: RiskControlSectionProps) {
                           style={{ width: 70 }}
                           suffix="次/分"
                           value={agent.strategyConfig.riskControlConfig.behavior.actionFrequencyLimit}
-                          onChange={(v) => { if (agent.strategyConfig?.riskControlConfig) agent.strategyConfig.riskControlConfig.behavior.actionFrequencyLimit = v ?? 10; }}
+                          onChange={(v) => {
+                            updateConfigSection(queryClient, agent, 'riskControlConfig', (rc) => ({
+                              ...rc,
+                              behavior: { ...rc.behavior, actionFrequencyLimit: v ?? 10 },
+                            }));
+                          }}
                         />
                       </Space>
                       <Space>
@@ -86,7 +131,12 @@ export function RiskControlSection({ agent }: RiskControlSectionProps) {
                           style={{ width: 70 }}
                           suffix="%"
                           value={agent.strategyConfig.riskControlConfig.behavior.priceDeviationPercent}
-                          onChange={(v) => { if (agent.strategyConfig?.riskControlConfig) agent.strategyConfig.riskControlConfig.behavior.priceDeviationPercent = v ?? 30; }}
+                          onChange={(v) => {
+                            updateConfigSection(queryClient, agent, 'riskControlConfig', (rc) => ({
+                              ...rc,
+                              behavior: { ...rc.behavior, priceDeviationPercent: v ?? 30 },
+                            }));
+                          }}
                         />
                       </Space>
                     </Space>
@@ -105,14 +155,24 @@ export function RiskControlSection({ agent }: RiskControlSectionProps) {
                           style={{ width: 70 }}
                           suffix="×成本"
                           value={agent.strategyConfig.riskControlConfig.business.minPriceRatio}
-                          onChange={(v) => { if (agent.strategyConfig?.riskControlConfig) agent.strategyConfig.riskControlConfig.business.minPriceRatio = v ?? 0.8; }}
+                          onChange={(v) => {
+                            updateConfigSection(queryClient, agent, 'riskControlConfig', (rc) => ({
+                              ...rc,
+                              business: { ...rc.business, minPriceRatio: v ?? 0.8 },
+                            }));
+                          }}
                         />
                       </Space>
                       <Space>
                         <Switch
                           size="small"
                           checked={agent.strategyConfig.riskControlConfig.business.categoryMatchCheck}
-                          onChange={(v) => { if (agent.strategyConfig?.riskControlConfig) agent.strategyConfig.riskControlConfig.business.categoryMatchCheck = v; }}
+                          onChange={(v) => {
+                            updateConfigSection(queryClient, agent, 'riskControlConfig', (rc) => ({
+                              ...rc,
+                              business: { ...rc.business, categoryMatchCheck: v },
+                            }));
+                          }}
                         />
                         <Typography.Text style={{ fontSize: 13 }}>{t('agent.riskCategory')}</Typography.Text>
                       </Space>
@@ -120,7 +180,12 @@ export function RiskControlSection({ agent }: RiskControlSectionProps) {
                         <Switch
                           size="small"
                           checked={agent.strategyConfig.riskControlConfig.business.imageComplianceCheck}
-                          onChange={(v) => { if (agent.strategyConfig?.riskControlConfig) agent.strategyConfig.riskControlConfig.business.imageComplianceCheck = v; }}
+                          onChange={(v) => {
+                            updateConfigSection(queryClient, agent, 'riskControlConfig', (rc) => ({
+                              ...rc,
+                              business: { ...rc.business, imageComplianceCheck: v },
+                            }));
+                          }}
                         />
                         <Typography.Text style={{ fontSize: 13 }}>{t('agent.riskImage')}</Typography.Text>
                       </Space>
@@ -128,7 +193,12 @@ export function RiskControlSection({ agent }: RiskControlSectionProps) {
                         <Switch
                           size="small"
                           checked={agent.strategyConfig.riskControlConfig.business.inventorySafetyCheck}
-                          onChange={(v) => { if (agent.strategyConfig?.riskControlConfig) agent.strategyConfig.riskControlConfig.business.inventorySafetyCheck = v; }}
+                          onChange={(v) => {
+                            updateConfigSection(queryClient, agent, 'riskControlConfig', (rc) => ({
+                              ...rc,
+                              business: { ...rc.business, inventorySafetyCheck: v },
+                            }));
+                          }}
                         />
                         <Typography.Text style={{ fontSize: 13 }}>{t('agent.riskInventory')}</Typography.Text>
                       </Space>
@@ -136,7 +206,12 @@ export function RiskControlSection({ agent }: RiskControlSectionProps) {
                         <Switch
                           size="small"
                           checked={agent.strategyConfig.riskControlConfig.business.negativeReviewSurgeCheck}
-                          onChange={(v) => { if (agent.strategyConfig?.riskControlConfig) agent.strategyConfig.riskControlConfig.business.negativeReviewSurgeCheck = v; }}
+                          onChange={(v) => {
+                            updateConfigSection(queryClient, agent, 'riskControlConfig', (rc) => ({
+                              ...rc,
+                              business: { ...rc.business, negativeReviewSurgeCheck: v },
+                            }));
+                          }}
                         />
                         <Typography.Text style={{ fontSize: 13 }}>{t('agent.riskReviewSurge')}</Typography.Text>
                       </Space>

@@ -11,6 +11,25 @@ interface BasicStrategySectionsProps {
   agent: AgentWithStrategyConfig;
 }
 
+/** 安全更新 strategyConfig 子段，触发 React 重新渲染 */
+function updateConfigSection(
+  queryClient: ReturnType<typeof useQueryClient>,
+  agent: AgentWithStrategyConfig,
+  sectionKey: string,
+  updater: (section: any) => any,
+) {
+  queryClient.setQueryData(['agent', agent.agentType], (prev: any) => {
+    if (!prev?.strategyConfig) return prev;
+    return {
+      ...prev,
+      strategyConfig: {
+        ...prev.strategyConfig,
+        [sectionKey]: updater(prev.strategyConfig[sectionKey]),
+      },
+    };
+  });
+}
+
 export function BasicStrategySections({ agent }: BasicStrategySectionsProps) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
@@ -30,13 +49,11 @@ export function BasicStrategySections({ agent }: BasicStrategySectionsProps) {
                     prefix="$"
                     value={agent.strategyConfig.adSpendBudget.dailyCap}
                     onChange={(v) => {
-                      const sc = agent.strategyConfig!;
-                      if (sc.adSpendBudget) {
-                        sc.adSpendBudget.dailyCap = v ?? 0;
-                        agentsApi.saveStrategyConfig(agent.agentType, {
-                          dailyCap: v ?? 0
-                        });
-                      }
+                      const newDailyCap = v ?? 0;
+                      updateConfigSection(queryClient, agent, 'adSpendBudget', (s) => ({
+                        ...s, dailyCap: newDailyCap,
+                      }));
+                      agentsApi.saveStrategyConfig(agent.agentType, { dailyCap: newDailyCap });
                     }}
                   />
                 </Space>
@@ -48,8 +65,9 @@ export function BasicStrategySections({ agent }: BasicStrategySectionsProps) {
                     prefix="$"
                     value={agent.strategyConfig.adSpendBudget.monthlyCap}
                     onChange={(v) => {
-                      const sc = agent.strategyConfig!;
-                      if (sc.adSpendBudget) sc.adSpendBudget.monthlyCap = v ?? 0;
+                      updateConfigSection(queryClient, agent, 'adSpendBudget', (s) => ({
+                        ...s, monthlyCap: v ?? 0,
+                      }));
                     }}
                   />
                 </Space>
@@ -114,7 +132,11 @@ export function BasicStrategySections({ agent }: BasicStrategySectionsProps) {
                     min={0} max={100} step={5}
                     style={{ width: 80 }}
                     value={agent.strategyConfig.crmConfig.discountCap}
-                    onChange={(v) => { if (agent.strategyConfig?.crmConfig) agent.strategyConfig.crmConfig.discountCap = v ?? 20; }}
+                    onChange={(v) => {
+                      updateConfigSection(queryClient, agent, 'crmConfig', (s) => ({
+                        ...s, discountCap: v ?? 20,
+                      }));
+                    }}
                     suffix="%"
                   />
                 </Space>
@@ -124,7 +146,11 @@ export function BasicStrategySections({ agent }: BasicStrategySectionsProps) {
                     min={1} max={10} step={1}
                     style={{ width: 80 }}
                     value={agent.strategyConfig.crmConfig.segmentCount}
-                    onChange={(v) => { if (agent.strategyConfig?.crmConfig) agent.strategyConfig.crmConfig.segmentCount = v ?? 3; }}
+                    onChange={(v) => {
+                      updateConfigSection(queryClient, agent, 'crmConfig', (s) => ({
+                        ...s, segmentCount: v ?? 3,
+                      }));
+                    }}
                   />
                 </Space>
               </Space>
@@ -143,7 +169,11 @@ export function BasicStrategySections({ agent }: BasicStrategySectionsProps) {
                     style={{ width: 100 }}
                     prefix="$"
                     value={agent.strategyConfig.afterSalesConfig.autoRefundCap}
-                    onChange={(v) => { if (agent.strategyConfig?.afterSalesConfig) agent.strategyConfig.afterSalesConfig.autoRefundCap = v ?? 20; }}
+                    onChange={(v) => {
+                      updateConfigSection(queryClient, agent, 'afterSalesConfig', (s) => ({
+                        ...s, autoRefundCap: v ?? 20,
+                      }));
+                    }}
                   />
                   <Typography.Text type="secondary">{t('agent.afterSalesRefundCapUnit')}</Typography.Text>
                 </Space>
@@ -155,7 +185,11 @@ export function BasicStrategySections({ agent }: BasicStrategySectionsProps) {
                   size="small"
                   placeholder={t('agent.afterSalesReturnAddrPlaceholder')}
                   value={agent.strategyConfig.afterSalesConfig.returnAddress}
-                  onChange={(e) => { if (agent.strategyConfig?.afterSalesConfig) agent.strategyConfig.afterSalesConfig.returnAddress = e.target.value; }}
+                  onChange={(e) => {
+                    updateConfigSection(queryClient, agent, 'afterSalesConfig', (s) => ({
+                      ...s, returnAddress: e.target.value,
+                    }));
+                  }}
                 />
               </div>
             </div>
@@ -173,7 +207,11 @@ export function BasicStrategySections({ agent }: BasicStrategySectionsProps) {
                     size="small"
                     placeholder="1:1,16:9,9:16"
                     value={agent.strategyConfig.creativeConfig.outputSizes}
-                    onChange={(e) => { if (agent.strategyConfig?.creativeConfig) agent.strategyConfig.creativeConfig.outputSizes = e.target.value; }}
+                    onChange={(e) => {
+                      updateConfigSection(queryClient, agent, 'creativeConfig', (s) => ({
+                        ...s, outputSizes: e.target.value,
+                      }));
+                    }}
                   />
                   <Typography.Text type="secondary" style={{ fontSize: 11 }}>{t('agent.creativeSizesDesc')}</Typography.Text>
                 </Space>
@@ -184,7 +222,11 @@ export function BasicStrategySections({ agent }: BasicStrategySectionsProps) {
                   size="small"
                   style={{ width: 120 }}
                   value={agent.strategyConfig.creativeConfig.copyTone}
-                  onChange={(v) => { if (agent.strategyConfig?.creativeConfig) agent.strategyConfig.creativeConfig.copyTone = v; }}
+                  onChange={(v) => {
+                    updateConfigSection(queryClient, agent, 'creativeConfig', (s) => ({
+                      ...s, copyTone: v,
+                    }));
+                  }}
                   options={[
                     { value: '简洁卖点', label: '简洁卖点' },
                     { value: '促销感', label: '促销感' },

@@ -11,8 +11,28 @@ interface PricingRuleSectionProps {
   agent: AgentWithStrategyConfig;
 }
 
+/** 安全更新 strategyConfig 子段，触发 React 重新渲染 */
+function updateConfigSection(
+  queryClient: ReturnType<typeof useQueryClient>,
+  agent: AgentWithStrategyConfig,
+  sectionKey: string,
+  updater: (section: any) => any,
+) {
+  queryClient.setQueryData(['agent', agent.agentType], (prev: any) => {
+    if (!prev?.strategyConfig) return prev;
+    return {
+      ...prev,
+      strategyConfig: {
+        ...prev.strategyConfig,
+        [sectionKey]: updater(prev.strategyConfig[sectionKey]),
+      },
+    };
+  });
+}
+
 export function PricingRuleSection({ agent }: PricingRuleSectionProps) {
   const { t } = useI18n();
+  const queryClient = useQueryClient();
 
   return (
     <>
@@ -28,11 +48,13 @@ export function PricingRuleSection({ agent }: PricingRuleSectionProps) {
                     value={agent.strategyConfig.pricingRule.mode}
                     style={{ width: 140 }}
                     onChange={(v) => {
-                      const pr = agent.strategyConfig!.pricingRule!;
-                      pr.mode = v;
-                      if (v === 'market') { pr.targetMargin = 30; pr.competitorStrategy = 'match'; }
-                      if (v === 'cost') { pr.costMultiplier = 1.5; pr.roundUp = true; }
-                      if (v === 'manual') { pr.floorPrice = 0; pr.ceilingPrice = 0; }
+                      updateConfigSection(queryClient, agent, 'pricingRule', (pr) => {
+                        const base = { ...pr, mode: v };
+                        if (v === 'market') return { ...base, targetMargin: 30, competitorStrategy: 'match' };
+                        if (v === 'cost') return { ...base, costMultiplier: 1.5, roundUp: true };
+                        if (v === 'manual') return { ...base, floorPrice: 0, ceilingPrice: 0 };
+                        return base;
+                      });
                     }}
                     options={[
                       { value: 'market', label: t('agent.pricingMarket') },
@@ -60,7 +82,11 @@ export function PricingRuleSection({ agent }: PricingRuleSectionProps) {
                         style={{ width: 80 }}
                         suffix="%"
                         value={agent.strategyConfig.pricingRule.targetMargin}
-                        onChange={(v) => { if (agent.strategyConfig?.pricingRule) agent.strategyConfig.pricingRule.targetMargin = v ?? 30; }}
+                        onChange={(v) => {
+                          updateConfigSection(queryClient, agent, 'pricingRule', (pr) => ({
+                            ...pr, targetMargin: v ?? 30,
+                          }));
+                        }}
                       />
                     </Space>
                     <Space>
@@ -69,7 +95,11 @@ export function PricingRuleSection({ agent }: PricingRuleSectionProps) {
                         size="small"
                         style={{ width: 120 }}
                         value={agent.strategyConfig.pricingRule.competitorStrategy}
-                        onChange={(v) => { if (agent.strategyConfig?.pricingRule) agent.strategyConfig.pricingRule.competitorStrategy = v; }}
+                        onChange={(v) => {
+                          updateConfigSection(queryClient, agent, 'pricingRule', (pr) => ({
+                            ...pr, competitorStrategy: v,
+                          }));
+                        }}
                         options={[
                           { value: 'undercut', label: t('agent.competeUndercut') },
                           { value: 'match', label: t('agent.competeMatch') },
@@ -99,7 +129,9 @@ export function PricingRuleSection({ agent }: PricingRuleSectionProps) {
                           style={{ width: 70 }}
                           value={agent.strategyConfig.pricingRule.costMultiplier}
                           onChange={(v) => {
-                            if (agent.strategyConfig?.pricingRule) agent.strategyConfig.pricingRule.costMultiplier = v ?? 1.5;
+                            updateConfigSection(queryClient, agent, 'pricingRule', (pr) => ({
+                              ...pr, costMultiplier: v ?? 1.5,
+                            }));
                           }}
                         />
                         <Typography.Text type="secondary">× {t('agent.cost')}</Typography.Text>
@@ -109,7 +141,11 @@ export function PricingRuleSection({ agent }: PricingRuleSectionProps) {
                         <Switch
                           size="small"
                           checked={agent.strategyConfig.pricingRule.roundUp}
-                          onChange={(v) => { if (agent.strategyConfig?.pricingRule) agent.strategyConfig.pricingRule.roundUp = v; }}
+                          onChange={(v) => {
+                            updateConfigSection(queryClient, agent, 'pricingRule', (pr) => ({
+                              ...pr, roundUp: v,
+                            }));
+                          }}
                         />
                       </Space>
                     </Space>
@@ -120,8 +156,10 @@ export function PricingRuleSection({ agent }: PricingRuleSectionProps) {
                     maxCount={1}
                     beforeUpload={() => false}
                     onChange={(info) => {
-                      if (info.fileList.length > 0 && agent.strategyConfig?.pricingRule) {
-                        agent.strategyConfig.pricingRule.costFile = info.fileList[0].name;
+                      if (info.fileList.length > 0) {
+                        updateConfigSection(queryClient, agent, 'pricingRule', (pr) => ({
+                          ...pr, costFile: info.fileList[0].name,
+                        }));
                       }
                     }}
                   >
@@ -151,7 +189,11 @@ export function PricingRuleSection({ agent }: PricingRuleSectionProps) {
                         style={{ width: 100 }}
                         prefix="$"
                         value={agent.strategyConfig.pricingRule.floorPrice}
-                        onChange={(v) => { if (agent.strategyConfig?.pricingRule) agent.strategyConfig.pricingRule.floorPrice = v ?? 0; }}
+                        onChange={(v) => {
+                          updateConfigSection(queryClient, agent, 'pricingRule', (pr) => ({
+                            ...pr, floorPrice: v ?? 0,
+                          }));
+                        }}
                       />
                     </Space>
                     <Space>
@@ -161,7 +203,11 @@ export function PricingRuleSection({ agent }: PricingRuleSectionProps) {
                         style={{ width: 100 }}
                         prefix="$"
                         value={agent.strategyConfig.pricingRule.ceilingPrice}
-                        onChange={(v) => { if (agent.strategyConfig?.pricingRule) agent.strategyConfig.pricingRule.ceilingPrice = v ?? 0; }}
+                        onChange={(v) => {
+                          updateConfigSection(queryClient, agent, 'pricingRule', (pr) => ({
+                            ...pr, ceilingPrice: v ?? 0,
+                          }));
+                        }}
                       />
                     </Space>
                   </Space>

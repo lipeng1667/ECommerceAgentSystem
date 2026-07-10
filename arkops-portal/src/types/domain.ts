@@ -112,7 +112,7 @@ export interface Member {
   id: AllMallId;
   name: string;
   email: string;
-  role: 'Owner' | 'Admin' | 'Operator' | 'Approver' | 'Viewer';
+  role: 'Owner' | 'Admin' | 'Operator' | 'Approver' | 'Finance' | 'Viewer';
   status: 'active' | 'invited';
 }
 
@@ -196,7 +196,7 @@ export interface AgentStrategyConfig {
     // 通用
     currency: string;
   };
-  adSpendBudget?: { dailyCap: number; monthlyCap: number };
+  adSpendBudget?: { dailyCap: number; monthlyCap: number; targetROI?: number; lookbackDays?: number };
   seoKeywords?: { keywords: string[]; lastGenerated: string; source: string };
   targetAudience?: { tags: string[]; lastGenerated: string; source: string };
   crmConfig?: { discountCap: number; segmentCount: number };
@@ -208,6 +208,10 @@ export interface AgentStrategyConfig {
   financeConfig?: { autoReconcileDay: number; discrepancyAlertThreshold: number; autoGenerateReport: boolean };
   promotionConfig?: { maxDiscountPercent: number; campaignBudget: number; autoSchedule: boolean; targetPlatforms: string[] };
   liveStreamConfig?: { autoPinProducts: boolean; replyTemplate: string; performanceAlertThreshold: number; peakHourBoost: boolean };
+  reviewConfig?: { autoReplyThreshold: number; replyTone: string };
+  csConfig?: { autoReplyEnabled: boolean; escalateKeywords: string[] };
+  bootstrapConfig?: { notifyChannels: string };
+  productLaunchConfig?: { defaultCategory: string; targetMarket: string };
 }
 
 export interface RiskControlConfig {

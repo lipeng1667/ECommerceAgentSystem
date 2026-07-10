@@ -1,11 +1,18 @@
-import { LockOutlined, UserOutlined } from '@ant-design/icons';
-import { Button, Card, Form, Input, Segmented, Typography } from 'antd';
+import { LockOutlined, PlayCircleOutlined, UserOutlined } from '@ant-design/icons';
+import { Button, Card, Divider, Form, Input, Segmented, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
+import { useDemoMode } from '../../app/demoMode';
 import { useI18n } from '../../app/i18n';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const { language, setLanguage, t } = useI18n();
+  const { enterDemo } = useDemoMode();
+
+  const handleDemoLogin = () => {
+    enterDemo();
+    navigate('/dashboard');
+  };
 
   return (
     <div className="login-page">
@@ -33,6 +40,25 @@ export function LoginPage() {
             {t('login.submit')}
           </Button>
         </Form>
+
+        <Divider plain style={{ fontSize: 12, color: '#94a3b8' }}>{t('login.or')}</Divider>
+
+        <Button
+          block
+          size="large"
+          icon={<PlayCircleOutlined />}
+          onClick={handleDemoLogin}
+          style={{
+            borderColor: '#2563eb',
+            color: '#2563eb',
+            fontWeight: 500,
+          }}
+        >
+          {t('login.demoEntry')}
+        </Button>
+        <Typography.Text type="secondary" style={{ display: 'block', textAlign: 'center', marginTop: 8, fontSize: 11 }}>
+          {t('login.demoEntryDesc')}
+        </Typography.Text>
       </Card>
     </div>
   );

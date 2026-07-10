@@ -16,10 +16,11 @@ const LoginPage = lazy(() => import('../pages/auth/LoginPage').then((module) => 
 const MembersSettingsPage = lazy(() => import('../pages/settings/MembersSettingsPage').then((module) => ({ default: module.MembersSettingsPage })));
 const ModelListPage = lazy(() => import('../pages/models/ModelListPage').then((module) => ({ default: module.ModelListPage })));
 const NotificationsSettingsPage = lazy(() => import('../pages/settings/NotificationsSettingsPage').then((module) => ({ default: module.NotificationsSettingsPage })));
-const OperationsCenterPage = lazy(() => import('../pages/operations/OperationsCenterPage').then((module) => ({ default: module.OperationsCenterPage })));
 const OrderAutomationPage = lazy(() => import('../pages/orders/OrderAutomationPage').then((module) => ({ default: module.OrderAutomationPage })));
+const ProductManagementPage = lazy(() => import('../pages/products/ProductManagementPage').then((module) => ({ default: module.ProductManagementPage })));
 const StoreDetailPage = lazy(() => import('../pages/stores/StoreDetailPage').then((module) => ({ default: module.StoreDetailPage })));
 const StoreListPage = lazy(() => import('../pages/stores/StoreListPage').then((module) => ({ default: module.StoreListPage })));
+const SetupConfigPage = lazy(() => import('../pages/setup/SetupConfigPage').then((module) => ({ default: module.SetupConfigPage })));
 const UsageGuideSettingsPage = lazy(() => import('../pages/guide/UsageGuideSettingsPage').then((module) => ({ default: module.UsageGuideSettingsPage })));
 
 const routerBase = import.meta.env.BASE_URL === '/' ? undefined : import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -42,23 +43,50 @@ const router = createBrowserRouter(
       element: <AppShell />,
       children: [
         { index: true, element: <Navigate to="/dashboard" replace /> },
+
+        // 经营总览
         { path: 'dashboard', element: withSuspense(<DashboardPage />) },
-        { path: 'exception-center', element: withSuspense(<ExceptionCenterPage />) },
+        // 旧路由重定向
+        { path: 'operations', element: <Navigate to="/dashboard" replace /> },
+
+        // 订单管理
+        { path: 'orders', element: withSuspense(<OrderAutomationPage />) },
+
+        // 商品管理
+        { path: 'products', element: withSuspense(<ProductManagementPage />) },
+
+        // Agent 中心
+        { path: 'agents', element: withSuspense(<AgentListPage />) },
+        { path: 'agents/:agentType', element: withSuspense(<AgentConfigPage />) },
+        { path: 'agents/exceptions', element: withSuspense(<ExceptionCenterPage />) },
+        { path: 'agents/approvals', element: withSuspense(<ApprovalListPage />) },
+        { path: 'agents/approvals/:approvalId', element: withSuspense(<ApprovalDetailPage />) },
+        // 旧路由重定向
+        { path: 'exception-center', element: <Navigate to="/agents/exceptions" replace /> },
+        { path: 'approvals', element: <Navigate to="/agents/approvals" replace /> },
+        { path: 'approvals/:approvalId', element: withSuspense(<ApprovalDetailPage />) },
+
+        // 店铺管理
         { path: 'stores', element: withSuspense(<StoreListPage />) },
         { path: 'stores/new', element: withSuspense(<StoreDetailPage mode="new" />) },
         { path: 'stores/:storeId', element: withSuspense(<StoreDetailPage />) },
-        { path: 'agents', element: withSuspense(<AgentListPage />) },
-        { path: 'agents/:agentType', element: withSuspense(<AgentConfigPage />) },
-        { path: 'models', element: withSuspense(<ModelListPage />) },
-        { path: 'operations', element: withSuspense(<OperationsCenterPage />) },
-        { path: 'orders', element: withSuspense(<OrderAutomationPage />) },
-        { path: 'approvals', element: withSuspense(<ApprovalListPage />) },
-        { path: 'approvals/:approvalId', element: withSuspense(<ApprovalDetailPage />) },
-        { path: 'audit-logs', element: withSuspense(<AuditLogsPage />) },
-        { path: 'billing', element: withSuspense(<BillingSettingsPage />) },
-        { path: 'guide', element: withSuspense(<UsageGuideSettingsPage />) },
+
+        // 设置（含子项）
         { path: 'settings/members', element: withSuspense(<MembersSettingsPage />) },
-        { path: 'settings/notifications', element: withSuspense(<NotificationsSettingsPage />) }
+        { path: 'settings/notifications', element: withSuspense(<NotificationsSettingsPage />) },
+        { path: 'settings/stores', element: withSuspense(<StoreListPage />) },
+        { path: 'settings/models', element: withSuspense(<ModelListPage />) },
+        { path: 'settings/audit-logs', element: withSuspense(<AuditLogsPage />) },
+        { path: 'settings/billing', element: withSuspense(<BillingSettingsPage />) },
+        { path: 'settings/guide', element: withSuspense(<UsageGuideSettingsPage />) },
+        // 旧路由重定向
+        { path: 'models', element: <Navigate to="/settings/models" replace /> },
+        { path: 'audit-logs', element: <Navigate to="/settings/audit-logs" replace /> },
+        { path: 'billing', element: <Navigate to="/settings/billing" replace /> },
+        { path: 'guide', element: <Navigate to="/settings/guide" replace /> },
+
+        // 快速配置
+        { path: 'setup', element: withSuspense(<SetupConfigPage />) },
       ]
     }
   ],

@@ -42,6 +42,7 @@ interface AgentBuiltinTasksSectionProps {
   onOpenCreativeModal: () => void;
   onOpenRiskModal: () => void;
   onOpenLiveModal: () => void;
+  onOpenABTest: () => void;
 }
 
 interface AgentTaskSectionConfig {
@@ -61,7 +62,8 @@ export function AgentBuiltinTasksSection({
   onOpenCsModal,
   onOpenCreativeModal,
   onOpenRiskModal,
-  onOpenLiveModal
+  onOpenLiveModal,
+  onOpenABTest
 }: AgentBuiltinTasksSectionProps) {
   const { t } = useI18n();
 
@@ -120,7 +122,7 @@ export function AgentBuiltinTasksSection({
       tasks: [
         task(<LineChartOutlined style={taskIconStyle('#2563eb')} />, 'roiPatrol', 'roiPatrolDesc', 'scheduled', 'purple', onOpenAdDashboard),
         task(<ToolOutlined style={taskIconStyle('#16a34a')} />, 'budgetOptimize', 'budgetOptimizeDesc', 'auto', 'green'),
-        task(<FireOutlined style={taskIconStyle('#ea580c')} />, 'abTest', 'abTestDesc', 'scheduled', 'purple')
+        task(<FireOutlined style={taskIconStyle('#ea580c')} />, 'abTest', 'abTestDesc', 'scheduled', 'purple', onOpenABTest)
       ]
     },
     crm_retention: {

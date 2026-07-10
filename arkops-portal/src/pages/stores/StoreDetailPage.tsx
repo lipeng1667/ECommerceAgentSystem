@@ -1,39 +1,28 @@
 import {
   ApiOutlined,
   ArrowLeftOutlined,
-  ArrowDownOutlined,
-  ArrowUpOutlined,
-  BarChartOutlined,
   CustomerServiceOutlined,
-  DollarOutlined,
-  FireOutlined,
   LinkOutlined,
   PlusOutlined,
-  RiseOutlined,
   SettingOutlined,
   ShopOutlined,
   ShoppingCartOutlined,
   StopOutlined,
   ThunderboltOutlined,
-  TrophyOutlined,
   WalletOutlined,
-  WarningOutlined
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Breadcrumb, Button, Card, Col, Form, Input, Modal, Progress, Row, Segmented, Select, Space, Statistic, Table, Tabs, Tag, Typography, message } from 'antd';
+import { Breadcrumb, Button, Card, Checkbox, Col, Form, Input, Modal, Row, Select, Space, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { storeBusinessApi } from '../../api/storeBusiness';
 import { storesApi } from '../../api/stores';
 import { useI18n } from '../../app/i18n';
-import { TrendBarChart } from '../../components/charts/TrendBarChart';
 import { DescriptionPanel } from '../../components/detail/DescriptionPanel';
-import { MetricCard } from '../../components/metrics/MetricCard';
 import { PageHeader } from '../../components/PageHeader';
 import { StatusBadge } from '../../components/StatusBadge';
-import type { Store, StoreBusinessDetail, StoreConnection, StoreServiceType } from '../../types/domain';
+import type { Store, StoreConnection, StoreServiceType } from '../../types/domain';
 import { parseAllMallId } from '../../utils/id';
 
 export function StoreDetailPage({ mode }: { mode?: 'new' }) {
@@ -43,16 +32,10 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
-  const [bizTimeRange, setBizTimeRange] = useState<'today' | '7d' | '30d'>('today');
 
   const { data: store } = useQuery({
     queryKey: ['store', parsedStoreId],
     queryFn: () => storesApi.get(parsedStoreId!),
-    enabled: parsedStoreId !== undefined && mode !== 'new'
-  });
-  const { data: storeBiz } = useQuery({
-    queryKey: ['store-biz', parsedStoreId, bizTimeRange],
-    queryFn: () => storeBusinessApi.getDetail(parsedStoreId!),
     enabled: parsedStoreId !== undefined && mode !== 'new'
   });
   const createStore = useMutation({
@@ -78,6 +61,90 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
 
   const [authMethod, setAuthMethod] = useState<Store['authMethod'] | undefined>();
   const [platform, setPlatform] = useState<string>('tiktok_shop');
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+
+  // 各平台授权服务名称映射（运营后台 / 投流 / 客服 / 物流 / 财务）
+  const platformServiceNames: Record<string, Record<string, { title: string; desc: string }>> = {
+    tiktok_shop: {
+      advertising: { title: 'TikTok Ads', desc: 'TikTok 广告投放平台' },
+      customer_service: { title: 'TikTok Shop Chat', desc: 'TikTok Shop 买家消息' },
+      logistics: { title: 'TikTok Shop Logistics', desc: 'TikTok Shop 物流发货' },
+      finance: { title: 'TikTok Shop Finance', desc: 'TikTok Shop 财务结算' },
+    },
+    amazon: {
+      advertising: { title: 'Amazon Ads', desc: 'Amazon 广告活动管理' },
+      customer_service: { title: 'Buyer-Seller Messaging', desc: 'Amazon 买家消息' },
+      logistics: { title: 'Amazon FBA / Logistics', desc: 'FBA 仓储与物流配送' },
+      finance: { title: 'Amazon Payments', desc: 'Amazon 收款与结算' },
+    },
+    shopify: {
+      advertising: { title: 'Shopify Audiences', desc: 'Shopify 广告受众与投放' },
+      customer_service: { title: 'Shopify Inbox', desc: 'Shopify 买家消息' },
+      logistics: { title: 'Shopify Shipping', desc: 'Shopify 物流发货' },
+      finance: { title: 'Shopify Payments', desc: 'Shopify 收款与结算' },
+    },
+    shopee: {
+      advertising: { title: 'Shopee Ads', desc: '虾皮广告投放平台' },
+      customer_service: { title: '聊聊 (Shopee Chat)', desc: 'Shopee 买家消息' },
+      logistics: { title: 'SLS 物流', desc: 'Shopee 自建物流' },
+      finance: { title: 'Shopee Finance', desc: 'Shopee 财务结算' },
+    },
+    lazada: {
+      advertising: { title: 'Sponsored Solutions', desc: 'Lazada 广告推广' },
+      customer_service: { title: 'Lazada Chat', desc: 'Lazada 买家消息' },
+      logistics: { title: 'LGS 物流', desc: 'Lazada 自建物流' },
+      finance: { title: 'Lazada Finance', desc: 'Lazada 财务结算' },
+    },
+    temu: {
+      advertising: { title: 'Temu Ads', desc: 'Temu 广告投放' },
+      customer_service: { title: 'Temu Chat', desc: 'Temu 买家消息' },
+      logistics: { title: 'Temu Logistics', desc: 'Temu JIT/VMI 物流' },
+      finance: { title: 'Temu Finance', desc: 'Temu 财务结算' },
+    },
+    ebay: {
+      advertising: { title: 'Promoted Listings', desc: 'eBay 广告推广' },
+      customer_service: { title: 'eBay Messages', desc: 'eBay 买家消息' },
+      logistics: { title: 'eBay Shipping', desc: 'eBay 物流发货' },
+      finance: { title: 'eBay Payments', desc: 'eBay 收款与结算' },
+    },
+    douyin: {
+      advertising: { title: '千川', desc: '巨量千川广告投放平台' },
+      customer_service: { title: '飞鸽', desc: '飞鸽客服系统' },
+      logistics: { title: '抖店物流', desc: '抖店物流发货' },
+      finance: { title: '抖店结算', desc: '抖店财务结算中心' },
+    },
+    pinduoduo: {
+      advertising: { title: '多多搜索 / 全站推广', desc: '拼多多广告投放平台' },
+      customer_service: { title: '多多客服', desc: '拼多多买家消息' },
+      logistics: { title: '拼多多物流', desc: '拼多多物流发货' },
+      finance: { title: '对账中心', desc: '商家后台对账结算' },
+    },
+    jd: {
+      advertising: { title: '京准通', desc: '京东广告投放平台' },
+      customer_service: { title: '咚咚', desc: '咚咚客服系统' },
+      logistics: { title: '京东物流', desc: '京东物流配送' },
+      finance: { title: '京麦财务', desc: '京东商家财务结算' },
+    },
+    taobao: {
+      advertising: { title: '直通车 / 万相台', desc: '淘宝广告投放平台' },
+      customer_service: { title: '千牛客服', desc: '千牛客服接待' },
+      logistics: { title: '菜鸟物流', desc: '菜鸟物流发货' },
+      finance: { title: '支付宝商家中心', desc: '支付宝收款与结算' },
+    },
+    kuaishou: {
+      advertising: { title: '磁力金牛', desc: '快手电商广告投放平台' },
+      customer_service: { title: '快手客服', desc: '快手买家消息' },
+      logistics: { title: '快手物流', desc: '快手物流发货' },
+      finance: { title: '快手财务', desc: '快手财务结算' },
+    },
+  };
+
+  const serviceOptions = [
+    { key: 'advertising', icon: <ThunderboltOutlined />, color: '#2563eb' },
+    { key: 'customer_service', icon: <CustomerServiceOutlined />, color: '#16a34a' },
+    { key: 'logistics', icon: <ShoppingCartOutlined />, color: '#ea580c' },
+    { key: 'finance', icon: <WalletOutlined />, color: '#7c3aed' },
+  ];
 
   // 平台 → 地区和币种映射
   const platformDefaults: Record<string, { region: string; currency: string }> = {
@@ -106,7 +173,7 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
       <div className="page-stack">
         <Breadcrumb
           items={[
-            { title: <Link to="/stores">{t('nav.stores')}</Link> },
+            { title: <Link to="/setup">{t('nav.stores')}</Link> },
             { title: t('stores.addTitle') }
           ]}
         />
@@ -114,7 +181,7 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
           title={t('stores.addTitle')}
           description={t('stores.addDescription')}
           actions={
-            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/stores')}>
+            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/setup')}>
               {t('stores.backToList')}
             </Button>
           }
@@ -162,21 +229,22 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
           </Row>
         </Card>
 
-        {/* 步骤3：授权配置 */}
+        {/* 步骤3+4：授权配置 + 开通服务（Form 包裹） */}
         {authMethod && (
-          <Card title={<><SettingOutlined /> {t('stores.stepConfig')}</>}>
-            <Form
-              form={form}
-              layout="vertical"
-              onFinish={(values) => createStore.mutate({
-                name: values.name, platform, authMethod,
-                apiKey: values.apiKey, apiSecret: values.apiSecret, account: values.account,
-                region: values.region, currency: values.currency
-              })}
-            >
-              <Form.Item name="name" hidden><Input /></Form.Item>
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={(values) => createStore.mutate({
+              name: values.name, platform, authMethod,
+              apiKey: values.apiKey, apiSecret: values.apiSecret, account: values.account,
+              region: values.region, currency: values.currency,
+              services: selectedServices,
+            })}
+          >
+            <Form.Item name="name" hidden><Input /></Form.Item>
 
-              {/* --- 授权配置区 --- */}
+            {/* 步骤3：授权配置 */}
+            <Card title={<><SettingOutlined /> {t('stores.stepConfig')}</>} style={{ marginBottom: 16 }}>
               <Typography.Title level={5} style={{ marginBottom: 16, paddingBottom: 8, borderBottom: '1px solid #f0f0f0' }}>
                 <LinkOutlined style={{ marginRight: 8 }} />{t('stores.primaryAuth')}
               </Typography.Title>
@@ -228,18 +296,60 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
                   <Typography.Paragraph type="secondary" style={{ marginTop: 12 }}>{t('stores.oauthMockNote')}</Typography.Paragraph>
                 </div>
               )}
+            </Card>
 
-              {/* 提交按钮 */}
-              <Space style={{ width: '100%', justifyContent: 'flex-end', marginTop: 24 }}>
-                <Button onClick={() => navigate('/stores')}>
-                  {t('common.cancel')}
-                </Button>
-                <Button type="primary" htmlType="submit" loading={createStore.isPending} size="large">
-                  {t('stores.create')}
-                </Button>
-              </Space>
-            </Form>
-          </Card>
+            {/* 步骤4：授权服务 */}
+            <Card title={<><ApiOutlined style={{ marginRight: 8 }} />授权服务</>} style={{ marginBottom: 16 }}>
+              <Typography.Paragraph type="secondary" style={{ fontSize: 13, marginBottom: 16 }}>
+                选择需要为「{form.getFieldValue('name') || '新店铺'}」授权的平台服务，后续可在店铺设置中随时调整。
+              </Typography.Paragraph>
+              <Checkbox.Group
+                style={{ width: '100%' }}
+                value={selectedServices}
+                onChange={v => setSelectedServices(v as string[])}
+              >
+                <Row gutter={[16, 16]}>
+                  {serviceOptions.map(svc => {
+                    const names = platformServiceNames[platform]?.[svc.key];
+                    return (
+                      <Col xs={24} sm={12} key={svc.key}>
+                        <Card
+                          size="small"
+                          hoverable
+                          style={{
+                            borderLeft: `4px solid ${svc.color}`,
+                            background: selectedServices.includes(svc.key) ? `${svc.color}08` : '#fff',
+                          }}
+                        >
+                          <Checkbox value={svc.key}>
+                            <div>
+                              <Space>
+                                <span style={{ color: svc.color, fontSize: 16 }}>{svc.icon}</span>
+                                <Typography.Text strong style={{ fontSize: 13 }}>{names?.title ?? svc.key}</Typography.Text>
+                              </Space>
+                              <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 2, marginLeft: 24 }}>
+                                {names?.desc ?? ''}
+                              </Typography.Text>
+                            </div>
+                          </Checkbox>
+                        </Card>
+                      </Col>
+                    );
+                  })}
+                </Row>
+              </Checkbox.Group>
+            </Card>
+
+            {/* 提交按钮 */}
+            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Button onClick={() => navigate('/setup')}>
+                {t('common.cancel')}
+              </Button>
+              <Button type="primary" htmlType="submit" loading={createStore.isPending} size="large">
+                {t('stores.create')}
+              </Button>
+            </Space>
+          </Form>
         )}
       </div>
     );
@@ -364,256 +474,6 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
     </>
   );
 
-  const timeOptions: { label: string; value: 'today' | '7d' | '30d' }[] = [
-    { label: t('time.today'), value: 'today' },
-    { label: t('time.7d'), value: '7d' },
-    { label: t('time.30d'), value: '30d' },
-  ];
-
-  const vsLabel = bizTimeRange === 'today' ? t('biz.vsYesterday') : bizTimeRange === '7d' ? t('biz.vsLastWeek') : t('biz.vsLastMonth');
-  const gmvLabel = bizTimeRange === 'today' ? t('biz.todayGmv') : bizTimeRange === '7d' ? t('biz.7dGmv') : t('biz.30dGmv');
-  const ordersLabel = bizTimeRange === 'today' ? t('biz.todayOrders') : bizTimeRange === '7d' ? t('biz.7dOrders') : t('biz.30dOrders');
-
-  const bizTab = !storeBiz ? null : (
-    <>
-      {/* 时间段选择 */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-        <Segmented
-          size="small"
-          value={bizTimeRange}
-          onChange={(v) => setBizTimeRange(v as 'today' | '7d' | '30d')}
-          options={timeOptions}
-        />
-      </div>
-
-      {/* 核心指标 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={12} lg={6}>
-          <MetricCard
-            className="stat-card stat-card-primary"
-            overlayIcon={<DollarOutlined />}
-            title={gmvLabel}
-            value={storeBiz.gmv.today}
-            prefix="$"
-            valueStyle={{ color: '#2563eb', fontWeight: 700, fontSize: 26 }}
-            suffix={
-              <span style={{ fontSize: 14, fontWeight: 600, color: storeBiz.gmv.today >= storeBiz.gmv.yesterday ? '#16a34a' : '#dc2626' }}>
-                {storeBiz.gmv.today >= storeBiz.gmv.yesterday ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
-                {' '}{Math.abs(Math.round(((storeBiz.gmv.today - storeBiz.gmv.yesterday) / storeBiz.gmv.yesterday) * 100))}%
-              </span>
-            }
-            helper={`${vsLabel} $${storeBiz.gmv.yesterday.toLocaleString()}`}
-          />
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <MetricCard
-            className="stat-card stat-card-success"
-            overlayIcon={<ShoppingCartOutlined />}
-            title={ordersLabel}
-            value={storeBiz.orders.today}
-            valueStyle={{ color: '#0f766e', fontWeight: 700, fontSize: 26 }}
-            suffix={
-              <span style={{ fontSize: 14, fontWeight: 600, color: storeBiz.orders.today >= storeBiz.orders.yesterday ? '#16a34a' : '#dc2626' }}>
-                {storeBiz.orders.today >= storeBiz.orders.yesterday ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
-                {' '}{Math.abs(Math.round(((storeBiz.orders.today - storeBiz.orders.yesterday) / storeBiz.orders.yesterday) * 100))}%
-              </span>
-            }
-            helper={`${vsLabel} ${storeBiz.orders.yesterday} ${t('biz.orders')}`}
-          />
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <MetricCard
-            className="stat-card stat-card-purple"
-            overlayIcon={<RiseOutlined />}
-            title={t('biz.aov')}
-            value={storeBiz.aov}
-            prefix="$"
-            precision={1}
-            valueStyle={{ color: '#7c3aed', fontWeight: 700, fontSize: 26 }}
-            helper={t('biz.aovHint')}
-          />
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <MetricCard
-            className="stat-card stat-card-warning"
-            overlayIcon={<TrophyOutlined />}
-            title={t('biz.storeRating')}
-            value={storeBiz.afterSales.storeRating}
-            suffix="/5.0"
-            valueStyle={{ color: storeBiz.afterSales.storeRating >= 4.5 ? '#16a34a' : '#ea580c', fontWeight: 700, fontSize: 26 }}
-            helper={t('biz.ratingHint')}
-          />
-        </Col>
-      </Row>
-
-      {/* GMV 趋势 + 广告投放 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} lg={14}>
-          <Card title={<><DollarOutlined /> {t('biz.gmvTrend')}</>} size="small" className="trend-card">
-            <TrendBarChart
-              points={storeBiz.gmv.trend.map((point, index) => {
-                const orderPoint = storeBiz.orders.trend[index];
-                return {
-                  key: point.date,
-                  label: point.date,
-                  bars: [
-                    { value: point.value, max: Math.max(...storeBiz.gmv.trend.map((item) => item.value), 1), title: `GMV: $${point.value}`, className: 'trend-bar-gmv', minHeight: 16 },
-                    { value: orderPoint?.value ?? 0, max: Math.max(...storeBiz.orders.trend.map((item) => item.value), 1), title: `${t('biz.orders')}: ${orderPoint?.value ?? 0}`, className: 'trend-bar-orders', minHeight: 10 }
-                  ]
-                };
-              })}
-              labelMaxWidth={60}
-            />
-            <div className="chart-legend">
-              <span><i className="legend-dot legend-gmv" />GMV</span>
-              <span><i className="legend-dot legend-orders" />{t('biz.orders')}</span>
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} lg={10}>
-          <Card title={<><FireOutlined /> {t('biz.adRoi')}</>} size="small" className="ad-card">
-            <Row gutter={[8, 12]}>
-              <Col span={12}>
-                <div className="ad-stat">
-                  <Typography.Text type="secondary">{t('biz.adSpend')}</Typography.Text>
-                  <Typography.Title level={4} style={{ margin: '4px 0', color: '#2563eb' }}>${storeBiz.adMetrics.todaySpend}</Typography.Title>
-                </div>
-              </Col>
-              <Col span={12}>
-                <div className="ad-stat">
-                  <Typography.Text type="secondary">ROAS</Typography.Text>
-                  <Typography.Title level={4} style={{ margin: '4px 0', color: storeBiz.adMetrics.roas >= 4 ? '#16a34a' : '#ea580c' }}>{storeBiz.adMetrics.roas}x</Typography.Title>
-                </div>
-              </Col>
-              <Col span={8}>
-                <div className="ad-stat">
-                  <Typography.Text type="secondary">CPM</Typography.Text>
-                  <Typography.Text strong style={{ fontSize: 15 }}>${storeBiz.adMetrics.cpm}</Typography.Text>
-                </div>
-              </Col>
-              <Col span={8}>
-                <div className="ad-stat">
-                  <Typography.Text type="secondary">CPC</Typography.Text>
-                  <Typography.Text strong style={{ fontSize: 15 }}>${storeBiz.adMetrics.cpc}</Typography.Text>
-                </div>
-              </Col>
-              <Col span={8}>
-                <div className="ad-stat">
-                  <Typography.Text type="secondary">CVR</Typography.Text>
-                  <Typography.Text strong style={{ fontSize: 15 }}>{storeBiz.adMetrics.cvr}%</Typography.Text>
-                </div>
-              </Col>
-            </Row>
-            <div style={{ marginTop: 16, marginBottom: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography.Text type="secondary">{t('biz.adBudget')}</Typography.Text>
-                <Tag color={storeBiz.adMetrics.todaySpend > storeBiz.adMetrics.budgetLimit ? 'red' : 'blue'}>${storeBiz.adMetrics.todaySpend} / ${storeBiz.adMetrics.budgetLimit}</Tag>
-              </div>
-              <Progress percent={Math.round((storeBiz.adMetrics.todaySpend / storeBiz.adMetrics.budgetLimit) * 100)} size="small" showInfo={false} status={storeBiz.adMetrics.todaySpend > storeBiz.adMetrics.budgetLimit ? 'exception' : 'active'} />
-            </div>
-            <div>
-              <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>{t('model.campaigns')}</Typography.Text>
-              {storeBiz.adMetrics.campaigns.map((c) => (
-                <div key={c.name} className="campaign-row">
-                  <Typography.Text style={{ fontSize: 13 }}>{c.name}</Typography.Text>
-                  <Space size="small">
-                    <Typography.Text style={{ fontSize: 13, color: '#64748b' }}>${c.spend}</Typography.Text>
-                    <Tag color={c.roi > 5 ? 'green' : c.roi > 2 ? 'orange' : 'red'}>ROI {c.roi}x</Tag>
-                  </Space>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* 售后 + 库存 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} lg={12}>
-          <Card title={<><WarningOutlined /> {t('biz.afterSales')}</>} size="small" className="section-card">
-            <Row gutter={[12, 12]}>
-              <Col span={8}>
-                <Statistic
-                  title={t('biz.returnRate')}
-                  value={storeBiz.afterSales.returnRate}
-                  suffix="%"
-                  valueStyle={{ color: storeBiz.afterSales.returnRate > 3 ? '#dc2626' : '#16a34a', fontSize: 22, fontWeight: 600 }}
-                />
-              </Col>
-              <Col span={8}>
-                <Statistic
-                  title={t('biz.negativeReviews')}
-                  value={storeBiz.afterSales.negativeReviews}
-                  suffix={<span style={{ fontSize: 12, color: '#94a3b8' }}> / {t('biz.unresolved')} {storeBiz.afterSales.unresolvedReviews}</span>}
-                  valueStyle={{ color: storeBiz.afterSales.negativeReviews > 0 ? '#ea580c' : '#16a34a', fontSize: 22, fontWeight: 600 }}
-                />
-              </Col>
-              <Col span={8}>
-                <Statistic
-                  title={t('biz.returnAmount')}
-                  value={storeBiz.afterSales.returnAmount}
-                  prefix="$"
-                  valueStyle={{ fontSize: 22, fontWeight: 600 }}
-                />
-              </Col>
-              <Col span={8}>
-                <Statistic title={t('biz.disputes')} value={storeBiz.afterSales.disputes.pending} suffix={<span style={{ fontSize: 12, color: '#ea580c' }}>{t('biz.disputesHint')}</span>} valueStyle={{ color: storeBiz.afterSales.disputes.pending > 0 ? '#dc2626' : '#16a34a', fontSize: 22, fontWeight: 600 }} />
-              </Col>
-            </Row>
-          </Card>
-        </Col>
-        <Col xs={24} lg={12}>
-          <Card title={<><BarChartOutlined /> {t('biz.inventory')}</>} size="small" className="section-card">
-            <Row gutter={[12, 12]}>
-              <Col span={8}>
-                <Statistic title={t('biz.totalSkus')} value={storeBiz.inventory.totalSkus} valueStyle={{ fontSize: 22, fontWeight: 600 }} />
-              </Col>
-              <Col span={8}>
-                <Statistic title={t('biz.lowStock')} value={storeBiz.inventory.lowStockCount} valueStyle={{ color: '#ea580c', fontSize: 22, fontWeight: 600 }} />
-              </Col>
-              <Col span={8}>
-                <Statistic title={t('biz.outOfStock')} value={storeBiz.inventory.outOfStockCount} valueStyle={{ color: '#dc2626', fontSize: 22, fontWeight: 600 }} />
-              </Col>
-              <Col span={8}>
-                <Statistic title={t('biz.slowMoving')} value={storeBiz.inventory.slowMovingCount} valueStyle={{ color: '#64748b', fontSize: 22, fontWeight: 600 }} />
-              </Col>
-            </Row>
-            {storeBiz.inventory.lowStockItems.length > 0 && (
-              <div style={{ marginTop: 16 }}>
-                <Typography.Text type="secondary" strong>{t('biz.lowStockItems')}</Typography.Text>
-                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {storeBiz.inventory.lowStockItems.map((item) => (
-                    <div key={item.sku} className="low-stock-row">
-                      <Typography.Text style={{ fontSize: 13 }}>{item.name}</Typography.Text>
-                      <Tag color="error">{item.stock} / {item.safetyStock}</Tag>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </Card>
-        </Col>
-      </Row>
-
-      {/* TOP 5 商品 */}
-      <Card title={<><TrophyOutlined /> TOP 5 {t('biz.products')}</>} size="small" className="products-card">
-        <Table
-          rowKey="sku"
-          dataSource={storeBiz.topProducts}
-          pagination={false}
-          size="small"
-          columns={[
-            { title: '#', render: (_: unknown, __: unknown, idx: number) => <Tag color={idx === 0 ? 'gold' : idx === 1 ? 'silver' : 'bronze'} style={{ minWidth: 28, textAlign: 'center' }}>{idx + 1}</Tag>, width: 56 },
-            { title: t('model.modelName'), dataIndex: 'name', render: (name: string) => <Typography.Text>{name}</Typography.Text> },
-            { title: 'SKU', dataIndex: 'sku', render: (sku: string) => <Typography.Text code>{sku}</Typography.Text>, width: 140 },
-            { title: 'GMV', dataIndex: 'gmv', render: (v: number) => <Typography.Text strong style={{ color: '#2563eb' }}>${v.toLocaleString()}</Typography.Text>, width: 100, align: 'right' },
-            { title: t('biz.orders'), dataIndex: 'orders', width: 80, align: 'right' }
-          ]}
-        />
-      </Card>
-    </>
-  );
-
   return (
     <div className="page-stack">
       <PageHeader
@@ -625,13 +485,7 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
           </Button>
         }
       />
-      <Tabs
-        defaultActiveKey="biz"
-        items={[
-          { key: 'biz', label: <><BarChartOutlined /> {t('biz.overview')}</>, children: bizTab },
-          { key: 'settings', label: <><SettingOutlined /> {t('stores.settings')}</>, children: settingsTab }
-        ]}
-      />
+      {settingsTab}
     </div>
   );
 }

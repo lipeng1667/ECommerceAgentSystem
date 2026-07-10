@@ -24,6 +24,25 @@ export const financeApi = {
     if (plan) currentPlan = { ...plan };
     return mockDelay({ ...currentPlan });
   },
+  /** 获取试用状态 — 当前计划 + 剩余天数 + 用量上限 */
+  getTrialStatus: (): Promise<{
+    planTier: SubscriptionPlan['tier'];
+    trialDaysLeft: number;
+    trialStoreLimit: number;
+    usedStores: number;
+    usedAgentCalls: number;
+    agentCallLimit: number;
+    premiumAgents: string[];
+  }> =>
+    mockDelay({
+      planTier: 'Starter',
+      trialDaysLeft: 12,
+      trialStoreLimit: 5,
+      usedStores: 3,
+      usedAgentCalls: 665,
+      agentCallLimit: 500,
+      premiumAgents: ['competitor_intel', 'creative_factory', 'live_stream_ops', 'promotion_campaign'],
+    }),
   getBillingRecords: (): Promise<BillingRecord[]> => mockDelay([...billingRecords]),
   getCurrentBillDetail: (): Promise<BillingDetail> =>
     mockDelay({

@@ -194,6 +194,138 @@ export const mockBudgetSuggestions = [
   { campaignId: 'CA-003', current: 400, suggested: 400, reason: 'Steady performance, maintain current budget' },
 ];
 
+export interface ABTestResult {
+  id: string;
+  name: string;
+  campaignId: string;
+  date: string;
+  status: 'running' | 'completed' | 'draft';
+  testDuration: string;
+  hypothesis: string;
+  controlGroup: {
+    creativeDesc: string;
+    impressions: number;
+    clicks: number;
+    ctr: number;
+    conversions: number;
+    conversionRate: number;
+    roi: number;
+    spend: number;
+  };
+  experimentGroup: {
+    creativeDesc: string;
+    impressions: number;
+    clicks: number;
+    ctr: number;
+    conversions: number;
+    conversionRate: number;
+    roi: number;
+    spend: number;
+  };
+  winner?: 'control' | 'experiment' | 'inconclusive';
+  confidenceLevel?: number;
+  recommendation?: string;
+}
+
+export const mockABTests: ABTestResult[] = [
+  {
+    id: 'AB-001',
+    name: 'GaN Charger 主图对比',
+    campaignId: 'CA-001',
+    date: '2026-07-01',
+    status: 'completed',
+    testDuration: '7 天',
+    hypothesis: '生活方式场景图比纯白底产品图更能吸引点击',
+    controlGroup: {
+      creativeDesc: '纯白底产品图 + 参数列表',
+      impressions: 22600,
+      clicks: 542,
+      ctr: 2.40,
+      conversions: 43,
+      conversionRate: 7.93,
+      roi: 1.72,
+      spend: 243
+    },
+    experimentGroup: {
+      creativeDesc: '办公桌场景 lifestyle 图 + 痛点文案',
+      impressions: 22600,
+      clicks: 738,
+      ctr: 3.27,
+      conversions: 68,
+      conversionRate: 9.21,
+      roi: 2.48,
+      spend: 245
+    },
+    winner: 'experiment',
+    confidenceLevel: 97.5,
+    recommendation: '实验组 CTR 高 36%，ROI 高 44%。建议全量切换为 lifestyle 风格素材，继续在 UK/DE 市场复测。'
+  },
+  {
+    id: 'AB-002',
+    name: 'Earbuds Pro 标题文案 A/B',
+    campaignId: 'CA-003',
+    date: '2026-07-04',
+    status: 'completed',
+    testDuration: '7 天',
+    hypothesis: '含价格卖点的标题比纯功能标题转化率更高',
+    controlGroup: {
+      creativeDesc: '「ANC 主动降噪蓝牙耳机」',
+      impressions: 16700,
+      clicks: 498,
+      ctr: 2.98,
+      conversions: 31,
+      conversionRate: 6.22,
+      roi: 1.22,
+      spend: 155
+    },
+    experimentGroup: {
+      creativeDesc: '「$49.99 ANC降噪耳机 | 40h续航 | IPX5防水」',
+      impressions: 16700,
+      clicks: 622,
+      ctr: 3.72,
+      conversions: 45,
+      conversionRate: 7.23,
+      roi: 1.88,
+      spend: 155
+    },
+    winner: 'experiment',
+    confidenceLevel: 98.2,
+    recommendation: '含价格+续航+防水关键词的标题效果显著优于纯功能标题。建议在所有产品标题中加入价格锚和 2-3 个核心卖点数据。'
+  },
+  {
+    id: 'AB-003',
+    name: 'Sports Tee 受众定向测试',
+    campaignId: 'CA-002',
+    date: '2026-07-02',
+    status: 'running',
+    testDuration: '进行中（第 5 天）',
+    hypothesis: '18-25岁运动人群比全年龄段广撒网 ROI 更高',
+    controlGroup: {
+      creativeDesc: '全年龄段 18-55+ 兴趣定向',
+      impressions: 14100,
+      clicks: 423,
+      ctr: 3.00,
+      conversions: 28,
+      conversionRate: 6.62,
+      roi: 0.72,
+      spend: 195
+    },
+    experimentGroup: {
+      creativeDesc: '18-35岁运动/健身/户外兴趣定向',
+      impressions: 14000,
+      clicks: 517,
+      ctr: 3.69,
+      conversions: 44,
+      conversionRate: 8.51,
+      roi: 0.88,
+      spend: 100
+    },
+    winner: undefined,
+    confidenceLevel: 65.0,
+    recommendation: '实验组 ROI 仍低于 1.0 目标，但 CTR 和转化率有明显提升。建议继续观察 2 天，同时考虑调整商品定价（当前 $24.99 或偏高）。'
+  }
+];
+
 export const productDrafts: Record<string, ProductDraft> = {
   3009: {
     productName: '65W GaN 氮化镓快充充电器',

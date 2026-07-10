@@ -16,7 +16,7 @@ export const dashboardApi = {
       loginRequiredStores: stores.filter((store) => store.status === 'login_required').length,
       exceptionCenterPending,
       orderExceptions,
-      recentTasks: tasks.slice(0, 5),
+      recentTasks: [...tasks].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 8),
       recentApprovals: approvals.slice(0, 5),
       operationTrend: [
         { dayKey: 'dashboard.dayMon', runs: 12, approvals: 2, failures: 1 },
@@ -51,5 +51,21 @@ export const dashboardApi = {
         { key: 'dashboard.healthApprovalLeadTime', value: '18 min', status: 'warning' },
         { key: 'dashboard.healthReauth', value: '1', status: 'warning' }
       ]
-    })
+    }),
+
+  /** Agent 今日成果 — 量化 AI 创造的价值 */
+  getAgentAchievements: () =>
+    mockDelay({
+      hoursSaved: 12.5,
+      hoursSavedTrend: 18,      // 同比变化百分比
+      revenueUplift: 1247,
+      revenueUpliftTrend: 23,
+      tasksProcessed: 86,
+      tasksSuccessRate: 97.7,
+      topContributor: {
+        agentType: 'pricing_strategy',
+        amount: 340,
+        insight: 'dashboard.insightPricing',
+      },
+    }),
 };

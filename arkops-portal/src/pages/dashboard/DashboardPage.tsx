@@ -2,33 +2,32 @@ import {
   AlertOutlined,
   ArrowDownOutlined,
   ArrowUpOutlined,
-  BarChartOutlined,
-  BellOutlined,
-  CheckSquareOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
   DashboardOutlined,
   DollarOutlined,
-  FireOutlined,
   LineChartOutlined,
-  PercentageOutlined,
-  RiseOutlined,
+  PlayCircleOutlined,
   RobotOutlined,
-  ShopOutlined,
-  ShoppingCartOutlined,
-  ThunderboltOutlined,
-  TrophyOutlined
+  SettingOutlined,
+  UnorderedListOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Card, Col, Progress, Row, Segmented, Space, Statistic, Table, Tabs, Tag, Typography } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { Badge, Button, Card, Col, Progress, Row, Segmented, Space, Statistic, Table, Tag, Typography } from 'antd';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { agentsApi } from '../../api/agents';
 import { businessDashboardApi } from '../../api/businessDashboard';
 import { dashboardApi } from '../../api/dashboard';
+import { financeApi } from '../../api/finance';
+import { storesApi } from '../../api/stores';
+import { useDemoMode } from '../../app/demoMode';
 import { useI18n } from '../../app/i18n';
 import { TrendBarChart } from '../../components/charts/TrendBarChart';
-import { DashboardLiveFeed } from '../../components/DashboardLiveFeed';
+import { EmptyState } from '../../components/EmptyState';
 import { PageHeader } from '../../components/PageHeader';
 import { StatusBadge } from '../../components/StatusBadge';
+import type { Store } from '../../types/domain';
 
 const statusColors: Record<string, string> = {
   succeeded: '#16a34a',
@@ -51,402 +50,353 @@ function changePercent(current: number, previous: number) {
   return { value: pct, up: pct >= 0 };
 }
 
-// ===== 经营概览（老板视角） =====
+// ===== 统一运营总览 =====
 
-function BusinessOverview() {
+function OperationsOverview({ storesData }: { storesData: Store[] }) {
   const { t } = useI18n();
   const [timeRange, setTimeRange] = useState<'today' | '7d' | '30d'>('today');
+
   const { data: biz } = useQuery({
     queryKey: ['businessDashboard', timeRange],
     queryFn: () => businessDashboardApi.getMetrics(timeRange)
   });
 
-  const timeOptions: { label: string; value: 'today' | '7d' | '30d' }[] = [
-    { label: t('time.today'), value: 'today' },
-    { label: t('time.7d'), value: '7d' },
-    { label: t('time.30d'), value: '30d' },
+  const { data: ops } = useQuery({ queryKey: ['dashboard'], queryFn: dashboardApi.getSummary });
+
+  // 店铺名称 → Store 映射，用于获取真实店铺状态
+  const storeByName = new Map(storesData.map(s => [s.name, s]));
+
+  // Agent 实时动态 mock 数据
+  const agentFeed = [
+    { time: '10:32', agent: 'pricing_strategy', action: '将充电器价格从 $42.00 调整为 $39.99', store: 'TikTok Shop 美国旗舰店', color: '#7c3aed' },
+    { time: '10:28', agent: 'review_manager', action: '回复了 John D. 的 1 星差评', store: 'Amazon 户外用品店', color: '#16a34a' },
+    { time: '10:15', agent: 'ads_optimizer', action: '将 CA-002 预算从 $300 削减至 $150，ROI 偏低 0.8×', store: 'TikTok Shop 美国旗舰店', color: '#2563eb' },
+    { time: '10:02', agent: 'inventory_alert', action: '充电器库存降至 45 件，低于阈值 50', store: 'Shopify 独立站', color: '#ea580c' },
+    { time: '09:48', agent: 'competitor_intel', action: '监测到竞品降价 8%，建议调整运动T恤定价', store: 'Amazon 户外用品店', color: '#6366f1' },
+    { time: '09:30', agent: 'crm_retention', action: '向 320 名沉睡客户发放 $5 唤醒优惠券', store: 'TikTok Shop 美国旗舰店', color: '#0f766e' },
+    { time: '09:15', agent: 'customer_service', action: 'AI 自动回复 3 条买家咨询，0 条转人工', store: 'Shopify 独立站', color: '#0891b2' },
   ];
 
-  const vsLabel = timeRange === 'today' ? t('biz.vsYesterday') : timeRange === '7d' ? t('biz.vsLastWeek') : t('biz.vsLastMonth');
-  const gmvLabel = timeRange === 'today' ? t('biz.todayGmv') : timeRange === '7d' ? t('biz.7dGmv') : t('biz.30dGmv');
-  const ordersLabel = timeRange === 'today' ? t('biz.todayOrders') : timeRange === '7d' ? t('biz.7dOrders') : t('biz.30dOrders');
+  const gmvLabel = timeRange === 'today' ? '今日 GMV' : timeRange === '7d' ? '7日 GMV' : '30日 GMV';
+  const ordersLabel = timeRange === 'today' ? '今日订单' : timeRange === '7d' ? '7日订单' : '30日订单';
 
   return (
     <>
-      {/* 时间段选择 */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-        <Segmented
-          size="small"
-          value={timeRange}
-          onChange={(v) => setTimeRange(v as 'today' | '7d' | '30d')}
-          options={timeOptions}
-        />
-      </div>
+      {/* ===== 1. Agent 实时动态流 ===== */}
+      <Card
+        title={<><RobotOutlined style={{ color: '#2563eb' }} /> {t('dashboard.agentFeed')}</>}
+        size="small"
+        style={{ marginBottom: 16 }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          {agentFeed.map((item, i) => (
+            <div
+              key={i}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '8px 4px',
+                borderBottom: i < agentFeed.length - 1 ? '1px solid var(--ark-border-soft)' : 'none',
+                opacity: 1 - i * 0.08
+              }}
+            >
+              <Typography.Text style={{ fontSize: 11, color: '#94a3b8', minWidth: 40, fontFamily: 'monospace' }}>
+                {item.time}
+              </Typography.Text>
+              <Tag color={item.color} style={{ fontSize: 10, margin: 0, minWidth: 60, textAlign: 'center' }}>
+                {t(`agent.${item.agent}`).length > 6 ? t(`agent.${item.agent}`).slice(0, 6) + '..' : t(`agent.${item.agent}`)}
+              </Tag>
+              <Typography.Text style={{ fontSize: 12, flex: 1, minWidth: 0 }} ellipsis>
+                {item.action}
+              </Typography.Text>
+              <Typography.Text type="secondary" style={{ fontSize: 10, minWidth: 60, textAlign: 'right' }}>
+                {item.store}
+              </Typography.Text>
+            </div>
+          ))}
+        </div>
+      </Card>
 
-      {/* GMV & 核心经营指标 */}
-      {biz && (
-        <>
-          <Typography.Title level={5} style={{ marginBottom: 12 }}>
-            <DollarOutlined style={{ marginRight: 8 }} />{t('biz.title')}
-          </Typography.Title>
-          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-            <Col xs={12} sm={6}>
-              <Card>
-                <Statistic
-                  title={gmvLabel}
-                  value={biz.gmv.today}
-                  prefix="$"
-                  precision={0}
-                  valueStyle={{ color: '#2563eb' }}
-                  suffix={
-                    <span style={{ fontSize: 14 }}>
-                      {changePercent(biz.gmv.today, biz.gmv.yesterday).up
-                        ? <span style={{ color: '#16a34a' }}><ArrowUpOutlined /> {changePercent(biz.gmv.today, biz.gmv.yesterday).value}%</span>
-                        : <span style={{ color: '#dc2626' }}><ArrowDownOutlined /> {Math.abs(changePercent(biz.gmv.today, biz.gmv.yesterday).value)}%</span>}
-                      <Typography.Text type="secondary" style={{ fontSize: 11, marginLeft: 4 }}>{vsLabel}</Typography.Text>
-                    </span>
-                  }
-                />
-              </Card>
-            </Col>
-            <Col xs={12} sm={6}>
-              <Card>
-                <Statistic
-                  title={ordersLabel}
-                  value={biz.orders.today}
-                  prefix={<ShoppingCartOutlined />}
-                  valueStyle={{ color: '#0f766e' }}
-                  suffix={
-                    <span style={{ fontSize: 14 }}>
-                      {changePercent(biz.orders.today, biz.orders.yesterday).up
-                        ? <span style={{ color: '#16a34a' }}>+{changePercent(biz.orders.today, biz.orders.yesterday).value}%</span>
-                        : <span style={{ color: '#dc2626' }}>{changePercent(biz.orders.today, biz.orders.yesterday).value}%</span>}
-                    </span>
-                  }
-                />
-              </Card>
-            </Col>
-            <Col xs={12} sm={6}>
-              <Card>
-                <Statistic
-                  title={t('biz.aov')}
-                  value={biz.aov}
-                  prefix="$"
-                  precision={1}
-                  valueStyle={{ color: '#7c3aed' }}
-                />
-              </Card>
-            </Col>
-            <Col xs={12} sm={6}>
-              <Card>
-                <Statistic
-                  title={t('biz.storeCount')}
-                  value={`${biz.storeCount.online}/${biz.storeCount.total}`}
-                  prefix={<ShopOutlined />}
-                  valueStyle={{ color: '#ea580c' }}
-                />
-              </Card>
-            </Col>
-          </Row>
-
-          {/* 利润概览 */}
-          <Typography.Title level={5} style={{ marginBottom: 12 }}>
-            <RiseOutlined style={{ marginRight: 8 }} />{t('biz.grossProfit')}
-          </Typography.Title>
-          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-            <Col xs={12} sm={8}>
-              <Card>
-                <Statistic
-                  title={<><DollarOutlined /> {t('biz.grossProfit')}</>}
-                  value={Math.round(biz.gmv.today * 0.35)}
-                  prefix="$"
-                  precision={0}
-                  valueStyle={{ color: '#16a34a' }}
-                />
-              </Card>
-            </Col>
-            <Col xs={12} sm={8}>
-              <Card>
-                <Statistic
-                  title={<><RiseOutlined /> {t('biz.netProfit')}</>}
-                  value={Math.round((biz.gmv.today * 0.35) - (biz.adMetrics.todaySpend * 0.7) - 5000)}
-                  prefix="$"
-                  precision={0}
-                  valueStyle={{ color: '#2563eb' }}
-                />
-              </Card>
-            </Col>
-            <Col xs={12} sm={8}>
-              <Card>
-                <Statistic
-                  title={<><PercentageOutlined /> {t('biz.profitMargin')}</>}
-                  value={biz.gmv.today > 0 ? (((biz.gmv.today * 0.35) - (biz.adMetrics.todaySpend * 0.7) - 5000) / biz.gmv.today * 100).toFixed(1) : '0.0'}
-                  suffix="%"
-                  valueStyle={{ color: '#7c3aed' }}
-                />
-              </Card>
-            </Col>
-          </Row>
-
-          {/* GMV 趋势 + 广告 ROI */}
-          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-            <Col xs={24} lg={14}>
-              <Card title={<><LineChartOutlined /> {t('biz.gmvTrend')}</>}>
-                <TrendBarChart
-                  ariaLabel={t('biz.gmvTrend')}
-                  points={biz.gmvTrend.map((point) => ({
-                    key: point.date,
-                    label: point.date,
-                    bars: [
-                      { value: point.gmv, max: 35000, title: `GMV: $${formatNumber(point.gmv)}`, className: 'trend-bar-runs', minHeight: 0 },
-                      { value: point.orders, max: 500, title: `${t('biz.orders')}: ${point.orders}`, className: 'trend-bar-approvals', minHeight: 8 }
-                    ]
-                  }))}
-                />
-                <div className="chart-legend">
-                  <span><i className="legend-dot legend-runs" />GMV</span>
-                  <span><i className="legend-dot legend-approvals" />{t('biz.orders')}</span>
-                </div>
-              </Card>
-            </Col>
-            <Col xs={24} lg={10}>
-              <Card title={<><FireOutlined /> {t('biz.adRoi')}</>} style={{ marginBottom: 16 }}>
-                <Row gutter={[8, 12]}>
-                  <Col span={12}><Statistic title={t('biz.adSpend')} value={biz.adMetrics.todaySpend} prefix="$" valueStyle={{ fontSize: 20 }} /></Col>
-                  <Col span={12}><Statistic title={t('biz.roas')} value={biz.adMetrics.roas} precision={1} suffix="x" valueStyle={{ fontSize: 20, color: biz.adMetrics.roas > biz.adMetrics.targetRoas ? '#16a34a' : '#ea580c' }} /></Col>
-                  <Col span={12}><Statistic title="CPM" value={biz.adMetrics.cpm} prefix="$" precision={1} valueStyle={{ fontSize: 18 }} /></Col>
-                  <Col span={12}><Statistic title="CPC" value={biz.adMetrics.cpc} prefix="$" precision={2} valueStyle={{ fontSize: 18 }} /></Col>
-                  <Col span={12}><Statistic title="CTR" value={biz.adMetrics.ctr} suffix="%" precision={1} valueStyle={{ fontSize: 18 }} /></Col>
-                  <Col span={12}><Statistic title="CVR" value={biz.adMetrics.cvr} suffix="%" precision={1} valueStyle={{ fontSize: 18 }} /></Col>
-                </Row>
-                <div style={{ marginTop: 12 }}>
-                  <Typography.Text type="secondary">{t('biz.adBudget')}: {formatCurrency(biz.adMetrics.todaySpend)} / {formatCurrency(biz.adMetrics.budgetLimit)}</Typography.Text>
-                  <Progress percent={Math.round((biz.adMetrics.todaySpend / biz.adMetrics.budgetLimit) * 100)} status={biz.adMetrics.todaySpend > biz.adMetrics.budgetLimit ? 'exception' : 'active'} size="small" />
-                </div>
-              </Card>
-            </Col>
-          </Row>
-
-          {/* 售后 */}
-          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-            <Col span={24}>
-              <Card title={<><BellOutlined /> {t('biz.afterSales')}</>} size="small">
-                <Row gutter={[16, 12]}>
-                  <Col xs={12} sm={8} md={4}>
-                    <Statistic title={t('biz.returnRate')} value={biz.afterSales.returnRate} suffix="%" valueStyle={{ color: biz.afterSales.returnRate > 3 ? '#dc2626' : '#16a34a', fontSize: 20 }} />
-                  </Col>
-                  <Col xs={12} sm={8} md={4}>
-                    <Statistic title={t('biz.negativeReviews')} value={`${biz.afterSales.negativeReviews}`} suffix={<span style={{ fontSize: 12 }}>{t('biz.unresolved')} {biz.afterSales.negativeReviews - biz.afterSales.respondedReviews}</span>} valueStyle={{ color: '#ea580c', fontSize: 20 }} />
-                  </Col>
-                  <Col xs={12} sm={8} md={4}>
-                    <Statistic title={t('biz.storeRating')} value={biz.afterSales.storeRating} suffix="/5.0" valueStyle={{ color: biz.afterSales.storeRating >= 4.5 ? '#16a34a' : '#ea580c', fontSize: 20 }} />
-                  </Col>
-                  <Col xs={12} sm={8} md={4}>
-                    <Statistic title={t('biz.returnAmount')} value={biz.afterSales.returnAmount} prefix="$" valueStyle={{ fontSize: 18 }} />
-                  </Col>
-                  <Col xs={12} sm={8} md={4}>
-                    <Statistic title={t('biz.replyRate')} value={biz.afterSales.reviewResponseRate} suffix="%" valueStyle={{ fontSize: 18 }} />
-                  </Col>
-                  <Col xs={12} sm={8} md={4}>
-                    <Statistic title={t('biz.avgResponse')} value={biz.afterSales.avgResponseMinutes} suffix="min" valueStyle={{ fontSize: 18 }} />
-                  </Col>
-                </Row>
-              </Card>
-            </Col>
-          </Row>
-
-          {/* 店铺 GMV 排名 + 库存 */}
-          <Row gutter={[16, 16]}>
-            <Col xs={24} lg={12}>
-              <Card title={<><TrophyOutlined /> {t('biz.storeRanking')}</>} size="small">
-                {biz.storeGmvRank.map((store, idx) => (
-                  <div key={store.storeName} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
-                    <Space>
-                      <Tag color={idx === 0 ? 'gold' : idx === 1 ? 'silver' : 'bronze'}>#{idx + 1}</Tag>
-                      <div>
-                        <Typography.Text strong>{store.storeName}</Typography.Text>
-                        <br />
-                        <Typography.Text type="secondary">{store.platform}</Typography.Text>
-                      </div>
-                    </Space>
-                    <Typography.Text strong style={{ color: '#2563eb' }}>${formatNumber(store.gmv)}</Typography.Text>
-                  </div>
-                ))}
-              </Card>
-            </Col>
-            <Col xs={24} lg={12}>
-              <Card title={<><BarChartOutlined /> {t('biz.inventory')}</>} size="small">
-                <Row gutter={[12, 12]}>
-                  <Col span={12}>
-                    <Card size="small"><Statistic title={t('biz.totalSkus')} value={biz.inventory.totalSkus} valueStyle={{ fontSize: 20 }} /></Card>
-                  </Col>
-                  <Col span={12}>
-                    <Card size="small"><Statistic title={t('biz.lowStock')} value={biz.inventory.lowStockCount} valueStyle={{ fontSize: 20, color: '#ea580c' }} /></Card>
-                  </Col>
-                  <Col span={12}>
-                    <Card size="small"><Statistic title={t('biz.slowMoving')} value={biz.inventory.slowMovingCount} valueStyle={{ fontSize: 20, color: '#7c3aed' }} /></Card>
-                  </Col>
-                  <Col span={12}>
-                    <Card size="small"><Statistic title={t('biz.outOfStock')} value={biz.inventory.outOfStockCount} valueStyle={{ fontSize: 20, color: '#dc2626' }} /></Card>
-                  </Col>
-                </Row>
-              </Card>
-            </Col>
-          </Row>
-        </>
-      )}
-    </>
-  );
-}
-
-// ===== 运维监控（运营视角） =====
-
-function OpsMonitor() {
-  const { t } = useI18n();
-  const { data } = useQuery({ queryKey: ['dashboard'], queryFn: dashboardApi.getSummary });
-  const trendMax = Math.max(...(data?.operationTrend.map((item) => item.runs) ?? [1]));
-  const statusTotal = data?.taskStatusBreakdown.reduce((sum, item) => sum + item.count, 0) ?? 0;
-  const donutSegments = data?.taskStatusBreakdown ?? [];
-  let donutCursor = 0;
-  const donutGradient = donutSegments.length
-    ? donutSegments
-        .map((item) => {
-          const start = donutCursor;
-          const end = start + (statusTotal ? (item.count / statusTotal) * 100 : 0);
-          donutCursor = end;
-          return `${statusColors[item.status] ?? '#94a3b8'} ${start}% ${end}%`;
-        })
-        .join(', ')
-    : '#e2e8f0 0% 100%';
-  const statusTone: Record<string, 'success' | 'warning' | 'error'> = {
-    healthy: 'success',
-    warning: 'warning',
-    blocked: 'error'
-  };
-
-  return (
-    <>
-      {/* 运维核心指标 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={12} sm={6}>
-          <Card>
-            <Space><span style={{ color: '#2563eb', fontSize: 24 }}><ShopOutlined /></span><Statistic title={t('dashboard.connectedStores')} value={data?.connectedStores ?? 0} /></Space>
-            <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>{t('dashboard.storeMetricMeta')}</Typography.Text>
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card>
-            <Space><span style={{ color: '#0f766e', fontSize: 24 }}><RobotOutlined /></span><Statistic title={t('dashboard.runningTasks')} value={data?.runningTasks ?? 0} /></Space>
-            <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>{t('dashboard.taskMetricMeta')}</Typography.Text>
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card>
-            <Space><span style={{ color: '#ea580c', fontSize: 24 }}><CheckSquareOutlined /></span><Statistic title={t('dashboard.pendingApprovals')} value={data?.pendingApprovals ?? 0} /></Space>
-            <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>{t('dashboard.approvalMetricMeta')}</Typography.Text>
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card>
-            <Space><span style={{ color: '#dc2626', fontSize: 24 }}><AlertOutlined /></span><Statistic title={t('dashboard.loginRequired')} value={data?.loginRequiredStores ?? 0} /></Space>
-            <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>{t('dashboard.loginMetricMeta')}</Typography.Text>
-          </Card>
-        </Col>
-      </Row>
-
-      <Row gutter={[16, 16]}>
-        <Col xs={24} xl={14}>
-          <Card title={<><LineChartOutlined /> {t('dashboard.trendTitle')}</>} extra={<Typography.Text type="secondary">{t('dashboard.trendDescription')}</Typography.Text>}>
-            <TrendBarChart
-              ariaLabel={t('dashboard.trendTitle')}
-              maxBarHeight={150}
-              points={(data?.operationTrend ?? []).map((point) => ({
-                key: point.dayKey,
-                label: t(point.dayKey),
-                bars: [
-                  { value: point.runs, max: trendMax, title: `${t('dashboard.runs')}: ${point.runs}`, className: 'trend-bar-runs', minHeight: 12 },
-                  { value: point.approvals, max: trendMax, title: `${t('dashboard.approvalShort')}: ${point.approvals}`, className: 'trend-bar-approvals', minHeight: 8 },
-                  { value: point.failures, max: trendMax, title: `${t('dashboard.failures')}: ${point.failures}`, className: 'trend-bar-failures', minHeight: 6 }
-                ]
-              }))}
+      {/* ===== 2. 核心指标（按店铺统计） ===== */}
+      <Card
+        title={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span><DollarOutlined style={{ marginRight: 8 }} />核心指标</span>
+            <Segmented size="small" value={timeRange} onChange={v => setTimeRange(v as 'today' | '7d' | '30d')}
+              options={[
+                { label: t('time.today'), value: 'today' },
+                { label: t('time.7d'), value: '7d' },
+                { label: t('time.30d'), value: '30d' },
+              ]}
             />
-            <div className="chart-legend">
-              <span><i className="legend-dot legend-runs" />{t('dashboard.runs')}</span>
-              <span><i className="legend-dot legend-approvals" />{t('dashboard.approvalShort')}</span>
-              <span><i className="legend-dot legend-failures" />{t('dashboard.failures')}</span>
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} xl={10}>
-          <Card title={<><DashboardOutlined /> {t('dashboard.taskStatusTitle')}</>}>
-            <div className="status-visual">
-              <div className="donut-chart" style={{ background: `conic-gradient(${donutGradient})` }}>
-                <div><strong>{statusTotal}</strong><span>{t('entity.task')}</span></div>
-              </div>
-              <div className="status-list">
-                {data?.taskStatusBreakdown.map((item) => (
-                  <div className="status-row" key={item.status}>
-                    <span className="status-label"><i style={{ background: statusColors[item.status] }} />{t(`status.${item.status}`)}</span>
-                    <span>{item.count}</span>
+          </div>
+        }
+        size="small"
+        style={{ marginBottom: 16 }}
+      >
+        {biz ? (
+          <Table
+            rowKey="storeName"
+            dataSource={[
+              // 汇总行
+              { storeName: t('biz.allStores'), platform: '', gmv: biz.gmv.today, orders: biz.orders.today, roas: biz.adMetrics.roas, negativeReviews: biz.afterSales.negativeReviews - biz.afterSales.respondedReviews, status: 'summary' as const },
+              // 店铺行（GMV 来自 biz 数据，状态来自真实店铺数据）
+              { storeName: biz.storeGmvRank[0]?.storeName ?? 'Store A', platform: biz.storeGmvRank[0]?.platform ?? '', gmv: biz.storeGmvRank[0]?.gmv ?? 0, orders: 236, roas: 8.2, negativeReviews: 1, status: storeByName.get(biz.storeGmvRank[0]?.storeName ?? '')?.status ?? 'connected' },
+              { storeName: biz.storeGmvRank[1]?.storeName ?? 'Store B', platform: biz.storeGmvRank[1]?.platform ?? '', gmv: biz.storeGmvRank[1]?.gmv ?? 0, orders: 128, roas: 5.8, negativeReviews: 1, status: storeByName.get(biz.storeGmvRank[1]?.storeName ?? '')?.status ?? 'connected' },
+              { storeName: biz.storeGmvRank[2]?.storeName ?? 'Store C', platform: biz.storeGmvRank[2]?.platform ?? '', gmv: biz.storeGmvRank[2]?.gmv ?? 0, orders: 48, roas: 6.3, negativeReviews: 0, status: storeByName.get(biz.storeGmvRank[2]?.storeName ?? '')?.status ?? 'connected' },
+            ]}
+            pagination={false}
+            size="small"
+            columns={[
+              {
+                title: '店铺', dataIndex: 'storeName', width: 200,
+                render: (name: string, record: any) => (
+                  <div>
+                    {record.status === 'summary' ? (
+                      <Typography.Text strong style={{ fontSize: 13, color: '#2563eb' }}>{name}</Typography.Text>
+                    ) : (
+                      <>
+                        <Typography.Text strong style={{ fontSize: 13 }}>{name}</Typography.Text>
+                        <Typography.Text type="secondary" style={{ fontSize: 10, display: 'block' }}>{record.platform as string}</Typography.Text>
+                      </>
+                    )}
                   </div>
-                ))}
+                )
+              },
+              {
+                title: '状态', dataIndex: 'status', width: 90,
+                render: (status: string) => {
+                  if (status === 'summary') return <Tag color="blue" style={{ fontSize: 10 }}>汇总</Tag>;
+                  return <StatusBadge value={status as any} />;
+                }
+              },
+              {
+                title: 'GMV', dataIndex: 'gmv', width: 120, align: 'right' as const,
+                render: (v: number, _record: any, idx: number) => {
+                  const pct = idx === 0 ? changePercent(biz.gmv.today, biz.gmv.yesterday) : null;
+                  return (
+                    <span style={{ fontWeight: idx === 0 ? 700 : 400, color: idx === 0 ? '#2563eb' : 'inherit' }}>
+                      ${formatNumber(v)}
+                      {pct && (
+                        <span style={{ fontSize: 10, marginLeft: 4, color: pct.up ? '#16a34a' : '#dc2626' }}>
+                          {pct.up ? '▲' : '▼'}{Math.abs(pct.value)}%
+                        </span>
+                      )}
+                    </span>
+                  );
+                }
+              },
+              {
+                title: '订单', dataIndex: 'orders', width: 100, align: 'right' as const,
+                render: (v: number, _record: any, idx: number) => {
+                  const pct = idx === 0 ? changePercent(biz.orders.today, biz.orders.yesterday) : null;
+                  return (
+                    <span style={{ fontWeight: idx === 0 ? 700 : 400 }}>
+                      {formatNumber(v)}
+                      {pct && (
+                        <span style={{ fontSize: 10, marginLeft: 4, color: pct.up ? '#16a34a' : '#dc2626' }}>
+                          {pct.up ? '▲' : '▼'}{Math.abs(pct.value)}%
+                        </span>
+                      )}
+                    </span>
+                  );
+                }
+              },
+              {
+                title: '广告ROI', dataIndex: 'roas', width: 90, align: 'right' as const,
+                render: (v: number) => (
+                  <Typography.Text strong style={{ color: v >= 5 ? '#16a34a' : v >= 2 ? '#ea580c' : '#dc2626', fontSize: 13 }}>
+                    {v.toFixed(1)}×
+                  </Typography.Text>
+                )
+              },
+              {
+                title: '差评', dataIndex: 'negativeReviews', width: 70, align: 'right' as const,
+                render: (v: number) => v > 0
+                  ? <Tag color="red" style={{ fontSize: 10 }}>{v} 待回</Tag>
+                  : <Typography.Text type="secondary" style={{ fontSize: 11 }}>-</Typography.Text>
+              },
+            ]}
+          />
+        ) : (
+          <EmptyState description={t('common.empty')} />
+        )}
+      </Card>
+
+      {/* ===== 3. GMV 趋势 + 任务状态 ===== */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col xs={24} lg={biz ? 14 : 24}>
+          {biz && (
+            <Card title={<><LineChartOutlined /> GMV & 订单趋势</>} size="small">
+              <TrendBarChart
+                ariaLabel="GMV Trend"
+                points={biz.gmvTrend.map(point => ({
+                  key: point.date,
+                  label: point.date,
+                  bars: [
+                    { value: point.gmv, max: 35000, title: `GMV: $${formatNumber(point.gmv)}`, className: 'trend-bar-runs', minHeight: 10 },
+                    { value: point.orders, max: 500, title: `订单: ${point.orders}`, className: 'trend-bar-approvals', minHeight: 6 }
+                  ]
+                }))}
+              />
+              <div className="chart-legend">
+                <span><i className="legend-dot legend-runs" />GMV</span>
+                <span><i className="legend-dot legend-approvals" />订单</span>
               </div>
-            </div>
+            </Card>
+          )}
+        </Col>
+        <Col xs={24} lg={biz ? 10 : 24}>
+          {ops && (
+            <Card title={<><DashboardOutlined /> 任务执行概览</>} size="small">
+              <div className="status-visual">
+                <div className="donut-chart" style={{
+                  background: `conic-gradient(${ops.taskStatusBreakdown.length
+                    ? ops.taskStatusBreakdown.map(item => {
+                        const total = ops.taskStatusBreakdown.reduce((s, i) => s + i.count, 0);
+                        return `${statusColors[item.status] ?? '#94a3b8'} ${ops.taskStatusBreakdown.slice(0, ops.taskStatusBreakdown.indexOf(item)).reduce((s, i) => s + (i.count / total * 100), 0)}% ${ops.taskStatusBreakdown.slice(0, ops.taskStatusBreakdown.indexOf(item) + 1).reduce((s, i) => s + (i.count / total * 100), 0)}%`;
+                      }).join(', ')
+                    : '#e2e8f0 0% 100%'})`
+                }}>
+                  <div><strong>{ops.taskStatusBreakdown.reduce((s, i) => s + i.count, 0)}</strong><span>任务</span></div>
+                </div>
+                <div className="status-list">
+                  {ops.taskStatusBreakdown.map(item => (
+                    <div className="status-row" key={item.status}>
+                      <span className="status-label"><i style={{ background: statusColors[item.status] }} />{t(`status.${item.status}`)}</span>
+                      <span>{item.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          )}
+        </Col>
+      </Row>
+
+      {/* ===== 3.5. 近期任务 ===== */}
+      {ops && ops.recentTasks && ops.recentTasks.length > 0 && (
+        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+          <Col span={24}>
+            <Card
+              title={<><UnorderedListOutlined /> 近期任务</>}
+              size="small"
+              extra={<Link to="/agents" style={{ fontSize: 12 }}>Agent 中心 →</Link>}
+            >
+              <Table
+                rowKey="id"
+                dataSource={ops.recentTasks}
+                pagination={false}
+                size="small"
+                columns={[
+                  { title: '任务名称', dataIndex: 'title', render: (v: string) => <Typography.Text style={{ fontSize: 12 }}>{v}</Typography.Text> },
+                  { title: '店铺', dataIndex: 'storeId', width: 100, render: (_v: any, record: any) => {
+                    const store = storesData.find((s: any) => s.id === record.storeId);
+                    return <Typography.Text style={{ fontSize: 11 }} type="secondary">{store?.name ?? '-'}</Typography.Text>;
+                  }},
+                  { title: 'Agent', dataIndex: 'agentType', width: 110, render: (v: string) => <Tag style={{ fontSize: 10 }}>{t(`agent.${v}`)}</Tag> },
+                  { title: '状态', dataIndex: 'status', width: 90, render: (v: string) => {
+                    const colorMap: Record<string, string> = { running: 'blue', succeeded: 'green', failed: 'red', waiting_approval: 'orange', queued: 'default' };
+                    return <Tag color={colorMap[v]} style={{ fontSize: 10 }}>{t(`status.${v}`)}</Tag>;
+                  }},
+                  { title: '创建时间', dataIndex: 'createdAt', width: 130, render: (v: string) => <Typography.Text style={{ fontSize: 11 }} type="secondary">{v}</Typography.Text> },
+                ]}
+              />
+            </Card>
+          </Col>
+        </Row>
+      )}
+
+      {/* ===== 4. 需要关注 ===== */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col span={24}>
+          <Card title={<><AlertOutlined /> {t('dashboard.attention')}</>} size="small">
+            {biz && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {biz.afterSales.negativeReviews - biz.afterSales.respondedReviews > 0 && (
+                  <Link to="/agents/review_manager" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#fef2f2', borderRadius: 8 }}>
+                    <Space>
+                      <span style={{ color: '#dc2626', fontWeight: 600 }}>⚠</span>
+                      <Typography.Text style={{ fontSize: 12 }}>差评待回复</Typography.Text>
+                      <Typography.Text type="secondary" style={{ fontSize: 10 }}>→ 查看任务</Typography.Text>
+                    </Space>
+                    <Badge count={biz.afterSales.negativeReviews - biz.afterSales.respondedReviews} size="small" />
+                  </Link>
+                )}
+                {biz.inventory.lowStockCount > 0 && (
+                  <Link to="/products" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#fff7ed', borderRadius: 8 }}>
+                    <Space>
+                      <span style={{ color: '#ea580c', fontWeight: 600 }}>⚠</span>
+                      <Typography.Text style={{ fontSize: 12 }}>库存预警</Typography.Text>
+                      <Typography.Text type="secondary" style={{ fontSize: 10 }}>{t('dashboard.toProducts')}</Typography.Text>
+                    </Space>
+                    <Badge count={biz.inventory.lowStockCount} size="small" />
+                  </Link>
+                )}
+                {biz.adMetrics.roas < 1.5 && (
+                  <Link to="/agents/ads_optimizer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#fff7ed', borderRadius: 8 }}>
+                    <Space>
+                      <span style={{ color: '#ea580c', fontWeight: 600 }}>⚠</span>
+                      <Typography.Text style={{ fontSize: 12 }}>广告 ROI 偏低 ({biz.adMetrics.roas}×)</Typography.Text>
+                      <Typography.Text type="secondary" style={{ fontSize: 10 }}>→ 查看任务</Typography.Text>
+                    </Space>
+                    <Tag color="orange" style={{ fontSize: 9 }}>关注</Tag>
+                  </Link>
+                )}
+                {biz.inventory.outOfStockCount > 0 && (
+                  <Link to="/products" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#fef2f2', borderRadius: 8 }}>
+                    <Space>
+                      <span style={{ color: '#dc2626', fontWeight: 600 }}>⚠</span>
+                      <Typography.Text style={{ fontSize: 12 }}>断货商品</Typography.Text>
+                      <Typography.Text type="secondary" style={{ fontSize: 10 }}>→ 商品管理</Typography.Text>
+                    </Space>
+                    <Badge count={biz.inventory.outOfStockCount} size="small" />
+                  </Link>
+                )}
+                {(!biz || (biz.afterSales.negativeReviews - biz.afterSales.respondedReviews === 0 && biz.inventory.lowStockCount === 0 && biz.adMetrics.roas >= 1.5 && biz.inventory.outOfStockCount === 0)) && (
+                  <div style={{ textAlign: 'center', padding: '24px 0', color: '#16a34a' }}>
+                    <CheckCircleOutlined style={{ fontSize: 24, marginBottom: 8, display: 'block' }} />
+                    <Typography.Text style={{ fontSize: 13 }}>{t('dashboard.allGood')}</Typography.Text>
+                  </div>
+                )}
+              </div>
+            )}
           </Card>
         </Col>
       </Row>
-      <DashboardLiveFeed tasks={data?.recentTasks ?? []} approvals={data?.recentApprovals ?? []} />
-      <Row gutter={[16, 16]}>
-        <Col xs={24} lg={8}>
-          <Card title={t('dashboard.quotaTitle')}>
-            <div className="quota-list">
-              {data?.quotaUsage.map((item) => {
-                const percent = Math.round((item.used / item.limit) * 100);
+
+      {/* ===== 5. 额度 + 健康信号（精简到底部）===== */}
+      {ops && (
+        <Row gutter={[16, 16]}>
+          <Col xs={24} lg={12}>
+            <Card title="额度使用" size="small">
+              {ops.quotaUsage.map(item => {
+                const pct = Math.round((item.used / item.limit) * 100);
                 return (
-                  <div className="quota-row" key={item.key}>
-                    <div>
-                      <Typography.Text strong>{t(item.key)}</Typography.Text>
-                      <Typography.Text type="secondary">  {formatNumber(item.used)} / {formatNumber(item.limit)}</Typography.Text>
+                  <div key={item.key} style={{ marginBottom: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Typography.Text style={{ fontSize: 12 }}>{t(item.key)}</Typography.Text>
+                      <Typography.Text type="secondary" style={{ fontSize: 11 }}>{formatNumber(item.used)}/{formatNumber(item.limit)}</Typography.Text>
                     </div>
-                    <Progress percent={percent} strokeColor={item.color} size="small" />
+                    <Progress percent={pct} strokeColor={item.color} size="small" />
                   </div>
                 );
               })}
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} lg={8}>
-          <Card title={t('dashboard.agentMixTitle')}>
-            {data?.agentMix.map((item) => {
-              const maxCount = Math.max(...(data?.agentMix.map((agent) => agent.count) ?? [1]));
-              const pct = Math.round((item.count / maxCount) * 100);
-              return (
-                <div className="agent-mix-row" key={item.agentType}>
-                  <div className="agent-mix-header">
-                    <Typography.Text strong>{t(`agent.${item.agentType}`)}</Typography.Text>
-                    <Typography.Text strong style={{ color: item.color }}>{item.count}</Typography.Text>
-                  </div>
-                  <div className="agent-mix-bar-track">
-                    <div className="agent-mix-bar" style={{ width: `${pct}%`, background: item.color }} />
-                  </div>
-                </div>
-              );
-            })}
-          </Card>
-        </Col>
-        <Col xs={24} lg={8}>
-          <Card title={t('dashboard.healthTitle')}>
-            <div className="health-list">
-              {data?.healthSignals.map((item) => (
-                <div className="health-row" key={item.key}>
-                  <Typography.Text>{t(item.key)}</Typography.Text>
-                  <Tag color={item.status === 'healthy' ? 'green' : item.status === 'warning' ? 'orange' : 'red'}>{t(`dashboard.${item.status}`)}</Tag>
+            </Card>
+          </Col>
+          <Col xs={24} lg={12}>
+            <Card title="系统健康" size="small">
+              {ops.healthSignals?.slice(0, 4).map(item => (
+                <div key={item.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--ark-border-soft)' }}>
+                  <Typography.Text style={{ fontSize: 12 }}>{t(item.key)}</Typography.Text>
+                  <Tag color={item.status === 'healthy' ? 'green' : item.status === 'warning' ? 'orange' : 'red'} style={{ fontSize: 10 }}>
+                    {t(`dashboard.${item.status}`)}
+                  </Tag>
                 </div>
               ))}
-            </div>
-          </Card>
-        </Col>
-      </Row>
+            </Card>
+          </Col>
+        </Row>
+      )}
     </>
   );
 }
@@ -455,17 +405,197 @@ function OpsMonitor() {
 
 export function DashboardPage() {
   const { t } = useI18n();
+  const { isDemo, enterDemo } = useDemoMode();
+
+  const { data: storesData } = useQuery({
+    queryKey: ['stores'],
+    queryFn: () => storesApi.list(),
+  });
+  const storeCount = storesData?.length ?? 0;
+
+  const { data: allAgents = [] } = useQuery({
+    queryKey: ['agents'],
+    queryFn: () => agentsApi.list(),
+  });
+  const enabledAgentCount = allAgents.filter(a => a.enabled && a.agentType !== 'login_bootstrap').length;
+
+  const { data: achievements } = useQuery({
+    queryKey: ['agentAchievements'],
+    queryFn: dashboardApi.getAgentAchievements,
+    enabled: storeCount > 0,
+    refetchInterval: 60_000,
+  });
+
+  const { data: trialStatus } = useQuery({
+    queryKey: ['trialStatus'],
+    queryFn: financeApi.getTrialStatus,
+    enabled: storeCount > 0,
+  });
+
+  // 自适应状态条
+  const setupIncomplete = storeCount === 0 || enabledAgentCount === 0;
+  const statusBarStyle = storeCount === 0
+    ? { background: '#fff7ed', border: '1px solid #fed7aa' }
+    : enabledAgentCount === 0
+      ? { background: '#eff6ff', border: '1px solid #bfdbfe' }
+      : { background: '#f0fdf4', border: '1px solid #bbf7d0' };
+
   return (
     <div className="page-stack">
       <PageHeader title={t('dashboard.title')} description={t('dashboard.description')} />
-      <Tabs
-        defaultActiveKey="business"
-        size="large"
-        items={[
-          { key: 'business', label: <><DollarOutlined /> {t('biz.overview')}</>, children: <BusinessOverview /> },
-          { key: 'ops', label: <><DashboardOutlined /> {t('dashboard.opsMonitor')}</>, children: <OpsMonitor /> }
-        ]}
-      />
+
+      {/* 演示模式入口 — 无店铺时显示 */}
+      {!isDemo && storeCount === 0 && (
+        <Card size="small" style={{ marginBottom: 16, background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', border: '1px solid #93c5fd' }}>
+          <Row align="middle" justify="space-between">
+            <Col>
+              <Space>
+                <PlayCircleOutlined style={{ color: '#2563eb', fontSize: 18 }} />
+                <div>
+                  <Typography.Text strong style={{ fontSize: 13 }}>{t('dashboard.demoBanner')}</Typography.Text>
+                </div>
+              </Space>
+            </Col>
+            <Col>
+              <Button type="primary" size="small" icon={<PlayCircleOutlined />} onClick={() => enterDemo()}>
+                {t('dashboard.tryDemo')}
+              </Button>
+            </Col>
+          </Row>
+        </Card>
+      )}
+
+      {/* 试用横幅 — 非付费套餐显示 */}
+      {trialStatus && trialStatus.planTier !== 'Enterprise' && storeCount > 0 && (
+        <Card size="small" style={{ marginBottom: 16, background: 'linear-gradient(90deg, #fefce8 0%, #fef9c3 100%)', border: '1px solid #facc15' }}>
+          <Row align="middle" justify="space-between">
+            <Col>
+              <Space size={12}>
+                <Typography.Text strong style={{ fontSize: 13, color: '#854d0e' }}>
+                  {t('dashboard.trialDaysLeft', { days: trialStatus.trialDaysLeft })}
+                </Typography.Text>
+                <Tag color="orange" style={{ fontSize: 10 }}>
+                  已用 {trialStatus.usedStores}/{trialStatus.trialStoreLimit} 店铺
+                </Tag>
+                <Tag color={trialStatus.usedAgentCalls > trialStatus.agentCallLimit * 0.8 ? 'red' : 'orange'} style={{ fontSize: 10 }}>
+                  Agent 调用 {trialStatus.usedAgentCalls}/{trialStatus.agentCallLimit}
+                </Tag>
+                <Typography.Text style={{ fontSize: 11, color: '#a16207' }}>
+                  {trialStatus.premiumAgents.length} 个高级 Agent 待解锁
+                </Typography.Text>
+              </Space>
+            </Col>
+            <Col>
+              <Link to="/settings/billing">
+                <Button type="primary" size="small" style={{ background: '#ca8a04', borderColor: '#ca8a04' }}>
+                  {t('dashboard.upgradePlan')}
+                </Button>
+              </Link>
+            </Col>
+          </Row>
+        </Card>
+      )}
+
+      {/* 自适应状态条 */}
+      <Card size="small" style={{ ...statusBarStyle, marginBottom: 16 }}>
+        <Row align="middle" justify="space-between">
+          <Col>
+            <Space size="middle">
+              <Badge status={storeCount === 0 ? 'warning' : enabledAgentCount === 0 ? 'processing' : 'success'} />
+              {storeCount === 0 ? (
+                <Typography.Text strong style={{ fontSize: 13, color: '#c2410c' }}>
+                  {t('dashboard.connectStoreHint')}
+                </Typography.Text>
+              ) : enabledAgentCount === 0 ? (
+                <Typography.Text strong style={{ fontSize: 13, color: '#1d4ed8' }}>
+                  {t('dashboard.storeConnectedNoAgent')}
+                </Typography.Text>
+              ) : (
+                <>
+                  <Typography.Text strong style={{ fontSize: 13 }}>{t('setup.runningStatus')}</Typography.Text>
+                  <Tag color="green" style={{ fontSize: 10 }}>{storeCount} {t('setup.storesOnline')}</Tag>
+                  <Tag color="blue" style={{ fontSize: 10 }}>{enabledAgentCount} Agents {t('setup.agentsRunning')}</Tag>
+                </>
+              )}
+            </Space>
+          </Col>
+          <Col>
+            <Link to="/setup">
+              <Button type={setupIncomplete ? 'primary' : 'default'} size="small" icon={<SettingOutlined />}>
+                {setupIncomplete ? t('dashboard.quickSetup') : t('setup.manageConfig')}
+              </Button>
+            </Link>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Agent 今日成果卡片 */}
+      {achievements && storeCount > 0 && (
+        <Card
+          size="small"
+          style={{ marginBottom: 16, background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', border: '1px solid #86efac' }}
+        >
+          <Row gutter={[16, 16]} align="middle">
+            <Col flex="auto">
+              <Space size={4}>
+                <RobotOutlined style={{ color: '#16a34a', fontSize: 14 }} />
+                <Typography.Text strong style={{ fontSize: 13, color: '#166534' }}>{t('dashboard.achievementTitle')}</Typography.Text>
+              </Space>
+            </Col>
+            <Col>
+              <Row gutter={[32, 16]}>
+                <Col>
+                  <Statistic
+                    title={<Space size={2}><ClockCircleOutlined style={{ fontSize: 10 }} /><span style={{ fontSize: 10 }}>{t('dashboard.achievementHours')}</span></Space>}
+                    value={achievements.hoursSaved}
+                    suffix={
+                      <span style={{ fontSize: 12, color: achievements.hoursSavedTrend > 0 ? '#16a34a' : '#dc2626' }}>
+                        <ArrowUpOutlined style={{ fontSize: 10 }} /> {achievements.hoursSavedTrend}%
+                      </span>
+                    }
+                    valueStyle={{ fontSize: 20, color: '#166534', fontWeight: 700 }}
+                  />
+                </Col>
+                <Col>
+                  <Statistic
+                    title={<Space size={2}><DollarOutlined style={{ fontSize: 10 }} /><span style={{ fontSize: 10 }}>{t('dashboard.achievementRevenue')}</span></Space>}
+                    value={achievements.revenueUplift}
+                    prefix="$"
+                    suffix={
+                      <span style={{ fontSize: 12, color: achievements.revenueUpliftTrend > 0 ? '#16a34a' : '#dc2626' }}>
+                        <ArrowUpOutlined style={{ fontSize: 10 }} /> {achievements.revenueUpliftTrend}%
+                      </span>
+                    }
+                    valueStyle={{ fontSize: 20, color: '#166534', fontWeight: 700 }}
+                  />
+                </Col>
+                <Col>
+                  <Statistic
+                    title={<Space size={2}><CheckCircleOutlined style={{ fontSize: 10 }} /><span style={{ fontSize: 10 }}>{t('dashboard.achievementTasks')}</span></Space>}
+                    value={achievements.tasksProcessed}
+                    suffix={
+                      <span style={{ fontSize: 12, color: '#16a34a' }}>
+                        {achievements.tasksSuccessRate}%
+                      </span>
+                    }
+                    valueStyle={{ fontSize: 20, color: '#166534', fontWeight: 700 }}
+                  />
+                </Col>
+              </Row>
+            </Col>
+          </Row>
+          {achievements.topContributor && (
+            <div style={{ marginTop: 10, padding: '6px 10px', background: 'rgba(22,163,74,0.06)', borderRadius: 6, fontSize: 12, color: '#166534' }}>
+              <Space size={4}>
+                <Tag color="green" style={{ fontSize: 10, margin: 0 }}>{t(`agent.${achievements.topContributor.agentType}`)}</Tag>
+                <span>{t(achievements.topContributor.insight)}</span>
+              </Space>
+            </div>
+          )}
+        </Card>
+      )}
+
+      <OperationsOverview storesData={storesData ?? []} />
     </div>
   );
 }

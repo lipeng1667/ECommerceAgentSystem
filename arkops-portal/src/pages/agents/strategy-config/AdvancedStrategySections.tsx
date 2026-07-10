@@ -11,8 +11,28 @@ interface AdvancedStrategySectionsProps {
   agent: AgentWithStrategyConfig;
 }
 
+/** 安全更新 strategyConfig 子段，触发 React 重新渲染 */
+function updateConfigSection(
+  queryClient: ReturnType<typeof useQueryClient>,
+  agent: AgentWithStrategyConfig,
+  sectionKey: string,
+  updater: (section: any) => any,
+) {
+  queryClient.setQueryData(['agent', agent.agentType], (prev: any) => {
+    if (!prev?.strategyConfig) return prev;
+    return {
+      ...prev,
+      strategyConfig: {
+        ...prev.strategyConfig,
+        [sectionKey]: updater(prev.strategyConfig[sectionKey]),
+      },
+    };
+  });
+}
+
 export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProps) {
   const { t } = useI18n();
+  const queryClient = useQueryClient();
 
   return (
     <>
@@ -29,7 +49,11 @@ export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProp
                       min={1} max={9999} step={10}
                       style={{ width: 100 }}
                       value={agent.strategyConfig.inventoryConfig.lowStockThreshold}
-                      onChange={(v) => { if (agent.strategyConfig?.inventoryConfig) agent.strategyConfig.inventoryConfig.lowStockThreshold = v ?? 50; }}
+                      onChange={(v) => {
+                        updateConfigSection(queryClient, agent, 'inventoryConfig', (s) => ({
+                          ...s, lowStockThreshold: v ?? 50,
+                        }));
+                      }}
                       suffix={t('common.items')}
                     />
                   </Space>
@@ -39,7 +63,11 @@ export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProp
                       min={7} max={365} step={7}
                       style={{ width: 100 }}
                       value={agent.strategyConfig.inventoryConfig.deadStockDays}
-                      onChange={(v) => { if (agent.strategyConfig?.inventoryConfig) agent.strategyConfig.inventoryConfig.deadStockDays = v ?? 30; }}
+                      onChange={(v) => {
+                        updateConfigSection(queryClient, agent, 'inventoryConfig', (s) => ({
+                          ...s, deadStockDays: v ?? 30,
+                        }));
+                      }}
                       suffix={t('common.day')}
                     />
                   </Space>
@@ -49,7 +77,11 @@ export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProp
                     <Typography.Text type="secondary">{t('agent.autoReplenish')}:</Typography.Text>
                     <Switch
                       checked={agent.strategyConfig.inventoryConfig.autoReplenishEnabled}
-                      onChange={(v) => { if (agent.strategyConfig?.inventoryConfig) agent.strategyConfig.inventoryConfig.autoReplenishEnabled = v; }}
+                      onChange={(v) => {
+                        updateConfigSection(queryClient, agent, 'inventoryConfig', (s) => ({
+                          ...s, autoReplenishEnabled: v,
+                        }));
+                      }}
                     />
                     <Typography.Text type="secondary" style={{ fontSize: 11 }}>{t('agent.autoReplenishDesc')}</Typography.Text>
                   </Space>
@@ -59,7 +91,11 @@ export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProp
                       min={1} max={60} step={1}
                       style={{ width: 80 }}
                       value={agent.strategyConfig.inventoryConfig.replenishLeadTimeDays}
-                      onChange={(v) => { if (agent.strategyConfig?.inventoryConfig) agent.strategyConfig.inventoryConfig.replenishLeadTimeDays = v ?? 7; }}
+                      onChange={(v) => {
+                        updateConfigSection(queryClient, agent, 'inventoryConfig', (s) => ({
+                          ...s, replenishLeadTimeDays: v ?? 7,
+                        }));
+                      }}
                       suffix={t('common.day')}
                     />
                   </Space>
@@ -80,7 +116,11 @@ export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProp
                     min={1} max={168} step={1}
                     style={{ width: 100 }}
                     value={agent.strategyConfig.intelConfig.monitorFrequencyHours}
-                    onChange={(v) => { if (agent.strategyConfig?.intelConfig) agent.strategyConfig.intelConfig.monitorFrequencyHours = v ?? 2; }}
+                    onChange={(v) => {
+                      updateConfigSection(queryClient, agent, 'intelConfig', (s) => ({
+                        ...s, monitorFrequencyHours: v ?? 2,
+                      }));
+                    }}
                     suffix={t('agent.monitorFrequencyUnit')}
                   />
                 </Space>
@@ -90,7 +130,11 @@ export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProp
                     style={{ maxWidth: 400 }}
                     placeholder={t('agent.monitoredCategoriesDesc')}
                     value={agent.strategyConfig.intelConfig.monitoredCategories.join('，')}
-                    onChange={(e) => { if (agent.strategyConfig?.intelConfig) agent.strategyConfig.intelConfig.monitoredCategories = e.target.value.split(/[,，]/).map((s) => s.trim()).filter(Boolean); }}
+                    onChange={(e) => {
+                      updateConfigSection(queryClient, agent, 'intelConfig', (s) => ({
+                        ...s, monitoredCategories: e.target.value.split(/[,，]/).map((s2) => s2.trim()).filter(Boolean),
+                      }));
+                    }}
                   />
                 </div>
                 <div>
@@ -100,7 +144,11 @@ export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProp
                     rows={3}
                     placeholder={t('agent.competitorUrlsDesc')}
                     value={agent.strategyConfig.intelConfig.competitorUrls.join('\n')}
-                    onChange={(e) => { if (agent.strategyConfig?.intelConfig) agent.strategyConfig.intelConfig.competitorUrls = e.target.value.split('\n').filter(Boolean); }}
+                    onChange={(e) => {
+                      updateConfigSection(queryClient, agent, 'intelConfig', (s) => ({
+                        ...s, competitorUrls: e.target.value.split('\n').filter(Boolean),
+                      }));
+                    }}
                   />
                 </div>
               </Space>
@@ -120,7 +168,11 @@ export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProp
                       min={1} max={28} step={1}
                       style={{ width: 80 }}
                       value={agent.strategyConfig.financeConfig.autoReconcileDay}
-                      onChange={(v) => { if (agent.strategyConfig?.financeConfig) agent.strategyConfig.financeConfig.autoReconcileDay = v ?? 5; }}
+                      onChange={(v) => {
+                        updateConfigSection(queryClient, agent, 'financeConfig', (s) => ({
+                          ...s, autoReconcileDay: v ?? 5,
+                        }));
+                      }}
                       suffix={t('agent.autoReconcileDayUnit')}
                     />
                   </Space>
@@ -131,7 +183,11 @@ export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProp
                       style={{ width: 120 }}
                       prefix="$"
                       value={agent.strategyConfig.financeConfig.discrepancyAlertThreshold}
-                      onChange={(v) => { if (agent.strategyConfig?.financeConfig) agent.strategyConfig.financeConfig.discrepancyAlertThreshold = v ?? 100; }}
+                      onChange={(v) => {
+                        updateConfigSection(queryClient, agent, 'financeConfig', (s) => ({
+                          ...s, discrepancyAlertThreshold: v ?? 100,
+                        }));
+                      }}
                     />
                   </Space>
                 </Space>
@@ -139,7 +195,11 @@ export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProp
                   <Typography.Text type="secondary">{t('agent.autoGenReport')}:</Typography.Text>
                   <Switch
                     checked={agent.strategyConfig.financeConfig.autoGenerateReport}
-                    onChange={(v) => { if (agent.strategyConfig?.financeConfig) agent.strategyConfig.financeConfig.autoGenerateReport = v; }}
+                    onChange={(v) => {
+                      updateConfigSection(queryClient, agent, 'financeConfig', (s) => ({
+                        ...s, autoGenerateReport: v,
+                      }));
+                    }}
                   />
                   <Typography.Text type="secondary" style={{ fontSize: 11 }}>{t('agent.autoGenReportDesc')}</Typography.Text>
                 </Space>
@@ -161,7 +221,11 @@ export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProp
                       style={{ width: 80 }}
                       suffix="%"
                       value={agent.strategyConfig.promotionConfig.maxDiscountPercent}
-                      onChange={(v) => { if (agent.strategyConfig?.promotionConfig) agent.strategyConfig.promotionConfig.maxDiscountPercent = v ?? 50; }}
+                      onChange={(v) => {
+                        updateConfigSection(queryClient, agent, 'promotionConfig', (s) => ({
+                          ...s, maxDiscountPercent: v ?? 50,
+                        }));
+                      }}
                     />
                   </Space>
                   <Space>
@@ -171,7 +235,11 @@ export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProp
                       style={{ width: 120 }}
                       prefix="$"
                       value={agent.strategyConfig.promotionConfig.campaignBudget}
-                      onChange={(v) => { if (agent.strategyConfig?.promotionConfig) agent.strategyConfig.promotionConfig.campaignBudget = v ?? 2000; }}
+                      onChange={(v) => {
+                        updateConfigSection(queryClient, agent, 'promotionConfig', (s) => ({
+                          ...s, campaignBudget: v ?? 2000,
+                        }));
+                      }}
                     />
                   </Space>
                 </Space>
@@ -180,7 +248,11 @@ export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProp
                     <Typography.Text type="secondary">{t('agent.autoSchedule')}:</Typography.Text>
                     <Switch
                       checked={agent.strategyConfig.promotionConfig.autoSchedule}
-                      onChange={(v) => { if (agent.strategyConfig?.promotionConfig) agent.strategyConfig.promotionConfig.autoSchedule = v; }}
+                      onChange={(v) => {
+                        updateConfigSection(queryClient, agent, 'promotionConfig', (s) => ({
+                          ...s, autoSchedule: v,
+                        }));
+                      }}
                     />
                     <Typography.Text type="secondary" style={{ fontSize: 11 }}>{t('agent.autoScheduleDesc')}</Typography.Text>
                   </Space>
@@ -190,7 +262,11 @@ export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProp
                   <Input
                     style={{ maxWidth: 400 }}
                     value={agent.strategyConfig.promotionConfig.targetPlatforms.join('，')}
-                    onChange={(e) => { if (agent.strategyConfig?.promotionConfig) agent.strategyConfig.promotionConfig.targetPlatforms = e.target.value.split(/[,，]/).map((s) => s.trim()).filter(Boolean); }}
+                    onChange={(e) => {
+                      updateConfigSection(queryClient, agent, 'promotionConfig', (s) => ({
+                        ...s, targetPlatforms: e.target.value.split(/[,，]/).map((s2) => s2.trim()).filter(Boolean),
+                      }));
+                    }}
                   />
                 </div>
               </Space>
@@ -208,14 +284,22 @@ export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProp
                     <Typography.Text type="secondary">{t('agent.autoPinProducts')}:</Typography.Text>
                     <Switch
                       checked={agent.strategyConfig.liveStreamConfig.autoPinProducts}
-                      onChange={(v) => { if (agent.strategyConfig?.liveStreamConfig) agent.strategyConfig.liveStreamConfig.autoPinProducts = v; }}
+                      onChange={(v) => {
+                        updateConfigSection(queryClient, agent, 'liveStreamConfig', (s) => ({
+                          ...s, autoPinProducts: v,
+                        }));
+                      }}
                     />
                   </Space>
                   <Space>
                     <Typography.Text type="secondary">{t('agent.peakHourBoost')}:</Typography.Text>
                     <Switch
                       checked={agent.strategyConfig.liveStreamConfig.peakHourBoost}
-                      onChange={(v) => { if (agent.strategyConfig?.liveStreamConfig) agent.strategyConfig.liveStreamConfig.peakHourBoost = v; }}
+                      onChange={(v) => {
+                        updateConfigSection(queryClient, agent, 'liveStreamConfig', (s) => ({
+                          ...s, peakHourBoost: v,
+                        }));
+                      }}
                     />
                     <Typography.Text type="secondary" style={{ fontSize: 11 }}>{t('agent.peakHourBoostDesc')}</Typography.Text>
                   </Space>
@@ -227,7 +311,11 @@ export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProp
                     style={{ width: 120 }}
                     suffix={t('agent.performanceAlertUnit')}
                     value={agent.strategyConfig.liveStreamConfig.performanceAlertThreshold}
-                    onChange={(v) => { if (agent.strategyConfig?.liveStreamConfig) agent.strategyConfig.liveStreamConfig.performanceAlertThreshold = v ?? 500; }}
+                    onChange={(v) => {
+                      updateConfigSection(queryClient, agent, 'liveStreamConfig', (s) => ({
+                        ...s, performanceAlertThreshold: v ?? 500,
+                      }));
+                    }}
                   />
                 </Space>
                 <div>
@@ -237,7 +325,11 @@ export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProp
                     rows={2}
                     placeholder={t('agent.replyTemplateDesc')}
                     value={agent.strategyConfig.liveStreamConfig.replyTemplate}
-                    onChange={(e) => { if (agent.strategyConfig?.liveStreamConfig) agent.strategyConfig.liveStreamConfig.replyTemplate = e.target.value; }}
+                    onChange={(e) => {
+                      updateConfigSection(queryClient, agent, 'liveStreamConfig', (s) => ({
+                        ...s, replyTemplate: e.target.value,
+                      }));
+                    }}
                   />
                 </div>
               </Space>

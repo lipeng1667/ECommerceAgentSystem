@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { Button, Card, List, Switch } from 'antd';
+import { Button, Card, List, Switch, Typography } from 'antd';
 import { settingsApi } from '../../api/settings';
 import { useI18n } from '../../app/i18n';
 import { DescriptionPanel } from '../../components/detail/DescriptionPanel';
+import { EmptyState } from '../../components/EmptyState';
 import { PageHeader } from '../../components/PageHeader';
 
 export function NotificationsSettingsPage() {
@@ -18,6 +19,7 @@ export function NotificationsSettingsPage() {
       <Card>
         <List
           dataSource={data}
+          locale={{ emptyText: <EmptyState description={t('common.emptyList')} /> }}
           renderItem={(item) => (
             <List.Item extra={<Switch checked={item.status === 'connected'} />}>
               <List.Item.Meta title={item.channel} description={`${t('settings.events')}: ${item.events}`} />

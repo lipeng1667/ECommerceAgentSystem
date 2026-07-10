@@ -82,6 +82,7 @@ export function AgentConfigPage() {
   const [crmModalOpen, setCrmModalOpen] = useState(false);
   const [csModalOpen, setCsModalOpen] = useState(false);
   const [adDashboardOpen, setAdDashboardOpen] = useState(false);
+  const [abTestOpen, setAbTestOpen] = useState(false);
 
   const { data: agent, isLoading } = useQuery({
     queryKey: ['agent', agentType],
@@ -222,6 +223,33 @@ export function AgentConfigPage() {
   const riskControlOn = allAgents.find((a) => a.agentType === 'risk_control')?.enabled === true;
   const isGuarded = riskControlOn && agent.agentType !== 'risk_control' && agent.agentType !== 'finance_audit';
 
+  /** 将 cron 表达式渲染为人类可读描述 */
+  function cronToHuman(cron: string): { freq: string; next: string } {
+    const parts = cron.split(' ');
+    if (parts.length < 5) return { freq: '自定义', next: '-' };
+    const [min, hour] = parts;
+    let freq = '';
+    if (hour === '*' && min.startsWith('*/')) {
+      const interval = parseInt(min.replace('*/', ''));
+      if (interval === 1) freq = '每分钟';
+      else freq = `每 ${interval} 分钟`;
+    } else if (min === '0' && hour.startsWith('*/')) {
+      const interval = parseInt(hour.replace('*/', ''));
+      if (interval === 1) freq = '每小时';
+      else freq = `每 ${interval} 小时`;
+    } else if (min === '0' && hour !== '*') {
+      const hours = hour.split(',').join(':00, ') + ':00';
+      freq = `每日 ${hours}`;
+    } else if (min === '0' && hour === '0') {
+      freq = '每日 0:00';
+    } else {
+      freq = `${cron}`;
+    }
+    return { freq, next: '-' };
+  }
+
+  const cronDesc = agent.cronExpression ? cronToHuman(agent.cronExpression) : null;
+
 
   return (
     <div className="page-stack">
@@ -275,11 +303,11 @@ export function AgentConfigPage() {
       )}
 
       {/* 运行说明 */}
-      {!isLoginBootstrap && (
-        <Card title={<><InfoCircleOutlined /> {t('agent.operationGuide')}</>} style={{ marginBottom: 16 }}>
+      <Card title={<><InfoCircleOutlined /> {t('agent.operationGuide')}</>} style={{ marginBottom: 16 }}>
           <Descriptions column={2} size="small">
             <Descriptions.Item label="触发方式">
-              {agent.triggerMode === 'scheduled' ? `定时（${agent.cronExpression}）`
+              {agent.triggerMode === 'scheduled' && cronDesc
+                ? <><Tag color="purple">{cronDesc.freq}</Tag><Typography.Text type="secondary" style={{ fontSize: 11 }}>（{agent.cronExpression}）</Typography.Text></>
                 : agent.triggerMode === 'event' ? `事件驱动（${agent.eventTrigger}）`
                 : '手动触发'}
             </Descriptions.Item>
@@ -308,7 +336,6 @@ export function AgentConfigPage() {
             </Descriptions.Item>
           </Descriptions>
         </Card>
-      )}
 
       <AgentBuiltinTasksSection
         agentType={agent.agentType}
@@ -319,20 +346,19 @@ export function AgentConfigPage() {
         onOpenCreativeModal={() => setCreativeModalOpen(true)}
         onOpenRiskModal={() => setRiskModalOpen(true)}
         onOpenLiveModal={() => setLiveModalOpen(true)}
+        onOpenABTest={() => setAbTestOpen(true)}
       />
 
       <AgentStrategyConfigSection agent={agent} />
 
       {/* 任务日志区 */}
-      {!isLoginBootstrap && (
-        <Typography.Title level={5} style={{ marginTop: recognitionResult ? 0 : 24, marginBottom: 12 }}>
+      <Typography.Title level={5} style={{ marginTop: recognitionResult ? 0 : 24, marginBottom: 12 }}>
           <UnorderedListOutlined style={{ marginRight: 8, color: '#64748b' }} />
           {t('agent.logSection')}
         </Typography.Title>
-      )}
 
       {/* 运行中任务 */}
-      {!isLoginBootstrap && activeTasks.length > 0 && (
+      {activeTasks.length > 0 && (
         <Card
           title={<><UnorderedListOutlined /> {t('agent.activeTasks')} ({activeTasks.length})</>}
           extra={
@@ -521,13 +547,13 @@ export function AgentConfigPage() {
         </Card>
       )}
 
-      {/* 新建任务按钮（无运行中任务时单独显示，店铺保活除外） */}
-      {!isLoginBootstrap && activeTasks.length === 0 && !recognitionResult && (
+      {/* 新建任务按钮（无运行中任务时单独显示） */}
+      {activeTasks.length === 0 && !recognitionResult && (
         <Card style={{ marginBottom: 16 }}>
           <div style={{ textAlign: 'center', padding: 16 }}>
             <Typography.Paragraph type="secondary">{t('agent.noActiveTasks')}</Typography.Paragraph>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setTaskModalOpen(true)}>
-              {isProductLaunch ? t('agent.uploadProduct') : t('agent.newTask')}
+              {isLoginBootstrap ? '查看会话状态' : isProductLaunch ? t('agent.uploadProduct') : t('agent.newTask')}
             </Button>
           </div>
         </Card>
@@ -684,6 +710,8 @@ export function AgentConfigPage() {
         onCloseLive={() => setLiveModalOpen(false)}
         crmOpen={crmModalOpen}
         onCloseCrm={() => setCrmModalOpen(false)}
+        abTestOpen={abTestOpen}
+        onCloseABTest={() => setAbTestOpen(false)}
       />
     </div>
   );

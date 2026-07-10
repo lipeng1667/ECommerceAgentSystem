@@ -2,7 +2,7 @@ import { makeConnectToken, mockDelay } from './client';
 import { storeConfigs } from './storeMockData';
 import { stores, tasks } from './mockData';
 import { appendItem, insertFirst, replaceItem } from './mockRepository';
-import type { AllMallId, Store, StoreConfig, StoreConnection } from '../types/domain';
+import type { AllMallId, Store, StoreConfig, StoreConnection, StoreServiceType } from '../types/domain';
 
 export const storesApi = {
   list: () => mockDelay([...stores]),
@@ -14,7 +14,22 @@ export const storesApi = {
       connectToken: makeConnectToken(storeId),
       expiresInMinutes: 30
     }),
-  create: (input: { name: string; platform: string; authMethod?: Store['authMethod']; apiKey?: string; apiSecret?: string; account?: string; password?: string; region?: string; currency?: string; maxBudgetAdjust?: number; operationWindowStart?: string; operationWindowEnd?: string; autoReconnectRetry?: number; maxRetries?: number }) => {
+  create: (input: { name: string; platform: string; authMethod?: Store['authMethod']; apiKey?: string; apiSecret?: string; account?: string; password?: string; region?: string; currency?: string; maxBudgetAdjust?: number; operationWindowStart?: string; operationWindowEnd?: string; autoReconnectRetry?: number; maxRetries?: number; services?: string[] }) => {
+    const serviceIds: number[] = [];
+    const connections: StoreConnection[] = (input.services ?? []).map((svc, i) => {
+      const id = 5000 + stores.length * 10 + i;
+      serviceIds.push(id);
+      return {
+        id,
+        serviceName: svc === 'advertising' ? '广告服务' : svc === 'customer_service' ? '客服服务' : svc === 'logistics' ? '物流服务' : '财务服务',
+        serviceType: svc as StoreServiceType,
+        authMethod: 'credentials',
+        status: 'pending_login',
+        runtimeProvider: 'mulerun' as const,
+        createdAt: new Date().toISOString(),
+        lastVerifiedAt: new Date().toISOString(),
+      };
+    });
     const store: Store = {
       id: 1000 + stores.length + 1,
       name: input.name,
@@ -28,8 +43,8 @@ export const storesApi = {
       region: input.region,
       currency: input.currency,
       createdAt: new Date().toISOString(),
-      recentTaskIds: [],
-      connections: []
+      recentTaskIds: serviceIds,
+      connections
     };
     insertFirst(stores, store);
     // Auto-create store config

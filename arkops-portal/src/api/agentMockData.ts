@@ -15,21 +15,22 @@ export const agentConfigs: AgentConfig[] = [
     layer: 'foundation',
     riskLevel: 'low',
     triggerMode: 'event',
-    needsConfig: false,
+    needsConfig: true,
     needsApproval: false,
     dependsOn: [],
     servesFor: ['product_launch', 'ads_optimizer', 'crm_retention', 'review_manager', 'customer_service', 'after_sales'],
     required: true,
     eventTrigger: 'store_session_expired',
-    executionParams: [
-      { key: 'notifyChannels', label: '通知渠道', defaultValue: '飞书,邮件' }
-    ],
+    executionParams: [],
     riskGuard: { maxBudgetPerAction: 0, actionWhitelist: ['notify_operator', 'create_session'], actionBlacklist: [] },
     approvalStrategy: { requireApproval: false, approverRole: '', requireSecondApproval: false },
     modelBinding: { provider: 'DeepSeek', model: 'deepseek-chat' },
     retryPolicy: { maxRetries: 3, retryIntervalMinutes: 2 },
     timeoutMinutes: 10,
-    enabled: true
+    enabled: true,
+    strategyConfig: {
+      bootstrapConfig: { notifyChannels: '飞书,邮件' }
+    }
   },
   {
     agentType: 'product_launch',
@@ -44,16 +45,16 @@ export const agentConfigs: AgentConfig[] = [
     dependsOn: ['competitor_intel'],
       required: false,
     servesFor: ['ads_optimizer', 'creative_factory'],
-    executionParams: [
-      { key: 'category', label: '默认商品类目', defaultValue: '' },
-      { key: 'targetMarket', label: '目标市场', defaultValue: 'US' }
-    ],
+    executionParams: [],
     riskGuard: { maxBudgetPerAction: 0, actionWhitelist: ['create_draft', 'publish_product'], actionBlacklist: [] },
     approvalStrategy: { requireApproval: true, approverRole: 'Operator', requireSecondApproval: false },
     modelBinding: { provider: 'Anthropic', model: 'claude-sonnet-4-20250514' },
     retryPolicy: { maxRetries: 1, retryIntervalMinutes: 3 },
     timeoutMinutes: 20,
-    enabled: false
+    enabled: false,
+    strategyConfig: {
+      productLaunchConfig: { defaultCategory: '', targetMarket: 'US' }
+    }
   },
 
   // ===== 流量引擎 =====
@@ -71,10 +72,7 @@ export const agentConfigs: AgentConfig[] = [
       required: false,
     servesFor: [],
     cronExpression: '0 */6 * * *',
-    executionParams: [
-      { key: 'targetROI', label: '目标 ROI', defaultValue: '2.0', type: 'number' },
-      { key: 'lookbackDays', label: '分析天数', defaultValue: '7', type: 'number' }
-    ],
+    executionParams: [],
     riskGuard: { maxBudgetPerAction: 200, actionWhitelist: ['adjust_budget', 'pause_campaign', 'create_campaign'], actionBlacklist: ['delete_campaign'] },
     approvalStrategy: { requireApproval: true, approverRole: 'Approver', requireSecondApproval: false },
     modelBinding: { provider: 'OpenAI', model: 'gpt-4o' },
@@ -82,7 +80,7 @@ export const agentConfigs: AgentConfig[] = [
     timeoutMinutes: 30,
     enabled: false,
     strategyConfig: {
-      adSpendBudget: { dailyCap: 500, monthlyCap: 10000 }
+      adSpendBudget: { dailyCap: 500, monthlyCap: 10000, targetROI: 2.0, lookbackDays: 7 }
     }
   },
   {
@@ -150,22 +148,22 @@ export const agentConfigs: AgentConfig[] = [
     layer: 'growth',
     riskLevel: 'low',
     triggerMode: 'scheduled',
-    needsConfig: false,
+    needsConfig: true,
     needsApproval: false,
     dependsOn: [],
       required: false,
     servesFor: [],
     cronExpression: '0 */2 * * *',
-    executionParams: [
-      { key: 'autoReplyThreshold', label: '自动回复星级（≤ X星）', defaultValue: '3', type: 'number' },
-      { key: 'replyTone', label: '回复语气', defaultValue: '专业友好', type: 'select', options: ['专业友好', '热情活泼', '简洁正式'] }
-    ],
+    executionParams: [],
     riskGuard: { maxBudgetPerAction: 0, actionWhitelist: ['generate_reply', 'post_reply'], actionBlacklist: [] },
     approvalStrategy: { requireApproval: false, approverRole: '', requireSecondApproval: false },
     modelBinding: { provider: 'DeepSeek', model: 'deepseek-chat' },
     retryPolicy: { maxRetries: 1, retryIntervalMinutes: 3 },
     timeoutMinutes: 10,
-    enabled: false
+    enabled: false,
+    strategyConfig: {
+      reviewConfig: { autoReplyThreshold: 2, replyTone: '专业友好' }
+    }
   },
   {
     agentType: 'customer_service',
@@ -175,22 +173,22 @@ export const agentConfigs: AgentConfig[] = [
     layer: 'growth',
     riskLevel: 'low',
     triggerMode: 'event',
-    needsConfig: false,
+    needsConfig: true,
     needsApproval: false,
     dependsOn: [],
       required: false,
     servesFor: [],
     eventTrigger: 'new_buyer_message',
-    executionParams: [
-      { key: 'autoReplyEnabled', label: '自动回复', defaultValue: '是', type: 'select', options: ['是', '否'] },
-      { key: 'escalateKeywords', label: '转人工关键词', defaultValue: '退款,投诉,差评,质量问题' }
-    ],
+    executionParams: [],
     riskGuard: { maxBudgetPerAction: 0, actionWhitelist: ['auto_reply', 'escalate_to_human'], actionBlacklist: ['promise_refund'] },
     approvalStrategy: { requireApproval: false, approverRole: '', requireSecondApproval: false },
     modelBinding: { provider: 'OpenAI', model: 'gpt-4o-mini' },
     retryPolicy: { maxRetries: 1, retryIntervalMinutes: 1 },
     timeoutMinutes: 5,
-    enabled: false
+    enabled: false,
+    strategyConfig: {
+      csConfig: { autoReplyEnabled: true, escalateKeywords: ['退款', '投诉', '差评', '质量问题'] }
+    }
   },
   {
     agentType: 'after_sales',
@@ -214,7 +212,7 @@ export const agentConfigs: AgentConfig[] = [
     timeoutMinutes: 15,
     enabled: false,
     strategyConfig: {
-      afterSalesConfig: { autoRefundCap: 20, returnAddress: '请填写退货地址' }
+      afterSalesConfig: { autoRefundCap: 20, returnAddress: '' } // 空地址时 Agent 不自动通过退货，转为审批
     }
   },
 
@@ -227,7 +225,7 @@ export const agentConfigs: AgentConfig[] = [
     layer: 'support',
     riskLevel: 'low',
     triggerMode: 'scheduled',
-    needsConfig: false,
+    needsConfig: true,
     needsApproval: false,
     dependsOn: [],
     required: false,
@@ -298,7 +296,7 @@ export const agentConfigs: AgentConfig[] = [
     timeoutMinutes: 10,
     enabled: false,
     strategyConfig: {
-      inventoryConfig: { lowStockThreshold: 50, deadStockDays: 30, autoReplenishEnabled: true, replenishLeadTimeDays: 7 }
+      inventoryConfig: { lowStockThreshold: 50, deadStockDays: 30, autoReplenishEnabled: false, replenishLeadTimeDays: 7 }
     }
   },
 
@@ -311,17 +309,15 @@ export const agentConfigs: AgentConfig[] = [
     layer: 'standalone',
     riskLevel: 'medium',
     triggerMode: 'scheduled',
-    needsConfig: false,
-    needsApproval: true,
+    needsConfig: true,
+    needsApproval: false,
     dependsOn: [],
       required: false,
     servesFor: [],
     cronExpression: '0 0 1 * *',
-    executionParams: [
-      { key: 'reconciliationPeriod', label: '对账周期（天）', defaultValue: '30', type: 'number' }
-    ],
+    executionParams: [],
     riskGuard: { maxBudgetPerAction: 0, actionWhitelist: ['fetch_billing', 'generate_report'], actionBlacklist: ['adjust_settlement'] },
-    approvalStrategy: { requireApproval: true, approverRole: 'Owner', requireSecondApproval: false },
+    approvalStrategy: { requireApproval: false, approverRole: '', requireSecondApproval: false },
     modelBinding: { provider: 'OpenAI', model: 'gpt-4o' },
     retryPolicy: { maxRetries: 1, retryIntervalMinutes: 5 },
     timeoutMinutes: 45,

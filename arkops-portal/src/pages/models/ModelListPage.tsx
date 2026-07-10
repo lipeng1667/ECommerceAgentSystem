@@ -89,7 +89,11 @@ export function ModelListPage() {
       render: (name: string, record: ModelInfo) => (
         <div>
           <Typography.Text strong>{name}</Typography.Text>
-          {record.apiKey && <Tag style={{ marginLeft: 8 }}>API: {record.apiKey}</Tag>}
+          {record.apiKey && (
+            <Tag color="green" style={{ marginLeft: 8, fontSize: 11 }}>
+              {t('model.keyConfigured')}
+            </Tag>
+          )}
           <br />
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>{record.description}</Typography.Text>
         </div>

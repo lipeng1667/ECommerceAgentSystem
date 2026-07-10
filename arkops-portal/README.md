@@ -86,7 +86,8 @@ http://localhost:5173/
 | Route | Page | Status | Purpose |
 | --- | --- | --- | --- |
 | `/login` | Login | Implemented | User authentication entry page with mock flow. |
-| `/dashboard` | Dashboard | Implemented | Business overview and Agent monitoring tabs. |
+| `/dashboard` | Dashboard | Implemented | Business overview, Agent monitoring, and new user onboarding wizard. |
+| `/setup` | Quick Setup | Implemented | Centralized config for pricing, ads, customer, and inventory across all agents. |
 | `/exception-center` | Exception Center | Implemented | High-priority issues that require operator intervention. |
 | `/approvals` | Approval List | Implemented | Pending approval list. |
 | `/approvals/:approvalId` | Approval Detail | Implemented | Approve or reject high-risk actions. |
@@ -486,6 +487,7 @@ Use this table as the first stop when a collaborator or AI coding tool needs to 
 | `src/pages/settings/MembersSettingsPage.tsx` | Page | Member management. | Team/member workflows change. |
 | `src/pages/settings/NotificationsSettingsPage.tsx` | Page | Notification settings. | Notification channel/preference UI changes. |
 | `src/pages/guide/UsageGuideSettingsPage.tsx` | Page | Usage guide and product help. | Help content changes. |
+| `src/pages/setup/SetupConfigPage.tsx` | Page | Centralized quick-setup for all agent core configs. | Quick-setup options change. |
 
 ## Component and Page Boundaries
 
@@ -532,6 +534,7 @@ Current page domains:
 - `models/`: model center.
 - `settings/`: members and notifications.
 - `guide/`: usage guide.
+- `setup/`: quick setup and centralized config.
 - `auth/`: login page.
 
 Guideline:

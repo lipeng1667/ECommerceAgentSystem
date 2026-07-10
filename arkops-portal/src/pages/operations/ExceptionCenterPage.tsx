@@ -5,6 +5,7 @@ import {
   ExclamationCircleOutlined,
   EyeOutlined,
   MinusCircleOutlined,
+  ShoppingCartOutlined,
   UndoOutlined,
 } from '@ant-design/icons';
 import {
@@ -28,7 +29,9 @@ import {
 } from 'antd';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useI18n } from '../../app/i18n';
+import { dashboardApi } from '../../api/dashboard';
 import { PageFilterBar } from '../../components/filters/PageFilterBar';
 import { PageHeader } from '../../components/PageHeader';
 import { createAgentLogColumns, createExceptionColumns } from './exceptionCenterColumns';
@@ -49,6 +52,12 @@ export function ExceptionCenterPage() {
   const [agentFilter, setAgentFilter] = useState<string>('all');
   const [detailItem, setDetailItem] = useState<ExceptionItem | null>(null);
   const [assigneeModal, setAssigneeModal] = useState<string | undefined>(undefined);
+
+  const { data: dashboard } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: dashboardApi.getSummary,
+  });
+  const orderExceptions = dashboard?.orderExceptions ?? 0;
 
   const filtered = items.filter((i) => {
     // 状态筛选
@@ -133,6 +142,21 @@ export function ExceptionCenterPage() {
           </Card>
         </Col>
         <Col xs={24} sm={6}>
+          <Card
+            hoverable
+            onClick={() => navigate('/orders')}
+            style={{ cursor: 'pointer', borderLeft: '3px solid #7c3aed' }}
+          >
+            <Statistic
+              title={t('exc.orderExceptions')}
+              value={orderExceptions}
+              valueStyle={{ color: '#7c3aed' }}
+              prefix={<ShoppingCartOutlined />}
+              suffix={<Typography.Text type="secondary" style={{ fontSize: 11 }}>→</Typography.Text>}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={6}>
           <Card>
             <Statistic
               title={t('exc.autoProcessed')}
@@ -140,16 +164,6 @@ export function ExceptionCenterPage() {
               valueStyle={{ color: '#16a34a' }}
               prefix={<CheckCircleOutlined />}
               suffix={<Typography.Text type="secondary" style={{ fontSize: 12 }}>/ {agentLogData.length}</Typography.Text>}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={6}>
-          <Card>
-            <Statistic
-              title={t('exc.escalated')}
-              value={agentLogData.filter((l) => l.result === 'escalated' || l.result === 'blocked').length}
-              valueStyle={{ color: '#7c3aed' }}
-              prefix={<DashOutlined />}
             />
           </Card>
         </Col>

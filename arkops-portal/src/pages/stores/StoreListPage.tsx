@@ -6,7 +6,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { storesApi } from '../../api/stores';
 import { useI18n } from '../../app/i18n';
 import { PageHeader } from '../../components/PageHeader';
-import { StatusBadge } from '../../components/StatusBadge';
 import { DataTableCard } from '../../components/table/DataTableCard';
 import type { Store } from '../../types/domain';
 
@@ -57,7 +56,6 @@ export function StoreListPage() {
       const map: Record<string, string> = { credentials: t('stores.authCredentials'), api_key: t('stores.authApiKey'), oauth: t('stores.authOauth') };
       return <Tag>{map[method] ?? method}</Tag>;
     }},
-    { title: t('stores.status'), dataIndex: 'status', render: (status) => <StatusBadge value={status} /> },
     { title: t('stores.todayGmv'), dataIndex: 'name', render: (name: string) => {
       const gmv = gmvByStoreName[name];
       return <span><DollarOutlined style={{ marginRight: 4, color: '#16a34a' }} />${gmv != null ? gmv.toLocaleString() : '-'}</span>;

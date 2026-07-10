@@ -2,10 +2,20 @@ import { mockDelay } from './client';
 import { agentConfigs, agentRunStatsMap } from './agentMockData';
 import { stores, tasks } from './mockData';
 import { insertFirst, replaceItem } from './mockRepository';
-import type { AgentConfig, AgentType, AllMallId, Task, TaskStatus } from '../types/domain';
+import type { AgentConfig, AgentRunStats, AgentType, AllMallId, Task, TaskStatus } from '../types/domain';
+
+export interface AgentListItem extends AgentConfig {
+  runStats?: AgentRunStats;
+  activeTaskCount?: number;
+}
 
 export const agentsApi = {
-  list: (): Promise<AgentConfig[]> => mockDelay([...agentConfigs]),
+  list: (): Promise<AgentListItem[]> => mockDelay(agentConfigs.map((a) => {
+    const stats = agentRunStatsMap[a.agentType];
+    const activeTaskStatuses: TaskStatus[] = ['draft', 'queued', 'running', 'waiting_approval'];
+    const activeCount = tasks.filter((t) => t.agentType === a.agentType && activeTaskStatuses.includes(t.status)).length;
+    return { ...a, runStats: stats, activeTaskCount: activeCount };
+  })),
   get: (agentType: AgentType): Promise<AgentConfig | undefined> =>
     mockDelay(agentConfigs.find((a) => a.agentType === agentType)),
   getStats: (agentType: AgentType) =>
@@ -141,5 +151,15 @@ export const agentsApi = {
       ]
     }));
     return mockDelay(task);
+  },
+  batchEnable: (agentTypes: AgentType[]) => {
+    return mockDelay(600).then(() => {
+      for (const ag of agentConfigs) {
+        if (agentTypes.includes(ag.agentType)) {
+          ag.enabled = true;
+        }
+      }
+      return agentConfigs;
+    });
   }
 };
