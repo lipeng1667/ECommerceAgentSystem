@@ -1,4 +1,4 @@
-import { ApiOutlined, CustomerServiceOutlined, DollarOutlined, PlusOutlined, ShoppingCartOutlined, ThunderboltOutlined, WalletOutlined, WifiOutlined } from '@ant-design/icons';
+import { DollarOutlined, PlusOutlined, ShoppingCartOutlined, WifiOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Space, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -8,14 +8,7 @@ import { useI18n } from '../../app/i18n';
 import { PageHeader } from '../../components/PageHeader';
 import { DataTableCard } from '../../components/table/DataTableCard';
 import type { Store } from '../../types/domain';
-
-const serviceIcons: Record<string, JSX.Element> = {
-  advertising: <ThunderboltOutlined />,
-  customer_service: <CustomerServiceOutlined />,
-  logistics: <ShoppingCartOutlined />,
-  finance: <WalletOutlined />,
-  other: <ApiOutlined />
-};
+import { SERVICE_ICONS, getSessionHealthColor, renderSessionTag } from '../../utils/storeDisplay';
 
 const gmvByStoreName: Record<string, number> = {
   'TikTok Shop 美国旗舰店': 12450,
@@ -28,21 +21,6 @@ const ordersByStoreName: Record<string, number> = {
   'Amazon 户外用品店': 134,
   'Shopify 独立站': 92
 };
-
-const sessionHealthColor: Record<string, string> = {
-  connected: 'green',
-  login_required: 'red',
-  pending_login: 'orange',
-  expired: 'red',
-  revoked: 'default'
-};
-
-function sessionTag(status: string): JSX.Element {
-  if (status === 'connected') return <Tag color="green">Active</Tag>;
-  if (status === 'login_required') return <Tag color="red">Expired</Tag>;
-  if (status === 'pending_login') return <Tag color="orange">Pending</Tag>;
-  return <Tag>Unknown</Tag>;
-}
 
 export function StoreListPage() {
   const { t } = useI18n();
@@ -68,10 +46,10 @@ export function StoreListPage() {
       <Space size={4}>
         <span style={{
           display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
-          background: sessionHealthColor[record.status] === 'green' ? '#16a34a' : sessionHealthColor[record.status] === 'red' ? '#dc2626' : sessionHealthColor[record.status] === 'orange' ? '#ea580c' : '#94a3b8',
+          background: getSessionHealthColor(record.status) === 'green' ? '#16a34a' : getSessionHealthColor(record.status) === 'red' ? '#dc2626' : getSessionHealthColor(record.status) === 'orange' ? '#ea580c' : '#94a3b8',
           flexShrink: 0
         }} />
-        {sessionTag(record.status)}
+        {renderSessionTag(record.status)}
       </Space>
     )},
     {
@@ -82,7 +60,7 @@ export function StoreListPage() {
         return (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
             {connections.map((c) => (
-              <Tag key={c.id} icon={serviceIcons[c.serviceType] ?? <ApiOutlined />}>
+              <Tag key={c.id} icon={SERVICE_ICONS[c.serviceType] ?? SERVICE_ICONS.other}>
                 {c.serviceName}
               </Tag>
             ))}

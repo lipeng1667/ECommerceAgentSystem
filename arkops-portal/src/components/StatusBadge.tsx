@@ -12,6 +12,7 @@
  * Major updates:
  * - 2026-07-03: Added ownership and function documentation for AI-assisted collaboration.
  */
+import { memo } from 'react';
 import { Tag } from 'antd';
 import { useI18n } from '../app/i18n';
 import type { ApprovalStatus, RiskLevel, StoreStatus, TaskStatus } from '../types/domain';
@@ -47,7 +48,7 @@ const colors: Record<string, string> = {
  * Author: Michael Lee
  * Created: 2026-07-03
  */
-export function StatusBadge({ value }: { value: StoreStatus | TaskStatus | ApprovalStatus | RiskLevel }) {
+export const StatusBadge = memo(function StatusBadge({ value }: { value: StoreStatus | TaskStatus | ApprovalStatus | RiskLevel }) {
   const { t } = useI18n();
   return <Tag color={colors[value]}>{t(`status.${value}`)}</Tag>;
-}
+});

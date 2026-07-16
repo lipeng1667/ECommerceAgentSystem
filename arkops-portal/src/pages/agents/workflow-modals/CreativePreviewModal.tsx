@@ -28,17 +28,18 @@ interface CreativePreviewModalProps {
 export function CreativePreviewModal(props: CreativePreviewModalProps) {
   const { t } = useI18n();
   const { creativeOpen, onCloseCreative } = props;
+  const [selectedId, setSelectedId] = useState<number | null>(null);
 
   return (
     <Modal
-            title={<><PictureOutlined style={{ color: '#7c3aed' }} /> 素材预览生成</>}
+            title={<><PictureOutlined style={{ color: '#7c3aed' }} /> {t('creative.previewTitle')}</>}
             open={creativeOpen}
             onCancel={() => onCloseCreative()}
             footer={null}
             width={780}
           >
             <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 16 }}>
-              基于商品信息和选定的尺寸/语气，AI 已生成 {mockCreatives.length} 组广告素材方案
+              {t('creative.previewDesc', { count: mockCreatives.length })}
             </Typography.Text>
             <Row gutter={[16, 16]}>
               {mockCreatives.map(creative => (
@@ -66,11 +67,11 @@ export function CreativePreviewModal(props: CreativePreviewModalProps) {
                       {creative.copy}
                     </Typography.Paragraph>
                     <div style={{ marginTop: 8, display: 'flex', gap: 4, justifyContent: 'center' }}>
-                      <Button size="small" type="primary" ghost icon={<CheckCircleOutlined />} style={{ fontSize: 11 }}>
-                        选用
+                      <Button size="small" type="primary" ghost icon={<CheckCircleOutlined />} style={{ fontSize: 11 }} onClick={() => { setSelectedId(creative.id); message.success(t('creative.selected')); onCloseCreative(); }}>
+                        {t('creative.use')}
                       </Button>
-                      <Button size="small" icon={<ReloadOutlined />} style={{ fontSize: 11 }}>
-                        换一版
+                      <Button size="small" icon={<ReloadOutlined />} style={{ fontSize: 11 }} onClick={() => message.success(t('creative.regenerated'))}>
+                        {t('creative.regenerate')}
                       </Button>
                     </div>
                   </Card>

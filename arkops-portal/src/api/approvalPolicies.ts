@@ -1,5 +1,7 @@
 import { mockDelay } from './client';
-import { appendItem, replaceItem } from './mockRepository';
+import { insertFirst, replaceItem } from './mockRepository';
+import { nextId } from './idGenerator';
+import { recordAuditLog } from './auditLogger';
 import type { AllMallId, ApprovalPolicy } from '../types/domain';
 
 const policies: ApprovalPolicy[] = [
@@ -10,7 +12,7 @@ const policies: ApprovalPolicy[] = [
     approverType: 'role',
     timeoutHours: 24,
     timeoutAction: 'auto_approve',
-    storeSpecificRules: []
+    storeSpecificRules: [],
   },
   {
     id: 8002,
@@ -20,7 +22,7 @@ const policies: ApprovalPolicy[] = [
     approverRole: 'Approver',
     timeoutHours: 24,
     timeoutAction: 'auto_reject',
-    storeSpecificRules: []
+    storeSpecificRules: [],
   },
   {
     id: 8003,
@@ -30,16 +32,19 @@ const policies: ApprovalPolicy[] = [
     approverRole: 'Approver',
     timeoutHours: 12,
     timeoutAction: 'escalate',
-    storeSpecificRules: []
-  }
+    storeSpecificRules: [],
+  },
 ];
 
 export const approvalPolicyApi = {
   list: (): Promise<ApprovalPolicy[]> => mockDelay([...policies]),
-  get: (id: AllMallId): Promise<ApprovalPolicy | undefined> => mockDelay(policies.find((p) => p.id === id)),
+
+  get: (id: AllMallId): Promise<ApprovalPolicy | undefined> =>
+    mockDelay(policies.find((p) => p.id === id)),
+
   create: (input: Partial<ApprovalPolicy>): Promise<ApprovalPolicy> => {
     const policy: ApprovalPolicy = {
-      id: 8000 + policies.length + 1,
+      id: nextId('policies', policies.length),
       riskLevel: input.riskLevel ?? 'low',
       action: input.action ?? 'single_approval',
       approverType: input.approverType ?? 'role',
@@ -47,13 +52,39 @@ export const approvalPolicyApi = {
       approverMemberId: input.approverMemberId,
       timeoutHours: input.timeoutHours ?? 24,
       timeoutAction: input.timeoutAction ?? 'auto_reject',
-      storeSpecificRules: input.storeSpecificRules ?? []
+      storeSpecificRules: input.storeSpecificRules ?? [],
     };
-    appendItem(policies, policy);
+    insertFirst(policies, policy); // Consistent: use insertFirst for new items
+
+    recordAuditLog({
+      actor: '当前用户',
+      action: '创建策略',
+      entity: '审批策略',
+      entityId: policy.id,
+      summary: `创建审批策略: [${policy.riskLevel}] ${policy.action}`,
+      category: 'approval',
+    });
+
     return mockDelay(policy);
   },
+
   update: (id: AllMallId, input: Partial<ApprovalPolicy>): Promise<ApprovalPolicy | undefined> => {
-    const policy = replaceItem(policies, (item) => item.id === id, (item) => ({ ...item, ...input }));
+    const policy = replaceItem(policies, (item) => item.id === id, (item) => ({
+      ...item,
+      ...input,
+    }));
+
+    if (policy) {
+      recordAuditLog({
+        actor: '当前用户',
+        action: '更新策略',
+        entity: '审批策略',
+        entityId: id,
+        summary: `审批策略已更新: [${policy.riskLevel}]`,
+        category: 'approval',
+      });
+    }
+
     return mockDelay(policy);
-  }
+  },
 };

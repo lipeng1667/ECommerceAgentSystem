@@ -3,29 +3,24 @@ import {
   CheckCircleOutlined,
   ExperimentOutlined,
   InfoCircleOutlined,
-  QuestionCircleOutlined,
   RiseOutlined,
   TrophyOutlined
 } from '@ant-design/icons';
 import {
-  Badge,
   Button,
   Card,
   Col,
-  Collapse,
-  Descriptions,
-  Modal,
   Progress,
   Row,
   Space,
   Statistic,
-  Tabs,
   Tag,
   Typography,
   message
 } from 'antd';
 import { useI18n } from '../../../app/i18n';
 import { mockABTests, type ABTestResult } from '../agentConfigMockData';
+import { BaseWorkflowModal } from './BaseWorkflowModal';
 
 interface ABTestComparisonModalProps {
   open: boolean;
@@ -55,6 +50,7 @@ function MetricCompareRow({
   suffix?: string;
   higherIsBetter?: boolean;
 }) {
+  const { t } = useI18n();
   const diff = diffPercent(controlValue, experimentValue);
   const experimentBetter = higherIsBetter ? diff.isUp : !diff.isUp;
   const neutral = diff.value < 0.5;
@@ -83,7 +79,7 @@ function MetricCompareRow({
       {/* 差异 */}
       <div style={{ width: 80, textAlign: 'right', flexShrink: 0 }}>
         {neutral ? (
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>→ 持平</Typography.Text>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('agent.abFlatline')}</Typography.Text>
         ) : (
           <Typography.Text
             style={{
@@ -267,64 +263,20 @@ export function ABTestComparisonModal({ open, onClose }: ABTestComparisonModalPr
   const completedTests = mockABTests.filter((t) => t.status === 'completed');
   const runningTests = mockABTests.filter((t) => t.status === 'running');
 
-  const tabItems = [
-    {
-      key: 'all',
-      label: (
-        <Badge count={mockABTests.length} size="small" offset={[6, -2]}>
-          <span>{t('agent.abAll')}</span>
-        </Badge>
-      ),
-      children: (
-        <>
-          {mockABTests.map((test) => (
-            <ABTestDetailCard key={test.id} test={test} />
-          ))}
-        </>
-      )
-    },
-    {
-      key: 'completed',
-      label: (
-        <Badge count={completedTests.length} size="small" overflowCount={99} offset={[6, -2]}>
-          <span>{t('agent.abCompleted')}</span>
-        </Badge>
-      ),
-      children: (
-        <>
-          {completedTests.map((test) => (
-            <ABTestDetailCard key={test.id} test={test} />
-          ))}
-        </>
-      )
-    },
-    {
-      key: 'running',
-      label: (
-        <Badge count={runningTests.length} size="small" overflowCount={99} offset={[6, -2]}>
-          <span>{t('agent.abRunning')}</span>
-        </Badge>
-      ),
-      children: (
-        <>
-          {runningTests.map((test) => (
-            <ABTestDetailCard key={test.id} test={test} />
-          ))}
-        </>
-      )
-    }
-  ];
-
   return (
-    <Modal
-      title={
-        <Space>
-          <ExperimentOutlined style={{ color: '#2563eb' }} />
-          {t('agent.abTestDashboard')}
-        </Space>
-      }
+    <BaseWorkflowModal
       open={open}
-      onCancel={onClose}
+      onClose={onClose}
+      title={t('agent.abTestDashboard')}
+      icon={<ExperimentOutlined />}
+      iconColor="#2563eb"
+      width={860}
+      defaultActiveKey="all"
+      preContent={
+        <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 16 }}>
+          {t('agent.abTestDashboardDesc')}
+        </Typography.Text>
+      }
       footer={
         <Space>
           <Button onClick={onClose}>{t('common.close')}</Button>
@@ -340,13 +292,44 @@ export function ABTestComparisonModal({ open, onClose }: ABTestComparisonModalPr
           </Button>
         </Space>
       }
-      width={860}
-    >
-      <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 16 }}>
-        {t('agent.abTestDashboardDesc')}
-      </Typography.Text>
-
-      <Tabs items={tabItems} defaultActiveKey="all" />
-    </Modal>
+      tabs={[
+        {
+          key: 'all',
+          label: t('agent.abAll'),
+          badge: mockABTests.length,
+          children: (
+            <>
+              {mockABTests.map((test) => (
+                <ABTestDetailCard key={test.id} test={test} />
+              ))}
+            </>
+          )
+        },
+        {
+          key: 'completed',
+          label: t('agent.abCompleted'),
+          badge: completedTests.length,
+          children: (
+            <>
+              {completedTests.map((test) => (
+                <ABTestDetailCard key={test.id} test={test} />
+              ))}
+            </>
+          )
+        },
+        {
+          key: 'running',
+          label: t('agent.abRunning'),
+          badge: runningTests.length,
+          children: (
+            <>
+              {runningTests.map((test) => (
+                <ABTestDetailCard key={test.id} test={test} />
+              ))}
+            </>
+          )
+        }
+      ]}
+    />
   );
 }

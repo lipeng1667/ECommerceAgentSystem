@@ -47,36 +47,31 @@ function typeLabel(t: TFunction, type: ExceptionType) {
 export function createExceptionColumns(t: TFunction, handlers: ExceptionColumnHandlers): ColumnsType<ExceptionItem> {
   return [
     {
-      title: '',
-      width: 40,
-      render: (_: unknown, record: ExceptionItem) => {
-        const icons: Record<string, JSX.Element> = {
-          critical: <ExclamationCircleOutlined style={{ color: '#dc2626', fontSize: 16 }} />,
-          warning: <AlertOutlined style={{ color: '#ea580c', fontSize: 16 }} />,
-          info: <BellOutlined style={{ color: '#2563eb', fontSize: 16 }} />,
-        };
-        return icons[record.level];
-      },
-    },
-    {
       title: t('exc.type'),
       dataIndex: 'type',
-      width: 130,
-      render: (type: ExceptionType) => (
-        <Space>
-          {typeIcon(type)}
-          <Typography.Text>{typeLabel(t, type)}</Typography.Text>
-        </Space>
-      ),
+      width: 110,
+      render: (type: ExceptionType, record: ExceptionItem) => {
+        const icons: Record<string, JSX.Element> = {
+          critical: <ExclamationCircleOutlined style={{ color: '#dc2626', fontSize: 14 }} />,
+          warning: <AlertOutlined style={{ color: '#ea580c', fontSize: 14 }} />,
+          info: <BellOutlined style={{ color: '#2563eb', fontSize: 14 }} />,
+        };
+        return (
+          <Space size={4}>
+            {icons[record.level]}
+            {typeIcon(type)}
+          </Space>
+        );
+      },
     },
     {
       title: t('exc.title'),
       dataIndex: 'title',
-      width: 260,
+      width: 200,
       render: (title: string, record: ExceptionItem) => (
         <Space direction="vertical" size={0}>
-          <Typography.Text strong>{title}</Typography.Text>
-          <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+          <Typography.Text strong style={{ fontSize: 12 }}>{title}</Typography.Text>
+          <Typography.Text type="secondary" style={{ fontSize: 10 }}>
             {record.storeName} · {t(`agent.${record.agentType}`)}
           </Typography.Text>
         </Space>
@@ -85,64 +80,65 @@ export function createExceptionColumns(t: TFunction, handlers: ExceptionColumnHa
     {
       title: t('exc.level'),
       dataIndex: 'level',
-      width: 80,
-      render: (level: string) => <Tag color={LEVEL_COLORS[level]}>{t(`exc.${level}`)}</Tag>,
+      width: 70,
+      render: (level: string) => <Tag color={LEVEL_COLORS[level]} style={{ fontSize: 10, margin: 0 }}>{t(`exc.${level}`)}</Tag>,
     },
     {
       title: t('exc.assignee'),
       dataIndex: 'assignee',
-      width: 90,
+      width: 80,
       render: (assignee: string | undefined) =>
         assignee ? (
-          <Tag icon={<UserOutlined />}>{assignee}</Tag>
+          <Tag icon={<UserOutlined />} style={{ fontSize: 10, margin: 0 }}>{assignee}</Tag>
         ) : (
-          <Typography.Text type="secondary">-</Typography.Text>
+          <Typography.Text type="secondary" style={{ fontSize: 11 }}>-</Typography.Text>
         ),
     },
     {
       title: t('exc.summary'),
       dataIndex: 'summary',
-      width: 280,
+      width: 180,
       ellipsis: true,
     },
     {
       title: t('exc.createdAt'),
       dataIndex: 'createdAt',
-      width: 130,
+      width: 100,
+      render: (at: string) => <Typography.Text type="secondary" style={{ fontSize: 11 }}>{at}</Typography.Text>,
     },
     {
       title: t('common.actions'),
-      width: 360,
+      width: 240,
       render: (_: unknown, record: ExceptionItem) => (
-        <TableActionGroup>
-          <Button size="small" onClick={() => handlers.onView(record)}>
+        <Space size={0} wrap>
+          <Button size="small" type="link" onClick={() => handlers.onView(record)} style={{ padding: '0 4px' }}>
             {t('common.view')}
           </Button>
           {!record.resolved && !record.ignored && (
             <>
-              <Button size="small" type="primary" icon={<CheckCircleOutlined />} onClick={() => handlers.onResolve(record.id)}>
+              <Button size="small" type="link" icon={<CheckCircleOutlined />} onClick={() => handlers.onResolve(record.id)} style={{ padding: '0 4px' }}>
                 {t('exc.resolve')}
               </Button>
-              <Button size="small" icon={<MinusCircleOutlined />} onClick={() => handlers.onIgnore(record.id)}>
+              <Button size="small" type="link" icon={<MinusCircleOutlined />} onClick={() => handlers.onIgnore(record.id)} style={{ padding: '0 4px' }}>
                 {t('exc.ignore')}
               </Button>
             </>
           )}
           {record.ignored && (
             <>
-              <Button size="small" icon={<UndoOutlined />} onClick={() => handlers.onUnignore(record.id)}>
+              <Button size="small" type="link" icon={<UndoOutlined />} onClick={() => handlers.onUnignore(record.id)} style={{ padding: '0 4px' }}>
                 {t('exc.unignore')}
               </Button>
-              <Tag color="default">{t('exc.ignoredStatus')}</Tag>
+              <Tag color="default" style={{ fontSize: 10, margin: 0 }}>{t('exc.ignoredStatus')}</Tag>
             </>
           )}
-          {record.linkTo && (
-            <Button size="small" icon={<EyeOutlined />} onClick={() => handlers.navigate(record.linkTo!)}>
+          {record.linkTo && !record.resolved && !record.ignored && (
+            <Button size="small" type="link" icon={<EyeOutlined />} onClick={() => handlers.navigate(`${record.linkTo}?exc=${record.id}`)} style={{ padding: '0 4px' }}>
               {t('exc.goHandle')}
             </Button>
           )}
-          {record.resolved && <Tag color="green">{t('exc.resolvedStatus')}</Tag>}
-        </TableActionGroup>
+          {record.resolved && <Tag color="green" style={{ fontSize: 10, margin: 0 }}>{t('exc.resolvedStatus')}</Tag>}
+        </Space>
       ),
     },
   ];

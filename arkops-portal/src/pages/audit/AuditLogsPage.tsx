@@ -18,6 +18,10 @@ const categoryColors: Record<AuditCategory, string> = {
   human_ops: 'green',
   system_event: 'purple',
   store_session: 'cyan',
+  task: 'geekblue',
+  agent: 'blue',
+  exception: 'red',
+  store: 'green',
 };
 
 export function AuditLogsPage() {

@@ -41,7 +41,7 @@ export function AdsDashboardModals(props: AdsDashboardModalsProps) {
               width={800}
             >
               <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
-                最近 7 天投放效果总览 · 目标 ROI: 1.5× · 总花费: ${mockCampaigns.reduce((s, c) => s + c.spend, 0)}
+                {`${t('ads.last7DaysOverview')} · ${t('ads.targetROI')}: 1.5× · ${t('ads.totalSpend')}: $${mockCampaigns.reduce((s, c) => s + c.spend, 0)}`}
               </Typography.Text>
               {mockCampaigns.map(c => (
                 <Card
@@ -54,18 +54,18 @@ export function AdsDashboardModals(props: AdsDashboardModalsProps) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <div>
                       <Typography.Text strong style={{ fontSize: 14 }}>{c.name}</Typography.Text>
-                      <Typography.Text type="secondary" style={{ marginLeft: 8, fontSize: 11 }}>{c.id} · {c.status === 'active' ? '投放中' : '已暂停'}</Typography.Text>
+                      <Typography.Text type="secondary" style={{ marginLeft: 8, fontSize: 11 }}>{c.id} · {c.status === 'active' ? t('ads.active') : t('ads.paused')}</Typography.Text>
                     </div>
                     <Space size={8}>
                       <Tag color={c.roi >= 1.5 ? 'green' : c.roi >= 1.0 ? 'orange' : 'red'} style={{ fontSize: 11 }}>
-                        ROI {c.roi}× {c.roi >= 1.5 ? '✓ 达标' : c.roi >= 1.0 ? '⚠ 偏低' : '✗ 不达标'}
+                        ROI {c.roi}× {c.roi >= 1.5 ? t('ads.meetStandard') : c.roi >= 1.0 ? t('ads.lowROI') : t('ads.notMeetStandard')}
                       </Tag>
                     </Space>
                   </div>
                   <Row gutter={[16, 8]}>
                     <Col span={6}>
                       <div style={{ marginBottom: 4 }}>
-                        <Typography.Text type="secondary" style={{ fontSize: 10 }}>预算使用</Typography.Text>
+                        <Typography.Text type="secondary" style={{ fontSize: 10 }}>{t('ads.budgetUsed')}</Typography.Text>
                         <Typography.Text strong style={{ display: 'block', fontSize: 14 }}>${c.budget}</Typography.Text>
                       </div>
                       <Progress
@@ -79,17 +79,17 @@ export function AdsDashboardModals(props: AdsDashboardModalsProps) {
                       <Statistic title="ROI" value={c.roi} suffix="×" valueStyle={{ fontSize: 20, color: c.roi >= 1.5 ? '#16a34a' : c.roi >= 1.0 ? '#ea580c' : '#dc2626' }} />
                     </Col>
                     <Col span={4}>
-                      <Statistic title="曝光" value={(c.impressions / 1000).toFixed(1)} suffix="k" valueStyle={{ fontSize: 14 }} />
+                      <Statistic title={t('ads.impressions')} value={(c.impressions / 1000).toFixed(1)} suffix="k" valueStyle={{ fontSize: 14 }} />
                     </Col>
                     <Col span={4}>
-                      <Statistic title="点击" value={c.clicks} valueStyle={{ fontSize: 14 }} />
+                      <Statistic title={t('ads.clicks')} value={c.clicks} valueStyle={{ fontSize: 14 }} />
                     </Col>
                     <Col span={4}>
                       <Statistic title="CTR" value={(c.clicks / c.impressions * 100).toFixed(1)} suffix="%" valueStyle={{ fontSize: 14 }} />
                     </Col>
                     <Col span={2} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Button size="small" type="link" icon={<ToolOutlined />} style={{ fontSize: 11, padding: 0 }}>
-                        调整
+                      <Button size="small" type="link" icon={<ToolOutlined />} style={{ fontSize: 11, padding: 0 }} onClick={() => { onCloseAdsDashboard(); setAdOptimizeOpen(true); }}>
+                        {t('ads.adjust')}
                       </Button>
                     </Col>
                   </Row>
@@ -107,30 +107,30 @@ export function AdsDashboardModals(props: AdsDashboardModalsProps) {
               title={<><ToolOutlined /> {t('agent.adOptimize')}</>}
               open={adOptimizeOpen}
               onCancel={() => setAdOptimizeOpen(false)}
-              onOk={() => { setAdOptimizeOpen(false); message.success('预算已重新分配！总预算 $1,200 → CA-001: $550, CA-002: $150, CA-003: $500'); }}
+              onOk={() => { setAdOptimizeOpen(false); message.success(t('ads.budgetReallocated')); }}
               okText={t('agent.adApply')}
               width={680}
             >
               <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 16 }}>
-                AI 分析了最近 7 天的投放数据，建议将低效计划 CA-002 的预算转移至高 ROI 计划 CA-001。
+                {t('ads.aiAnalysisDesc')}
               </Typography.Paragraph>
               {mockBudgetSuggestions.map(s => (
                 <Card key={s.campaignId} size="small" style={{ marginBottom: 12 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <Typography.Text strong style={{ fontSize: 13 }}>{s.campaignId}</Typography.Text>
                     <Tag color={s.suggested > s.current ? 'green' : s.suggested < s.current ? 'red' : 'default'} style={{ fontSize: 10 }}>
-                      {s.suggested > s.current ? '↑ 增加' : s.suggested < s.current ? '↓ 减少' : '→ 不变'}
+                      {s.suggested > s.current ? t('ads.increase') : s.suggested < s.current ? t('ads.decrease') : t('ads.noChange')}
                     </Tag>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ flex: 1 }}>
                       <Row gutter={8}>
                         <Col span={12}>
-                          <Typography.Text type="secondary" style={{ fontSize: 10 }}>当前</Typography.Text>
+                          <Typography.Text type="secondary" style={{ fontSize: 10 }}>{t('ads.current')}</Typography.Text>
                           <Typography.Text strong style={{ display: 'block', fontSize: 16, color: '#64748b' }}>${s.current}</Typography.Text>
                         </Col>
                         <Col span={12}>
-                          <Typography.Text type="secondary" style={{ fontSize: 10 }}>建议</Typography.Text>
+                          <Typography.Text type="secondary" style={{ fontSize: 10 }}>{t('ads.suggested')}</Typography.Text>
                           <Typography.Text strong style={{ display: 'block', fontSize: 16, color: s.suggested > s.current ? '#16a34a' : s.suggested < s.current ? '#dc2626' : '#64748b' }}>
                             ${s.suggested}
                           </Typography.Text>
@@ -144,7 +144,7 @@ export function AdsDashboardModals(props: AdsDashboardModalsProps) {
               <div style={{ marginTop: 12, padding: '10px 14px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0' }}>
                 <Typography.Text style={{ fontSize: 12 }}>
                   <CheckCircleOutlined style={{ color: '#16a34a', marginRight: 4 }} />
-                  预计调整后整体 ROI 从 1.48× 提升至 1.72×，月利润增加约 $320
+                  {t('ads.expectedROI')}
                 </Typography.Text>
               </div>
             </Modal>

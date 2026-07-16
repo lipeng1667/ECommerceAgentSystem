@@ -55,7 +55,7 @@ export const exceptionItems: ExceptionItem[] = [
   },
   {
     id: 'ex_004', type: 'ad_low_roi', title: '广告计划 ROI 跌破红线',
-    storeName: 'TikTok Shop 美国旗舰店', agentType: '广告投放',
+    storeName: 'TikTok Shop 美国旗舰店', agentType: 'ads_optimizer',
     level: 'warning', summary: '广告计划 C-102 连续 3 天 ROI < 1.5，已自动暂停但预算仍消耗 $612。',
     detail: '计划: C-102 蓝牙耳机促销\n7 天花费: $612，GMV: $869，ROI: 1.42\n红线: 1.5\n建议: 更换素材或降低出价',
     suggestedAction: '审核广告素材，决定是否重启或永久关闭',
@@ -73,7 +73,7 @@ export const exceptionItems: ExceptionItem[] = [
   },
   {
     id: 'ex_007', type: 'compliance_flag', title: '合规风险标记',
-    storeName: 'TikTok Shop 美国旗舰店', agentType: '风险控制',
+    storeName: 'TikTok Shop 美国旗舰店', agentType: 'risk_control',
     level: 'warning', summary: '蓝牙耳机商品描述含"最强降噪"，被标记为可能违反广告法。',
     detail: '商品: SKU BT-E01 蓝牙耳机 Pro\n问题: 描述含绝对化用语 "最强"\n法规: 广告法第 9 条禁止 "最" 字类绝对化用语',
     suggestedAction: '修改描述为 "高效降噪" 或 "顶级降噪体验"',
@@ -98,7 +98,7 @@ export const agentLogData: AgentLogEntry[] = [
 ];
 
 // ===== 所有可能的 Agent 类型（用于筛选） =====
-export const ALL_AGENT_TYPES = ['评价管理', '客服消息', '广告投放', '售后处理', '风险控制'];
+export const ALL_AGENT_TYPES = ['review_manager', 'customer_service', 'ads_optimizer', 'after_sales', 'risk_control'];
 
 
 export const LEVEL_COLORS: Record<string, string> = { critical: 'red', warning: 'orange', info: 'blue' };

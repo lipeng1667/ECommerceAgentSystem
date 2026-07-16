@@ -188,10 +188,27 @@ export const mockCampaigns = [
   { id: 'CA-003', name: 'Earbuds Pro - UK', budget: 400, spend: 310, roi: 1.55, impressions: 33400, clicks: 1120, status: 'active' as const },
 ];
 
+export const mockCompetitorPrices = [
+  { id: 1, competitor: 'TechNova Official', product: 'Wireless Earbuds Pro 2', theirPrice: 28.99, ourPrice: 32.99, lastChangePct: -5.2, lastUpdated: '2h ago' },
+  { id: 2, competitor: 'GadgetHub Store', product: 'Wireless Earbuds Pro 2', theirPrice: 31.50, ourPrice: 32.99, lastChangePct: 0, lastUpdated: '5h ago' },
+  { id: 3, competitor: 'SoundWave Direct', product: 'Bluetooth Speaker Mini', theirPrice: 19.99, ourPrice: 18.99, lastChangePct: 8.5, lastUpdated: '1h ago' },
+  { id: 4, competitor: 'TechNova Official', product: 'USB-C Fast Charger 65W', theirPrice: 24.99, ourPrice: 24.99, lastChangePct: -3.1, lastUpdated: '3h ago' },
+  { id: 5, competitor: 'PowerDeal Shop', product: 'USB-C Fast Charger 65W', theirPrice: 22.49, ourPrice: 24.99, lastChangePct: -12.0, lastUpdated: '6h ago' },
+  { id: 6, competitor: 'GadgetHub Store', product: 'Smart Watch Lite', theirPrice: 45.00, ourPrice: 39.99, lastChangePct: 2.3, lastUpdated: '4h ago' },
+];
+
 export const mockBudgetSuggestions = [
   { campaignId: 'CA-001', current: 500, suggested: 550, reason: 'High ROI, increase to capture more demand' },
   { campaignId: 'CA-002', current: 300, suggested: 150, reason: 'ROI 0.8× below target, reduce and reallocate to CA-001' },
   { campaignId: 'CA-003', current: 400, suggested: 400, reason: 'Steady performance, maintain current budget' },
+];
+
+export const mockAfterSalesTickets = [
+  { id: 'AS-1001', customer: 'John D.', type: 'return', status: 'pending_review', product: '蓝牙耳机 Pro', reason: '续航不达标', amount: 32.99 },
+  { id: 'AS-1002', customer: 'Sarah K.', type: 'refund', status: 'auto_approved', product: '65W 充电器', reason: '商品损坏', amount: 39.99 },
+  { id: 'AS-1003', customer: 'Mike L.', type: 'return', status: 'processed', product: '运动T恤', reason: '尺码不符', amount: 12.99 },
+  { id: 'AS-1004', customer: 'Emma W.', type: 'consult', status: 'resolved', product: 'LED 灯带', reason: '安装咨询', amount: 0 },
+  { id: 'AS-1005', customer: 'Tom H.', type: 'refund', status: 'pending_review', product: '露营椅', reason: '质量问题', amount: 24.99 },
 ];
 
 export interface ABTestResult {

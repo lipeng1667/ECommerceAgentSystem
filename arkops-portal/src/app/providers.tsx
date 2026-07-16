@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider, theme as antdTheme } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import type { PropsWithChildren } from 'react';
+import { AuthProvider } from './auth';
 import { DemoModeProvider } from './demoMode';
 import { I18nProvider } from './i18n';
 import { ThemeProvider, useTheme } from './theme';
@@ -58,14 +59,16 @@ function AntDesignThemeProvider({ children }: PropsWithChildren) {
 
 export function AppProviders({ children }: PropsWithChildren) {
   return (
-    <DemoModeProvider>
-      <ThemeProvider>
-        <AntDesignThemeProvider>
-          <I18nProvider>
-            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-          </I18nProvider>
-        </AntDesignThemeProvider>
-      </ThemeProvider>
-    </DemoModeProvider>
+    <AuthProvider>
+      <DemoModeProvider>
+        <ThemeProvider>
+          <AntDesignThemeProvider>
+            <I18nProvider>
+              <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+            </I18nProvider>
+          </AntDesignThemeProvider>
+        </ThemeProvider>
+      </DemoModeProvider>
+    </AuthProvider>
   );
 }

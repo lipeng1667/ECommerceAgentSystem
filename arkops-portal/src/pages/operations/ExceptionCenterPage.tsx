@@ -1,7 +1,6 @@
 import {
   AlertOutlined,
   CheckCircleOutlined,
-  DashOutlined,
   ExclamationCircleOutlined,
   EyeOutlined,
   MinusCircleOutlined,
@@ -27,11 +26,12 @@ import {
   Typography,
   message,
 } from 'antd';
-import { useState } from 'react';
+import { useState, type Key } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useI18n } from '../../app/i18n';
 import { dashboardApi } from '../../api/dashboard';
+import { exceptionsApi } from '../../api/exceptions';
 import { PageFilterBar } from '../../components/filters/PageFilterBar';
 import { PageHeader } from '../../components/PageHeader';
 import { createAgentLogColumns, createExceptionColumns } from './exceptionCenterColumns';
@@ -40,19 +40,23 @@ import {
   ASSIGNEE_OPTIONS,
   LEVEL_COLORS,
   agentLogData,
-  exceptionItems,
 } from './exceptionCenterMockData';
 import type { ExceptionItem, ExceptionStatus, ExceptionType } from './exceptionCenterMockData';
 
 export function ExceptionCenterPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const [items, setItems] = useState<ExceptionItem[]>(exceptionItems);
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<ExceptionStatus>('pending');
   const [agentFilter, setAgentFilter] = useState<string>('all');
   const [detailItem, setDetailItem] = useState<ExceptionItem | null>(null);
   const [assigneeModal, setAssigneeModal] = useState<string | undefined>(undefined);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
 
+  const { data: items = [] } = useQuery({
+    queryKey: ['exceptions'],
+    queryFn: exceptionsApi.list,
+  });
   const { data: dashboard } = useQuery({
     queryKey: ['dashboard'],
     queryFn: dashboardApi.getSummary,
@@ -73,38 +77,81 @@ export function ExceptionCenterPage() {
     return true;
   });
 
+  // 优先级排序：critical 优先，同级别按时间倒序（新的在前）
+  const sortedFiltered = [...filtered].sort((a, b) => {
+    const levelOrder = { critical: 0, warning: 1, info: 2 };
+    const levelDiff = levelOrder[a.level] - levelOrder[b.level];
+    if (levelDiff !== 0) return levelDiff;
+    return b.createdAt.localeCompare(a.createdAt);
+  });
+
   const pendingCount = items.filter((i) => !i.resolved && !i.ignored).length;
   const criticalCount = items.filter((i) => !i.resolved && !i.ignored && i.level === 'critical').length;
 
-  const resolveItem = (id: string) => {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, resolved: true, ignored: false } : i)));
-    message.success(t('exc.resolved'));
-    setDetailItem(null);
-  };
+  const resolveMutation = useMutation({
+    mutationFn: (id: string) => exceptionsApi.resolve(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exceptions'] });
+      message.success(t('exc.resolved'));
+      setDetailItem(null);
+    },
+  });
 
-  const ignoreItem = (id: string) => {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ignored: true } : i)));
-    message.success(t('exc.ignored'));
-    setDetailItem(null);
-  };
+  const ignoreMutation = useMutation({
+    mutationFn: (id: string) => exceptionsApi.ignore(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exceptions'] });
+      message.success(t('exc.ignored'));
+      setDetailItem(null);
+    },
+  });
 
-  const unignoreItem = (id: string) => {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ignored: false } : i)));
-    message.success(t('exc.unignore'));
-  };
+  const unignoreMutation = useMutation({
+    mutationFn: (id: string) => exceptionsApi.unignore(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exceptions'] });
+      message.success(t('exc.unignore'));
+    },
+  });
 
-  const assignItem = (id: string, assignee: string) => {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, assignee } : i)));
-    message.success(t('exc.assign') + ': ' + assignee);
+  const assignMutation = useMutation({
+    mutationFn: ({ id, assignee }: { id: string; assignee: string }) => exceptionsApi.assign(id, assignee),
+    onSuccess: (_data, { assignee }) => {
+      queryClient.invalidateQueries({ queryKey: ['exceptions'] });
+      message.success(t('exc.assign') + ': ' + assignee);
+    },
+  });
+
+  const batchResolveMutation = useMutation({
+    mutationFn: (ids: string[]) => exceptionsApi.batchResolve(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exceptions'] });
+      message.success(t('exc.resolved'));
+      setSelectedRowKeys([]);
+    },
+  });
+
+  const batchIgnoreMutation = useMutation({
+    mutationFn: (ids: string[]) => exceptionsApi.batchIgnore(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exceptions'] });
+      message.success(t('exc.ignored'));
+      setSelectedRowKeys([]);
+    },
+  });
+
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: (keys: Key[]) => setSelectedRowKeys(keys),
   };
 
   const typeLabel = (type: ExceptionType) => t(`exc.type_${type}`);
 
   const columns = createExceptionColumns(t, {
     navigate,
-    onIgnore: ignoreItem,
-    onResolve: resolveItem,
-    onUnignore: unignoreItem,
+    onIgnore: (id) => ignoreMutation.mutate(id),
+    onResolve: (id) => resolveMutation.mutate(id),
+    onUnignore: (id) => unignoreMutation.mutate(id),
     onView: (record) => {
       setDetailItem(record);
       setAssigneeModal(record.assignee);
@@ -189,7 +236,7 @@ export function ExceptionCenterPage() {
                     onChange={(v) => setAgentFilter(v as string)}
                     options={[
                       { label: t('exc.allAgents'), value: 'all' },
-                      ...ALL_AGENT_TYPES.map((at) => ({ label: at, value: at })),
+                      ...ALL_AGENT_TYPES.map((at) => ({ label: t(`agent.${at}`), value: at })),
                     ]}
                   />
                   <Segmented
@@ -204,14 +251,33 @@ export function ExceptionCenterPage() {
                     ]}
                   />
                 </PageFilterBar>
+                {selectedRowKeys.length > 0 && (
+                  <Space style={{ marginBottom: 8 }}>
+                    <Button
+                      size="small"
+                      icon={<CheckCircleOutlined />}
+                      onClick={() => batchResolveMutation.mutate(selectedRowKeys.map(String))}
+                    >
+                      {t('exc.batchResolve')} ({selectedRowKeys.length})
+                    </Button>
+                    <Button
+                      size="small"
+                      icon={<MinusCircleOutlined />}
+                      onClick={() => batchIgnoreMutation.mutate(selectedRowKeys.map(String))}
+                    >
+                      {t('exc.batchIgnore')} ({selectedRowKeys.length})
+                    </Button>
+                  </Space>
+                )}
                 <Table
                   rowKey="id"
+                  rowSelection={rowSelection}
                   columns={columns}
-                  dataSource={filtered}
+                  dataSource={sortedFiltered}
                   pagination={false}
                   size="small"
                   tableLayout="fixed"
-                  scroll={{ x: 1360 }}
+                  scroll={{ x: 980 }}
                 />
               </>
             ),
@@ -251,16 +317,16 @@ export function ExceptionCenterPage() {
               <Button onClick={() => setDetailItem(null)}>{t('common.close')}</Button>
               {!detailItem.resolved && !detailItem.ignored && (
                 <>
-                  <Button icon={<MinusCircleOutlined />} onClick={() => ignoreItem(detailItem.id)}>
+                  <Button icon={<MinusCircleOutlined />} onClick={() => ignoreMutation.mutate(detailItem.id)}>
                     {t('exc.ignore')}
                   </Button>
-                  <Button type="primary" icon={<CheckCircleOutlined />} onClick={() => resolveItem(detailItem.id)}>
+                  <Button type="primary" icon={<CheckCircleOutlined />} onClick={() => resolveMutation.mutate(detailItem.id)}>
                     {t('exc.resolve')}
                   </Button>
                 </>
               )}
               {detailItem.ignored && (
-                <Button type="primary" icon={<UndoOutlined />} onClick={() => { unignoreItem(detailItem.id); setDetailItem(null); }}>
+                <Button type="primary" icon={<UndoOutlined />} onClick={() => { unignoreMutation.mutate(detailItem.id); setDetailItem(null); }}>
                   {t('exc.unignore')}
                 </Button>
               )}
@@ -277,7 +343,7 @@ export function ExceptionCenterPage() {
                 <Tag color={LEVEL_COLORS[detailItem.level]}>{t(`exc.${detailItem.level}`)}</Tag>
               </Descriptions.Item>
               <Descriptions.Item label={t('exc.store')}>{detailItem.storeName}</Descriptions.Item>
-              <Descriptions.Item label={t('exc.agent')}>{detailItem.agentType}</Descriptions.Item>
+              <Descriptions.Item label={t('exc.agent')}>{t(`agent.${detailItem.agentType}`)}</Descriptions.Item>
               <Descriptions.Item label={t('exc.createdAt')}>{detailItem.createdAt}</Descriptions.Item>
               {detailItem.ignored && (
                 <Descriptions.Item label={t('exc.ignoredStatus')}>
@@ -303,7 +369,7 @@ export function ExceptionCenterPage() {
                   size="small"
                   onClick={() => {
                     if (assigneeModal) {
-                      assignItem(detailItem.id, assigneeModal);
+                      assignMutation.mutate({ id: detailItem.id, assignee: assigneeModal });
                     }
                   }}
                 >

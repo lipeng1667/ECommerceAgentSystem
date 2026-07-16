@@ -12,7 +12,7 @@ import {
   WalletOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Breadcrumb, Button, Card, Checkbox, Col, Form, Input, Modal, Row, Select, Space, Table, Tag, Typography, message } from 'antd';
+import { Breadcrumb, Button, Card, Checkbox, Col, Form, Input, Modal, Popconfirm, Row, Select, Space, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useState } from 'react';
@@ -40,11 +40,17 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
   });
   const createStore = useMutation({
     mutationFn: storesApi.create,
-    onSuccess: (created) => navigate(`/stores/${created.id}`)
+    onSuccess: (created) => {
+      message.success(t('common.operationSuccess'));
+      navigate(`/stores/${created.id}`);
+    }
   });
   const revokeMutation = useMutation({
     mutationFn: () => storesApi.updateStatus(parsedStoreId!, 'revoked'),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['store', parsedStoreId] })
+    onSuccess: () => {
+      message.success(t('common.operationSuccess'));
+      queryClient.invalidateQueries({ queryKey: ['store', parsedStoreId] });
+    }
   });
   const [connectionModalOpen, setConnectionModalOpen] = useState(false);
   const [connectionForm] = Form.useForm();
@@ -480,9 +486,11 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
         title={store?.name ?? t('stores.detailTitle')}
         description={t('stores.detailDescription')}
         actions={
-          <Button danger icon={<StopOutlined />} onClick={() => revokeMutation.mutate()} disabled={store?.status === 'revoked'}>
-            {t('stores.revoke')}
-          </Button>
+          <Popconfirm title={t('common.confirmDelete')} onConfirm={() => revokeMutation.mutate()} okText={t('common.confirm')} cancelText={t('common.cancel')} okButtonProps={{ danger: true }} disabled={store?.status === 'revoked'}>
+            <Button danger icon={<StopOutlined />} disabled={store?.status === 'revoked'}>
+              {t('stores.revoke')}
+            </Button>
+          </Popconfirm>
         }
       />
       {settingsTab}

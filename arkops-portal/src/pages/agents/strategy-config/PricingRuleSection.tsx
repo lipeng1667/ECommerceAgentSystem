@@ -1,33 +1,11 @@
-import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button, Card, Col, Input, InputNumber, Row, Select, Space, Switch, Tag, Typography, Upload, message } from 'antd';
-import { agentsApi } from '../../../api/agents';
+import { Button, InputNumber, Select, Space, Switch, Typography, Upload } from 'antd';
 import { useI18n } from '../../../app/i18n';
-import type { AgentConfig } from '../../../types/domain';
-
-type AgentWithStrategyConfig = AgentConfig & { strategyConfig: NonNullable<AgentConfig['strategyConfig']> };
+import { updateConfigSection, type AgentWithStrategyConfig } from './sharedUtils';
 
 interface PricingRuleSectionProps {
   agent: AgentWithStrategyConfig;
-}
-
-/** 安全更新 strategyConfig 子段，触发 React 重新渲染 */
-function updateConfigSection(
-  queryClient: ReturnType<typeof useQueryClient>,
-  agent: AgentWithStrategyConfig,
-  sectionKey: string,
-  updater: (section: any) => any,
-) {
-  queryClient.setQueryData(['agent', agent.agentType], (prev: any) => {
-    if (!prev?.strategyConfig) return prev;
-    return {
-      ...prev,
-      strategyConfig: {
-        ...prev.strategyConfig,
-        [sectionKey]: updater(prev.strategyConfig[sectionKey]),
-      },
-    };
-  });
 }
 
 export function PricingRuleSection({ agent }: PricingRuleSectionProps) {

@@ -27,6 +27,7 @@ import {
   Tabs,
   Typography,
   Upload,
+  Popconfirm,
   message
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -253,7 +254,9 @@ export function ProductManagementPage() {
       render: (_: unknown, record: ProductSimple) => (
         <Space>
           <Button size="small" icon={<EditOutlined />} onClick={() => openEditProduct(record)}>{t('common.edit')}</Button>
-          <Button size="small" danger icon={<DeleteOutlined />} onClick={() => deleteProduct(record.id)}>{t('common.delete')}</Button>
+          <Popconfirm title={t('common.confirmDelete')} onConfirm={() => deleteProduct(record.id)} okText={t('common.confirm')} cancelText={t('common.cancel')} okButtonProps={{ danger: true }}>
+            <Button size="small" danger icon={<DeleteOutlined />}>{t('common.delete')}</Button>
+          </Popconfirm>
         </Space>
       ),
     },

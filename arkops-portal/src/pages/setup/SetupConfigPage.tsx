@@ -1,7 +1,5 @@
 import {
-  ApiOutlined,
   CheckCircleOutlined,
-  CustomerServiceOutlined,
   PlusOutlined,
   RobotOutlined,
   SafetyCertificateOutlined,
@@ -12,8 +10,8 @@ import {
   ShoppingCartOutlined,
   SmileOutlined,
   ThunderboltOutlined,
-  WalletOutlined,
   WifiOutlined,
+  ApiOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, Checkbox, Col, Collapse, Empty, InputNumber, message, Row, Select, Space, Steps, Switch, Table, Tag, Typography } from 'antd';
@@ -23,6 +21,7 @@ import { agentsApi } from '../../api/agents';
 import { storesApi } from '../../api/stores';
 import { useI18n } from '../../app/i18n';
 import { PageHeader } from '../../components/PageHeader';
+import { SERVICE_ICONS, getSessionHealthColor, renderSessionTag } from '../../utils/storeDisplay';
 import type { AgentType, Store } from '../../types/domain';
 
 // 场景 → Agent 映射
@@ -41,29 +40,6 @@ const scenarioMeta: Record<string, { icon: React.ReactNode; title: string; desc:
   aftersales: { icon: <SafetyCertificateOutlined />, title: '售后全托管', desc: '退货处理 · 财务对账', color: '#ea580c' },
   risk: { icon: <SafetyOutlined />, title: '安全风控', desc: '合规 · 熔断', color: '#dc2626' },
 };
-
-const serviceIcons: Record<string, JSX.Element> = {
-  advertising: <ThunderboltOutlined />,
-  customer_service: <CustomerServiceOutlined />,
-  logistics: <ShoppingCartOutlined />,
-  finance: <WalletOutlined />,
-  other: <ApiOutlined />
-};
-
-const sessionHealthColor: Record<string, string> = {
-  connected: 'green',
-  login_required: 'red',
-  pending_login: 'orange',
-  expired: 'red',
-  revoked: 'default'
-};
-
-function sessionTag(status: string): JSX.Element {
-  if (status === 'connected') return <Tag color="green">Active</Tag>;
-  if (status === 'login_required') return <Tag color="red">Expired</Tag>;
-  if (status === 'pending_login') return <Tag color="orange">Pending</Tag>;
-  return <Tag>Unknown</Tag>;
-}
 
 export function SetupConfigPage() {
   const { t } = useI18n();
@@ -274,10 +250,10 @@ export function SetupConfigPage() {
                   <Space size={4}>
                     <span style={{
                       display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
-                      background: sessionHealthColor[record.status] === 'green' ? '#16a34a' : sessionHealthColor[record.status] === 'red' ? '#dc2626' : sessionHealthColor[record.status] === 'orange' ? '#ea580c' : '#94a3b8',
+                      background: getSessionHealthColor(record.status) === 'green' ? '#16a34a' : getSessionHealthColor(record.status) === 'red' ? '#dc2626' : getSessionHealthColor(record.status) === 'orange' ? '#ea580c' : '#94a3b8',
                       flexShrink: 0
                     }} />
-                    {sessionTag(record.status)}
+                    {renderSessionTag(record.status)}
                   </Space>
                 )
               },
@@ -288,7 +264,7 @@ export function SetupConfigPage() {
                   return (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                       {connections.map((c) => (
-                        <Tag key={c.id} icon={serviceIcons[c.serviceType] ?? <ApiOutlined />}>
+                        <Tag key={c.id} icon={SERVICE_ICONS[c.serviceType] ?? SERVICE_ICONS.other}>
                           {c.serviceName}
                         </Tag>
                       ))}
@@ -332,7 +308,7 @@ export function SetupConfigPage() {
             ) : (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {storeConnections.map((c) => (
-                  <Tag key={c.id} icon={serviceIcons[c.serviceType] ?? <ApiOutlined />} style={{ fontSize: 12, padding: '4px 10px' }}>
+                  <Tag key={c.id} icon={SERVICE_ICONS[c.serviceType] ?? SERVICE_ICONS.other} style={{ fontSize: 12, padding: '4px 10px' }}>
                     {c.serviceName}
                   </Tag>
                 ))}

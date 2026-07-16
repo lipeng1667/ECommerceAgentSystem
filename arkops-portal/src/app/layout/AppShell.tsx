@@ -19,13 +19,17 @@ import {
   SunOutlined,
   TeamOutlined
 } from '@ant-design/icons';
-import { Avatar, Badge, Button, Layout, Menu, Segmented, Space, Tag, Typography } from 'antd';
+import { Avatar, Badge, Button, Layout, Menu, Segmented, Select, Space, Tag, Typography } from 'antd';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDemoMode } from '../demoMode';
 import { useI18n } from '../i18n';
 import { useTheme } from '../theme';
 import { dashboardApi } from '../../api/dashboard';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '../auth';
+import { getAccessiblePaths } from '../rolePermissions';
+import type { Role } from '../rolePermissions';
+import { OnboardingTour } from '../../components/OnboardingTour';
 
 const { Header, Sider, Content } = Layout;
 
@@ -46,6 +50,7 @@ function getSelectedMenuKey(pathname: string) {
   if (pathname === '/agents/exceptions') return '/agents/exceptions';
   if (pathname === '/agents/approvals') return '/agents/approvals';
   if (pathname.startsWith('/agents/')) return '/agents';
+  if (pathname === '/agents') return '/agents';
   return routeMenuPrefixes.find((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) ?? pathname;
 }
 
@@ -55,6 +60,26 @@ export function AppShell() {
   const { language, setLanguage, t } = useI18n();
   const { mode, setMode } = useTheme();
   const { isDemo, exitDemo } = useDemoMode();
+  const { role, setRole } = useAuth();
+  const accessiblePaths = getAccessiblePaths(role ?? 'Owner');
+
+  /** Filter menu items based on role permissions */
+  function filterMenuByRole(items: any[]): any[] {
+    if (!accessiblePaths) return items; // null = all visible
+    return items.filter(item => {
+      if (item.children) {
+        const filteredChildren = filterMenuByRole(item.children);
+        return filteredChildren.length > 0;
+      }
+      return accessiblePaths.includes(item.key);
+    }).map(item => {
+      if (item.children) {
+        return { ...item, children: filterMenuByRole(item.children) };
+      }
+      return item;
+    });
+  }
+
   const { data: dashboard } = useQuery({
     queryKey: ['dashboard'],
     queryFn: dashboardApi.getSummary,
@@ -89,7 +114,7 @@ export function AppShell() {
 
     // 4. Agent 中心
     {
-      key: '/agents',
+      key: 'agents-group',
       icon: <RobotOutlined />,
       label: t('nav.agents'),
       children: [
@@ -157,8 +182,8 @@ export function AppShell() {
         <Menu
           mode="inline"
           selectedKeys={[selectedMenuKey]}
-          defaultOpenKeys={['/agents', 'settings']}
-          items={menuItems}
+          defaultOpenKeys={['agents-group', 'settings']}
+          items={filterMenuByRole(menuItems)}
           onClick={({ key }) => navigate(key)}
         />
       </Sider>
@@ -189,6 +214,20 @@ export function AppShell() {
               ]}
             />
             <Button icon={<BellOutlined />}>{t('app.alerts')}</Button>
+            <Select
+              size="small"
+              value={role ?? 'Owner'}
+              onChange={(v) => setRole(v as Role)}
+              style={{ width: 110 }}
+              options={[
+                { label: 'Owner', value: 'Owner' },
+                { label: 'Admin', value: 'Admin' },
+                { label: 'Operator', value: 'Operator' },
+                { label: 'Approver', value: 'Approver' },
+                { label: 'Finance', value: 'Finance' },
+                { label: 'Viewer', value: 'Viewer' },
+              ]}
+            />
             <Avatar style={{ background: '#2563eb' }}>LP</Avatar>
           </Space>
         </Header>
@@ -219,6 +258,7 @@ export function AppShell() {
           <Outlet />
         </Content>
       </Layout>
+      <OnboardingTour />
     </Layout>
   );
 }

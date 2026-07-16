@@ -30,6 +30,7 @@ export function CustomerServiceModal(props: CustomerServiceModalProps) {
   const { customerServiceOpen, onCloseCustomerService } = props;
   const [csActiveChat, setCsActiveChat] = useState(0);
   const [csInput, setCsInput] = useState('');
+  const [extraMessages, setExtraMessages] = useState<Record<number, Array<{ from: 'agent'; text: string; time: string }>>>({});
 
   return (
     <Modal
@@ -44,8 +45,8 @@ export function CustomerServiceModal(props: CustomerServiceModalProps) {
               {/* 会话列表 */}
               <div style={{ width: 220, borderRight: '1px solid var(--ark-border)', overflow: 'auto', background: '#fafbfc' }}>
                 <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--ark-border-soft)' }}>
-                  <Typography.Text strong style={{ fontSize: 12 }}>在线会话</Typography.Text>
-                  <Badge status="processing" text={<Typography.Text style={{ fontSize: 10 }}>AI 自动回复中</Typography.Text>} style={{ display: 'block', marginTop: 2 }} />
+                  <Typography.Text strong style={{ fontSize: 12 }}>{t('cs.onlineChats')}</Typography.Text>
+                  <Badge status="processing" text={<Typography.Text style={{ fontSize: 10 }}>{t('cs.aiAutoReply')}</Typography.Text>} style={{ display: 'block', marginTop: 2 }} />
                 </div>
                 {mockConversations.map(conv => (
                   <div
@@ -64,7 +65,7 @@ export function CustomerServiceModal(props: CustomerServiceModalProps) {
                     </div>
                     <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{conv.product}</Typography.Text>
                     <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block' }} ellipsis>
-                      {conv.escalate && <Tag color="red" style={{ fontSize: 10, marginRight: 4, padding: '0 4px' }}>待转人工</Tag>}
+                      {conv.escalate && <Tag color="red" style={{ fontSize: 10, marginRight: 4, padding: '0 4px' }}>{t('cs.escalate')}</Tag>}
                       {conv.lastMsg}
                     </Typography.Text>
                     <Typography.Text type="secondary" style={{ fontSize: 10 }}>{conv.time}</Typography.Text>
@@ -78,20 +79,20 @@ export function CustomerServiceModal(props: CustomerServiceModalProps) {
                   <div>
                     <Typography.Text strong style={{ fontSize: 13 }}>{mockConversations[csActiveChat].name}</Typography.Text>
                     <Typography.Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>
-                      购买: {mockConversations[csActiveChat].product}
+                      {t('cs.purchased')}: {mockConversations[csActiveChat].product}
                     </Typography.Text>
                   </div>
                   <Space size={4}>
                     {mockConversations[csActiveChat].escalate ? (
-                      <Tag color="red" style={{ fontSize: 10 }}>已转人工</Tag>
+                      <Tag color="red" style={{ fontSize: 10 }}>{t('cs.transferredToHuman')}</Tag>
                     ) : (
-                      <Tag color="green" style={{ fontSize: 10 }}>AI 应答中</Tag>
+                      <Tag color="green" style={{ fontSize: 10 }}>{t('cs.aiResponding')}</Tag>
                     )}
                   </Space>
                 </div>
                 {/* 消息列表 */}
                 <div style={{ flex: 1, overflow: 'auto', padding: '12px 16px', background: 'var(--ark-bg)' }}>
-                  {mockChats[csActiveChat].map((msg, i) => (
+                  {[...mockChats[csActiveChat], ...(extraMessages[csActiveChat] || [])].map((msg, i) => (
                     <div key={i} style={{ marginBottom: 10, display: 'flex', flexDirection: 'column', alignItems: msg.from === 'buyer' ? 'flex-end' : 'flex-start' }}>
                       {msg.from === 'ai' && (
                         <Typography.Text type="secondary" style={{ fontSize: 9, marginBottom: 2, marginLeft: 4 }}>
@@ -104,7 +105,7 @@ export function CustomerServiceModal(props: CustomerServiceModalProps) {
                         border: msg.from === 'ai' ? '1px solid #bbf7d0' : msg.from === 'agent' ? '1px solid #fde68a' : '1px solid transparent',
                         fontSize: 12, lineHeight: 1.55
                       }}>
-                        {msg.from === 'agent' && <Tag color="gold" style={{ fontSize: 9, marginBottom: 2, padding: '0 3px', lineHeight: '14px' }}>人工客服</Tag>}
+                        {msg.from === 'agent' && <Tag color="gold" style={{ fontSize: 9, marginBottom: 2, padding: '0 3px', lineHeight: '14px' }}>{t('cs.humanAgent')}</Tag>}
                         {msg.text}
                       </div>
                       <Typography.Text type="secondary" style={{ fontSize: 9, marginTop: 2 }}>{msg.time}</Typography.Text>
@@ -113,10 +114,10 @@ export function CustomerServiceModal(props: CustomerServiceModalProps) {
                 </div>
                 {/* 快捷回复 */}
                 <div style={{ padding: '4px 12px', borderTop: '1px solid var(--ark-border-soft)', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                  <Tag color="blue" style={{ cursor: 'pointer', fontSize: 10 }} onClick={() => setCsInput('请问发什么快递？多久能到？')}>📦 物流时效</Tag>
-                  <Tag color="blue" style={{ cursor: 'pointer', fontSize: 10 }} onClick={() => setCsInput('支持哪些支付方式？')}>💳 支付方式</Tag>
-                  <Tag color="blue" style={{ cursor: 'pointer', fontSize: 10 }} onClick={() => setCsInput('可以退换货吗？有什么条件？')}>🔄 退换政策</Tag>
-                  <Tag color="blue" style={{ cursor: 'pointer', fontSize: 10 }} onClick={() => setCsInput('这个商品有什么优惠活动吗？')}>🎁 优惠活动</Tag>
+                  <Tag color="blue" style={{ cursor: 'pointer', fontSize: 10 }} onClick={() => setCsInput(t('cs.quickLogisticsInput'))}>{t('cs.quickLogistics')}</Tag>
+                  <Tag color="blue" style={{ cursor: 'pointer', fontSize: 10 }} onClick={() => setCsInput(t('cs.quickPaymentInput'))}>{t('cs.quickPayment')}</Tag>
+                  <Tag color="blue" style={{ cursor: 'pointer', fontSize: 10 }} onClick={() => setCsInput(t('cs.quickReturnInput'))}>{t('cs.quickReturn')}</Tag>
+                  <Tag color="blue" style={{ cursor: 'pointer', fontSize: 10 }} onClick={() => setCsInput(t('cs.quickPromoInput'))}>{t('cs.quickPromo')}</Tag>
                 </div>
                 {/* 输入框 */}
                 <div style={{ padding: '8px 12px', borderTop: '1px solid var(--ark-border)', display: 'flex', gap: 8, alignItems: 'flex-end' }}>
@@ -129,12 +130,16 @@ export function CustomerServiceModal(props: CustomerServiceModalProps) {
                     onPressEnter={(e) => {
                       if (!e.shiftKey) {
                         e.preventDefault();
+                        const text = csInput.trim();
+                        if (text) {
+                          setExtraMessages(prev => ({ ...prev, [csActiveChat]: [...(prev[csActiveChat] || []), { from: 'agent' as const, text, time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) }] }));
+                        }
                         setCsInput('');
-                        message.success('已发送（人工接管模式）');
+                        message.success(t('cs.sentHumanMode'));
                       }
                     }}
                   />
-                  <Button type="primary" icon={<SendOutlined />} onClick={() => { setCsInput(''); message.success('已发送（人工接管模式）'); }} size="small">
+                  <Button type="primary" icon={<SendOutlined />} onClick={() => { const text = csInput.trim(); if (text) { setExtraMessages(prev => ({ ...prev, [csActiveChat]: [...(prev[csActiveChat] || []), { from: 'agent' as const, text, time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) }] })); } setCsInput(''); message.success(t('cs.sentHumanMode')); }} size="small">
                     {t('common.send')}
                   </Button>
                 </div>

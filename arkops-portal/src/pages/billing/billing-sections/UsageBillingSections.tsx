@@ -43,34 +43,35 @@ export function FinanceSummary({ onSwitchToSubscription }: { onSwitchToSubscript
   const pendingRecord = records?.find((r) => r.status === 'pending');
 
   return (
-    <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-      <Col xs={24} sm={12} lg={4}>
-        <Card style={{ height: '100%' }}>
-          <Typography.Text type="secondary">{t('finance.currentPlanLabel')}</Typography.Text>
-          <br />
-          <Typography.Text strong style={{ fontSize: 18, color: '#2563eb' }}>{currentPlan?.tier ?? '-'}</Typography.Text>
-          <br />
-          <Typography.Link onClick={onSwitchToSubscription} style={{ fontSize: 12 }}>
-            <CrownOutlined style={{ marginRight: 4 }} />{t('finance.manageSubscription')}
+    <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
+      <Col xs={24} sm={12} lg={5}>
+        <Card style={{ height: '100%', borderTop: '3px solid #2563eb' }} bodyStyle={{ padding: '16px 20px' }}>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('finance.currentPlanLabel')}</Typography.Text>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+            <CrownOutlined style={{ color: '#2563eb' }} />
+            <Typography.Text strong style={{ fontSize: 18, color: '#2563eb' }}>{currentPlan?.tier ?? '-'}</Typography.Text>
+          </div>
+          <Typography.Link onClick={onSwitchToSubscription} style={{ fontSize: 11, marginTop: 4, display: 'inline-block' }}>
+            {t('finance.manageSubscription')} →
           </Typography.Link>
         </Card>
       </Col>
-      <Col xs={12} sm={6} lg={4}>
+      <Col xs={12} sm={6} lg={5}>
         <MetricCard
           title={t('finance.monthlyFee')}
           value={currentBill?.total ?? 0}
           prefix="$"
           precision={2}
-          valueStyle={{ color: '#2563eb', fontWeight: 'bold', fontSize: 22 }}
+          valueStyle={{ color: '#2563eb', fontWeight: 'bold', fontSize: 20 }}
           helper={`${t('finance.baseFee')} $${currentBill?.baseSubscription ?? 0}`}
         />
       </Col>
-      <Col xs={12} sm={6} lg={4}>
+      <Col xs={12} sm={6} lg={5}>
         <MetricCard
           title={t('finance.usagePercent')}
           value={usage ? Math.round((usage.agentCalls.used / usage.agentCalls.limit) * 100) : 0}
           suffix="%"
-          valueStyle={{ color: usage && usage.agentCalls.used > usage.agentCalls.limit ? '#dc2626' : '#16a34a', fontWeight: 'bold', fontSize: 22 }}
+          valueStyle={{ color: usage && usage.agentCalls.used > usage.agentCalls.limit ? '#dc2626' : '#16a34a', fontWeight: 'bold', fontSize: 20 }}
         >
           <Progress
             percent={usage ? Math.min(Math.round((usage.agentCalls.used / usage.agentCalls.limit) * 100), 100) : 0}
@@ -79,12 +80,12 @@ export function FinanceSummary({ onSwitchToSubscription }: { onSwitchToSubscript
           />
         </MetricCard>
       </Col>
-      <Col xs={12} sm={6} lg={4}>
+      <Col xs={12} sm={6} lg={5}>
         <MetricCard
           title={t('finance.savedAmount')}
           value={analysis?.estimatedSaving.savedAmount ?? 0}
           prefix="$"
-          valueStyle={{ color: '#16a34a', fontWeight: 'bold', fontSize: 22 }}
+          valueStyle={{ color: '#16a34a', fontWeight: 'bold', fontSize: 20 }}
           helper={t('finance.savedShort')}
         />
       </Col>
@@ -92,9 +93,9 @@ export function FinanceSummary({ onSwitchToSubscription }: { onSwitchToSubscript
         <MetricCard
           title={t('finance.nextDueDate')}
           value={pendingRecord?.dueDate ?? '-'}
-          valueStyle={{ color: '#ea580c', fontWeight: 'bold', fontSize: 22 }}
+          valueStyle={{ color: '#ea580c', fontWeight: 'bold', fontSize: 18 }}
         >
-          <Tag color={pendingRecord ? 'orange' : 'default'}>{pendingRecord ? t('finance.status_pending') : t('finance.noPending')}</Tag>
+          <Tag color={pendingRecord ? 'orange' : 'default'} style={{ marginTop: 4 }}>{pendingRecord ? t('finance.status_pending') : t('finance.noPending')}</Tag>
         </MetricCard>
       </Col>
     </Row>

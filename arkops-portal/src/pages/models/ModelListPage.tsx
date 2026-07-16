@@ -1,6 +1,6 @@
 import { DeleteOutlined, KeyOutlined, LineChartOutlined, PlusOutlined, RobotOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, Col, Form, Input, Modal, Row, Select, Space, Table, Tag, Typography, message } from 'antd';
+import { Button, Card, Col, Form, Input, Modal, Popconfirm, Row, Select, Space, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useState } from 'react';
 import { modelsApi } from '../../api/models';
@@ -104,7 +104,9 @@ export function ModelListPage() {
       width: 60,
       key: 'actions',
       render: (_: unknown, record: ModelInfo) => (
-        <Button type="link" danger icon={<DeleteOutlined />} onClick={() => removeMutation.mutate(record.id)} />
+        <Popconfirm title={t('common.confirmDelete')} onConfirm={() => removeMutation.mutate(record.id)} okText={t('common.confirm')} cancelText={t('common.cancel')} okButtonProps={{ danger: true }}>
+          <Button type="link" danger icon={<DeleteOutlined />} />
+        </Popconfirm>
       )
     }
   ];

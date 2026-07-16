@@ -3,6 +3,8 @@ import type { ReactNode } from 'react';
 import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom';
 import { Spin } from 'antd';
 import { AppShell } from './layout/AppShell';
+import { RoleGuard } from '../components/RoleGuard';
+import { DashboardSkeleton, AgentListSkeleton, TablePageSkeleton } from '../components/PageSkeleton';
 
 const AgentConfigPage = lazy(() => import('../pages/agents/AgentConfigPage').then((module) => ({ default: module.AgentConfigPage })));
 const AgentListPage = lazy(() => import('../pages/agents/AgentListPage').then((module) => ({ default: module.AgentListPage })));
@@ -31,8 +33,17 @@ const routeFallback = (
   </div>
 );
 
-function withSuspense(element: ReactNode) {
-  return <Suspense fallback={routeFallback}>{element}</Suspense>;
+const dashboardFallback = <DashboardSkeleton />;
+const agentListFallback = <AgentListSkeleton />;
+const tableFallback = <TablePageSkeleton />;
+
+function withSuspense(element: ReactNode, fallback: ReactNode = routeFallback) {
+  return <Suspense fallback={fallback}>{element}</Suspense>;
+}
+
+/** Wrap a page element with RoleGuard for the given path */
+function guarded(path: string, element: ReactNode, fallback?: ReactNode) {
+  return withSuspense(<RoleGuard path={path}>{element}</RoleGuard>, fallback ?? routeFallback);
 }
 
 const router = createBrowserRouter(
@@ -45,40 +56,40 @@ const router = createBrowserRouter(
         { index: true, element: <Navigate to="/dashboard" replace /> },
 
         // 经营总览
-        { path: 'dashboard', element: withSuspense(<DashboardPage />) },
+        { path: 'dashboard', element: guarded('/dashboard', <DashboardPage />, dashboardFallback) },
         // 旧路由重定向
         { path: 'operations', element: <Navigate to="/dashboard" replace /> },
 
         // 订单管理
-        { path: 'orders', element: withSuspense(<OrderAutomationPage />) },
+        { path: 'orders', element: guarded('/orders', <OrderAutomationPage />, tableFallback) },
 
         // 商品管理
-        { path: 'products', element: withSuspense(<ProductManagementPage />) },
+        { path: 'products', element: guarded('/products', <ProductManagementPage />, tableFallback) },
 
         // Agent 中心
-        { path: 'agents', element: withSuspense(<AgentListPage />) },
-        { path: 'agents/:agentType', element: withSuspense(<AgentConfigPage />) },
-        { path: 'agents/exceptions', element: withSuspense(<ExceptionCenterPage />) },
-        { path: 'agents/approvals', element: withSuspense(<ApprovalListPage />) },
-        { path: 'agents/approvals/:approvalId', element: withSuspense(<ApprovalDetailPage />) },
+        { path: 'agents', element: guarded('/agents', <AgentListPage />, agentListFallback) },
+        { path: 'agents/:agentType', element: guarded('/agents', <AgentConfigPage />) },
+        { path: 'agents/exceptions', element: guarded('/agents/exceptions', <ExceptionCenterPage />) },
+        { path: 'agents/approvals', element: guarded('/agents/approvals', <ApprovalListPage />) },
+        { path: 'agents/approvals/:approvalId', element: guarded('/agents/approvals', <ApprovalDetailPage />) },
         // 旧路由重定向
         { path: 'exception-center', element: <Navigate to="/agents/exceptions" replace /> },
         { path: 'approvals', element: <Navigate to="/agents/approvals" replace /> },
-        { path: 'approvals/:approvalId', element: withSuspense(<ApprovalDetailPage />) },
+        { path: 'approvals/:approvalId', element: guarded('/agents/approvals', <ApprovalDetailPage />) },
 
         // 店铺管理
-        { path: 'stores', element: withSuspense(<StoreListPage />) },
-        { path: 'stores/new', element: withSuspense(<StoreDetailPage mode="new" />) },
-        { path: 'stores/:storeId', element: withSuspense(<StoreDetailPage />) },
+        { path: 'stores', element: guarded('/stores', <StoreListPage />) },
+        { path: 'stores/new', element: guarded('/stores', <StoreDetailPage mode="new" />) },
+        { path: 'stores/:storeId', element: guarded('/stores', <StoreDetailPage />) },
 
         // 设置（含子项）
-        { path: 'settings/members', element: withSuspense(<MembersSettingsPage />) },
-        { path: 'settings/notifications', element: withSuspense(<NotificationsSettingsPage />) },
-        { path: 'settings/stores', element: withSuspense(<StoreListPage />) },
-        { path: 'settings/models', element: withSuspense(<ModelListPage />) },
-        { path: 'settings/audit-logs', element: withSuspense(<AuditLogsPage />) },
-        { path: 'settings/billing', element: withSuspense(<BillingSettingsPage />) },
-        { path: 'settings/guide', element: withSuspense(<UsageGuideSettingsPage />) },
+        { path: 'settings/members', element: guarded('/settings/members', <MembersSettingsPage />) },
+        { path: 'settings/notifications', element: guarded('/settings/notifications', <NotificationsSettingsPage />) },
+        { path: 'settings/stores', element: guarded('/settings/stores', <StoreListPage />) },
+        { path: 'settings/models', element: guarded('/settings/models', <ModelListPage />) },
+        { path: 'settings/audit-logs', element: guarded('/settings/audit-logs', <AuditLogsPage />) },
+        { path: 'settings/billing', element: guarded('/settings/billing', <BillingSettingsPage />) },
+        { path: 'settings/guide', element: guarded('/settings/guide', <UsageGuideSettingsPage />) },
         // 旧路由重定向
         { path: 'models', element: <Navigate to="/settings/models" replace /> },
         { path: 'audit-logs', element: <Navigate to="/settings/audit-logs" replace /> },
@@ -86,7 +97,7 @@ const router = createBrowserRouter(
         { path: 'guide', element: <Navigate to="/settings/guide" replace /> },
 
         // 快速配置
-        { path: 'setup', element: withSuspense(<SetupConfigPage />) },
+        { path: 'setup', element: guarded('/setup', <SetupConfigPage />) },
       ]
     }
   ],

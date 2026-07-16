@@ -1,33 +1,10 @@
-import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button, Card, Col, Input, InputNumber, Row, Select, Space, Switch, Tag, Typography, Upload, message } from 'antd';
-import { agentsApi } from '../../../api/agents';
+import { Card, Col, Input, InputNumber, Row, Space, Switch, Typography } from 'antd';
 import { useI18n } from '../../../app/i18n';
-import type { AgentConfig } from '../../../types/domain';
-
-type AgentWithStrategyConfig = AgentConfig & { strategyConfig: NonNullable<AgentConfig['strategyConfig']> };
+import { updateConfigSection, type AgentWithStrategyConfig } from './sharedUtils';
 
 interface AdvancedStrategySectionsProps {
   agent: AgentWithStrategyConfig;
-}
-
-/** 安全更新 strategyConfig 子段，触发 React 重新渲染 */
-function updateConfigSection(
-  queryClient: ReturnType<typeof useQueryClient>,
-  agent: AgentWithStrategyConfig,
-  sectionKey: string,
-  updater: (section: any) => any,
-) {
-  queryClient.setQueryData(['agent', agent.agentType], (prev: any) => {
-    if (!prev?.strategyConfig) return prev;
-    return {
-      ...prev,
-      strategyConfig: {
-        ...prev.strategyConfig,
-        [sectionKey]: updater(prev.strategyConfig[sectionKey]),
-      },
-    };
-  });
 }
 
 export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProps) {
@@ -108,50 +85,85 @@ export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProp
           {agent.strategyConfig.intelConfig && (
             <div style={{ marginBottom: 24 }}>
               <Typography.Title level={5} style={{ marginBottom: 8 }}>{t('agent.intelConfig')}</Typography.Title>
-              <Typography.Paragraph type="secondary" style={{ fontSize: 13, marginBottom: 12 }}>{t('agent.intelConfigDesc')}</Typography.Paragraph>
-              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                <Space>
-                  <Typography.Text type="secondary">{t('agent.monitorFrequency')}:</Typography.Text>
-                  <InputNumber
-                    min={1} max={168} step={1}
-                    style={{ width: 100 }}
-                    value={agent.strategyConfig.intelConfig.monitorFrequencyHours}
-                    onChange={(v) => {
-                      updateConfigSection(queryClient, agent, 'intelConfig', (s) => ({
-                        ...s, monitorFrequencyHours: v ?? 2,
-                      }));
-                    }}
-                    suffix={t('agent.monitorFrequencyUnit')}
-                  />
-                </Space>
-                <div>
-                  <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>{t('agent.monitoredCategories')}:</Typography.Text>
-                  <Input
-                    style={{ maxWidth: 400 }}
-                    placeholder={t('agent.monitoredCategoriesDesc')}
-                    value={agent.strategyConfig.intelConfig.monitoredCategories.join('，')}
-                    onChange={(e) => {
-                      updateConfigSection(queryClient, agent, 'intelConfig', (s) => ({
-                        ...s, monitoredCategories: e.target.value.split(/[,，]/).map((s2) => s2.trim()).filter(Boolean),
-                      }));
-                    }}
-                  />
-                </div>
-                <div>
-                  <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>{t('agent.competitorUrls')}:</Typography.Text>
-                  <Input.TextArea
-                    style={{ maxWidth: 400 }}
-                    rows={3}
-                    placeholder={t('agent.competitorUrlsDesc')}
-                    value={agent.strategyConfig.intelConfig.competitorUrls.join('\n')}
-                    onChange={(e) => {
-                      updateConfigSection(queryClient, agent, 'intelConfig', (s) => ({
-                        ...s, competitorUrls: e.target.value.split('\n').filter(Boolean),
-                      }));
-                    }}
-                  />
-                </div>
-              </Space>
+              <Typography.Paragraph type="secondary" style={{ fontSize: 13, marginBottom: 16 }}>{t('agent.intelConfigDesc')}</Typography.Paragraph>
+              <Row gutter={[24, 16]}>
+                <Col xs={24} sm={12} md={8}>
+                  <Space>
+                    <Typography.Text type="secondary" style={{ fontSize: 13 }}>{t('agent.monitorFrequency')}:</Typography.Text>
+                    <InputNumber
+                      min={1} max={168} step={1}
+                      style={{ width: 100 }}
+                      value={agent.strategyConfig.intelConfig.monitorFrequencyHours}
+                      onChange={(v) => {
+                        updateConfigSection(queryClient, agent, 'intelConfig', (s) => ({
+                          ...s, monitorFrequencyHours: v ?? 2,
+                        }));
+                      }}
+                      suffix={t('agent.monitorFrequencyUnit')}
+                    />
+                  </Space>
+                </Col>
+                <Col xs={24} sm={12} md={8}>
+                  <Space>
+                    <Typography.Text type="secondary" style={{ fontSize: 13 }}>{t('agent.priceAlertThreshold')}:</Typography.Text>
+                    <InputNumber
+                      min={1} max={50} step={1}
+                      style={{ width: 100 }}
+                      value={agent.strategyConfig.intelConfig.priceAlertThresholdPct}
+                      onChange={(v) => {
+                        updateConfigSection(queryClient, agent, 'intelConfig', (s) => ({
+                          ...s, priceAlertThresholdPct: v ?? 5,
+                        }));
+                      }}
+                      suffix="%"
+                    />
+                  </Space>
+                </Col>
+                <Col xs={24} sm={12} md={8}>
+                  <Space>
+                    <Typography.Text type="secondary" style={{ fontSize: 13 }}>{t('agent.autoPushDownstream')}:</Typography.Text>
+                    <Switch
+                      checked={agent.strategyConfig.intelConfig.autoPushDownstream}
+                      onChange={(checked) => {
+                        updateConfigSection(queryClient, agent, 'intelConfig', (s) => ({
+                          ...s, autoPushDownstream: checked,
+                        }));
+                      }}
+                    />
+                  </Space>
+                </Col>
+                <Col xs={24} sm={12} md={8}>
+                  <div>
+                    <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 4, fontSize: 13 }}>{t('agent.monitoredCategories')}:</Typography.Text>
+                    <Input
+                      style={{ maxWidth: 300 }}
+                      placeholder={t('agent.monitoredCategoriesDesc')}
+                      value={agent.strategyConfig.intelConfig.monitoredCategories.join('，')}
+                      onChange={(e) => {
+                        updateConfigSection(queryClient, agent, 'intelConfig', (s) => ({
+                          ...s, monitoredCategories: e.target.value.split(/[,，]/).map((s2) => s2.trim()).filter(Boolean),
+                        }));
+                      }}
+                    />
+                  </div>
+                </Col>
+                <Col xs={24} md={16}>
+                  <div>
+                    <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 4, fontSize: 13 }}>{t('agent.competitorUrls')}:</Typography.Text>
+                    <Input.TextArea
+                      style={{ maxWidth: 500 }}
+                      rows={3}
+                      placeholder={t('agent.competitorUrlsDesc')}
+                      value={agent.strategyConfig.intelConfig.competitorUrls.join('\n')}
+                      onChange={(e) => {
+                        updateConfigSection(queryClient, agent, 'intelConfig', (s) => ({
+                          ...s, competitorUrls: e.target.value.split('\n').filter(Boolean),
+                        }));
+                      }}
+                    />
+                  </div>
+                </Col>
+              </Row>
             </div>
           )}
 
@@ -269,6 +281,78 @@ export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProp
                     }}
                   />
                 </div>
+                {agent.strategyConfig.promotionConfig.autoTriggerRules && (
+                  <Card size="small" style={{ background: '#f0fdf4', border: '1px solid #86efac' }}>
+                    <Typography.Title level={5} style={{ fontSize: 13, marginBottom: 8 }}>{t('agent.autoTriggerRules')}</Typography.Title>
+                    <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                      <Space wrap>
+                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('agent.deadStockDays')}:</Typography.Text>
+                        <InputNumber
+                          min={30} max={180} step={10}
+                          style={{ width: 70 }} size="small"
+                          suffix={t('agent.days')}
+                          value={agent.strategyConfig.promotionConfig.autoTriggerRules.deadStockDays}
+                          onChange={(v) => {
+                            updateConfigSection(queryClient, agent, 'promotionConfig', (s) => ({
+                              ...s, autoTriggerRules: { ...s.autoTriggerRules!, deadStockDays: v ?? 60 },
+                            }));
+                          }}
+                        />
+                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>→ {t('agent.autoDiscount')}:</Typography.Text>
+                        <InputNumber
+                          min={5} max={50} step={5}
+                          style={{ width: 60 }} size="small"
+                          suffix="%"
+                          value={agent.strategyConfig.promotionConfig.autoTriggerRules.deadStockDiscount}
+                          onChange={(v) => {
+                            updateConfigSection(queryClient, agent, 'promotionConfig', (s) => ({
+                              ...s, autoTriggerRules: { ...s.autoTriggerRules!, deadStockDiscount: v ?? 35 },
+                            }));
+                          }}
+                        />
+                      </Space>
+                      <Space wrap>
+                        <Space>
+                          <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('agent.lowStockClearance')}:</Typography.Text>
+                          <Switch size="small"
+                            checked={agent.strategyConfig.promotionConfig.autoTriggerRules.lowStockClearance}
+                            onChange={(v) => {
+                              updateConfigSection(queryClient, agent, 'promotionConfig', (s) => ({
+                                ...s, autoTriggerRules: { ...s.autoTriggerRules!, lowStockClearance: v },
+                              }));
+                            }}
+                          />
+                        </Space>
+                        <Space>
+                          <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('agent.seasonalAutoPromo')}:</Typography.Text>
+                          <Switch size="small"
+                            checked={agent.strategyConfig.promotionConfig.autoTriggerRules.seasonalAutoPromo}
+                            onChange={(v) => {
+                              updateConfigSection(queryClient, agent, 'promotionConfig', (s) => ({
+                                ...s, autoTriggerRules: { ...s.autoTriggerRules!, seasonalAutoPromo: v },
+                              }));
+                            }}
+                          />
+                        </Space>
+                      </Space>
+                      <Space>
+                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('agent.competitorPriceDropThreshold')}:</Typography.Text>
+                        <InputNumber
+                          min={5} max={50} step={5}
+                          style={{ width: 60 }} size="small"
+                          suffix="%"
+                          value={agent.strategyConfig.promotionConfig.autoTriggerRules.competitorPriceDropThreshold}
+                          onChange={(v) => {
+                            updateConfigSection(queryClient, agent, 'promotionConfig', (s) => ({
+                              ...s, autoTriggerRules: { ...s.autoTriggerRules!, competitorPriceDropThreshold: v ?? 15 },
+                            }));
+                          }}
+                        />
+                        <Typography.Text type="secondary" style={{ fontSize: 11 }}>{t('agent.competitorPriceDropDesc')}</Typography.Text>
+                      </Space>
+                    </Space>
+                  </Card>
+                )}
               </Space>
             </div>
           )}

@@ -12,8 +12,8 @@
  * Major updates:
  * - 2026-07-03: Added ownership and function documentation for AI-assisted collaboration.
  */
+import { memo, type ReactNode } from 'react';
 import { Typography } from 'antd';
-import type { ReactNode } from 'react';
 
 /**
  * Renders a route-level page heading with optional secondary text and action controls.
@@ -26,7 +26,7 @@ import type { ReactNode } from 'react';
  * Author: Michael Lee
  * Created: 2026-07-03
  */
-export function PageHeader({
+export const PageHeader = memo(function PageHeader({
   title,
   description,
   actions
@@ -46,4 +46,4 @@ export function PageHeader({
       {actions}
     </div>
   );
-}
+});
