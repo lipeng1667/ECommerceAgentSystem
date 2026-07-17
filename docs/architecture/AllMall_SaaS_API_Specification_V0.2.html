@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AllMall SaaS API 接口文档 V0.2</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: #f6f8fc; color: #172033; line-height: 1.72; }
+    .page { max-width: 1180px; margin: 0 auto; padding: 48px 24px 72px; }
+    .hero, section { background: #fff; border: 1px solid #dfe7f2; border-radius: 16px; box-shadow: 0 12px 36px rgba(31,45,71,.06); }
+    .hero { padding: 36px; background: linear-gradient(135deg, #fff 0%, #fff7ed 100%); }
+    section { margin-top: 28px; padding: 28px; }
+    .eyebrow { margin: 0 0 10px; color: #c2410c; font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 0 0 14px; font-size: clamp(30px, 4vw, 46px); line-height: 1.18; letter-spacing: -.03em; }
+    h2 { margin: 0 0 16px; font-size: 23px; }
+    h3 { margin: 24px 0 8px; font-size: 18px; }
+    h4 { margin: 18px 0 8px; font-size: 15px; }
+    p, li, td { color: #465873; }
+    p { margin: 0 0 12px; }
+    ul, ol { padding-left: 24px; }
+    a { color: #c2410c; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { padding: 2px 6px; border-radius: 6px; background: #fff1e7; color: #9a3412; font-family: "SFMono-Regular", Consolas, monospace; font-size: .92em; }
+    pre { margin: 10px 0 18px; padding: 18px; overflow: auto; border-radius: 12px; background: #0f172a; color: #ffedd5; font-size: 13px; line-height: 1.65; }
+    pre code { padding: 0; background: transparent; color: inherit; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
+    th, td { padding: 10px 12px; border: 1px solid #e2e8f0; text-align: left; vertical-align: top; }
+    th { background: #f1f5f9; color: #172033; }
+    .note { margin-top: 14px; padding: 14px 16px; border-left: 4px solid #c2410c; border-radius: 10px; background: #fff7ed; color: #344967; }
+    .scope { border-left-color: #16a34a; background: #f0fdf4; }
+    .warning { border-left-color: #d97706; background: #fffbeb; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .tag { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #fff1e7; color: #9a3412; font-size: 12px; font-weight: 800; }
+    .endpoint { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0 14px; }
+    .method { min-width: 58px; padding: 4px 8px; border-radius: 6px; background: #dcfce7; color: #166534; text-align: center; font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; font-weight: 900; }
+    .method.post { background: #dbeafe; color: #1d4ed8; }
+    .path { padding: 4px 8px; border-radius: 6px; background: #eef3fb; color: #1e3a8a; font-family: "SFMono-Regular", Consolas, monospace; font-size: 13px; font-weight: 800; }
+    .subtle { color: #708098; font-size: 13px; }
+    @media (max-width: 860px) {
+      .page { padding: 24px 14px 48px; }
+      .hero, section { padding: 20px; }
+      table { display: block; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <p class="eyebrow">AllMall API Specification</p>
+      <h1>SaaS 平台 API 接口文档 V0.2</h1>
+      <p>本文档定义 AllMall SaaS 平台与 Portal、Agent / Runtime 的统一联调契约，覆盖店铺登录绑定、任务控制、审批、Runtime 回调，以及电商平台日常运营数据的只读采集、标准化回传和统计查询。</p>
+      <div class="meta">
+        <span class="tag">Backward Compatible</span>
+        <span class="tag">Read-only Collection</span>
+        <span class="tag">Daily Operations Data</span>
+        <span class="tag">Multi-platform</span>
+      </div>
+      <div class="note scope"><strong>运营数据范围：</strong>只从淘宝、拼多多、抖音电商、京东店铺后台读取运营数据。数据采集接口不会执行发货、退款、售后、评价回复、商品修改、调价、投放启停、活动报名或库存调整。</div>
+    </header>
+
+    <section id="scope">
+      <h2>1. 文档范围</h2>
+      <table>
+        <tr><th>模块</th><th>范围</th><th>接口性质</th></tr>
+        <tr><td>店铺与登录绑定</td><td>店铺创建、connectToken、Runtime session 绑定和重新登录。</td><td>控制面接口。</td></tr>
+        <tr><td>任务与审批</td><td>任务创建、状态和时间线查询、风险审批。</td><td>控制面接口。</td></tr>
+        <tr><td>Runtime 回调</td><td>运行步骤、审批请求、登录失效等事件回传。</td><td>Agent / Runtime 回调接口。</td></tr>
+        <tr><td>运营数据同步</td><td>创建同步任务、分批回传、完成确认和同步状态查询。</td><td>只读采集控制面与数据写入接口。</td></tr>
+        <tr><td>运营数据查询</td><td>店铺日报、趋势、商品、流量、广告、内容、库存和财务统计。</td><td>SaaS 已采集数据的只读查询接口。</td></tr>
+      </table>
+    </section>
+
+    <section id="principles">
+      <h2>2. API 设计原则</h2>
+      <ul>
+        <li>所有业务 API 必须在服务端解析用户身份、租户和店铺权限上下文。</li>
+        <li>前端不得直接调用 MuleRun 或电商平台 API，也不得暴露 Runtime / Agent Key。</li>
+        <li>Agent 回调必须使用签名、时间戳和幂等键校验。</li>
+        <li>运营数据采集遵循只读原则：Agent 只浏览、导出或调用平台只读数据接口。</li>
+        <li>平台原始值与 AllMall 标准化值应可追溯；不得用 <code>0</code> 代替平台未提供的数据。</li>
+        <li>接口返回明确的业务状态、数据区间、时区、数据新鲜度和质量信息。</li>
+        <li>涉及高风险执行动作的任务必须走审批；运营数据采集任务不得包含执行动作。</li>
+      </ul>
+    </section>
+
+    <section id="overview">
+      <h2>3. 资源与接口总览</h2>
+      <table>
+        <tr><th>领域</th><th>接口示例</th><th>说明</th></tr>
+        <tr><td>租户与用户</td><td><code>/api/tenants</code>, <code>/api/users</code>, <code>/api/roles</code></td><td>公司、成员、角色管理。</td></tr>
+        <tr><td>店铺与登录绑定</td><td><code>/api/stores</code>, <code>/api/stores/{storeId}/connect-token</code>, <code>/api/runtime/session-bindings</code></td><td>店铺创建、登录令牌、Runtime session 绑定和重新登录。</td></tr>
+        <tr><td>任务</td><td><code>/api/tasks</code>, <code>/api/runs</code>, <code>/api/steps</code></td><td>任务创建、执行时间线、步骤状态。</td></tr>
+        <tr><td>审批</td><td><code>/api/approvals</code></td><td>审批列表、批准、拒绝、过期。</td></tr>
+        <tr><td>Runtime 回调</td><td><code>/api/runtime/session-bindings</code>, <code>/api/runtime/events</code></td><td>MuleRun 或其他 Runtime 回调入口。</td></tr>
+        <tr><td>运营数据同步</td><td><code>/api/operations/data-syncs</code>, <code>/api/agent/operations/data-batches</code></td><td>创建只读采集任务、分批回传数据和查询同步结果。</td></tr>
+        <tr><td>运营数据查询</td><td><code>/api/operations/daily-summaries</code>, <code>/api/operations/trends</code></td><td>查询店铺日报、周/月趋势和细分维度。</td></tr>
+      </table>
+
+      <h3>3.1 完整接口清单</h3>
+      <table>
+        <tr><th>#</th><th>方向</th><th>Method</th><th>Path</th><th>用途</th></tr>
+        <tr><td>1</td><td>Portal → SaaS</td><td><code>POST</code></td><td><code>/api/stores</code></td><td>创建店铺资源。</td></tr>
+        <tr><td>2</td><td>Portal → SaaS</td><td><code>POST</code></td><td><code>/api/stores/{storeId}/connect-token</code></td><td>生成店铺登录绑定令牌。</td></tr>
+        <tr><td>3</td><td>Agent / Runtime → SaaS</td><td><code>POST</code></td><td><code>/api/runtime/session-bindings</code></td><td>回传并绑定 Runtime session。</td></tr>
+        <tr><td>4</td><td>Portal → SaaS</td><td><code>POST</code></td><td><code>/api/stores/{storeId}/reauth-token</code></td><td>生成店铺重新登录令牌。</td></tr>
+        <tr><td>5</td><td>Portal → SaaS</td><td><code>POST</code></td><td><code>/api/tasks</code></td><td>创建 Agent 任务。</td></tr>
+        <tr><td>6</td><td>Portal → SaaS</td><td><code>GET</code></td><td><code>/api/tasks/{taskId}</code></td><td>查询任务详情。</td></tr>
+        <tr><td>7</td><td>Portal → SaaS</td><td><code>GET</code></td><td><code>/api/runs/{runId}/timeline</code></td><td>查询执行时间线。</td></tr>
+        <tr><td>8</td><td>Agent / Runtime → SaaS</td><td><code>POST</code></td><td><code>/api/runtime/events</code></td><td>回传运行事件、审批请求或登录失效。</td></tr>
+        <tr><td>9</td><td>Portal → SaaS</td><td><code>GET</code></td><td><code>/api/approvals?status=pending</code></td><td>查询审批列表。</td></tr>
+        <tr><td>10</td><td>Portal → SaaS</td><td><code>POST</code></td><td><code>/api/approvals/{approvalId}/approve</code></td><td>批准审批请求。</td></tr>
+        <tr><td>11</td><td>Portal → SaaS</td><td><code>POST</code></td><td><code>/api/approvals/{approvalId}/reject</code></td><td>拒绝审批请求。</td></tr>
+        <tr><td>12</td><td>Portal → SaaS</td><td><code>POST</code></td><td><code>/api/operations/data-syncs</code></td><td>发起单店铺、指定日期范围的只读数据同步。</td></tr>
+        <tr><td>13</td><td>Portal / Agent → SaaS</td><td><code>GET</code></td><td><code>/api/operations/data-syncs/{syncId}</code></td><td>查询同步状态、数据集进度和错误。</td></tr>
+        <tr><td>14</td><td>Agent → SaaS</td><td><code>POST</code></td><td><code>/api/agent/operations/data-batches</code></td><td>分批回传平台原始引用和标准化运营数据。</td></tr>
+        <tr><td>15</td><td>Agent → SaaS</td><td><code>POST</code></td><td><code>/api/agent/operations/data-syncs/{syncId}/complete</code></td><td>声明同步完成并提交数据质量摘要。</td></tr>
+        <tr><td>16</td><td>Portal → SaaS</td><td><code>GET</code></td><td><code>/api/operations/daily-summaries</code></td><td>查询单店铺或多店铺日运营总览。</td></tr>
+        <tr><td>17</td><td>Portal → SaaS</td><td><code>GET</code></td><td><code>/api/operations/trends</code></td><td>查询日/周/月趋势与环比。</td></tr>
+        <tr><td>18</td><td>Portal → SaaS</td><td><code>GET</code></td><td><code>/api/operations/products</code></td><td>查询商品维度表现。</td></tr>
+        <tr><td>19</td><td>Portal → SaaS</td><td><code>GET</code></td><td><code>/api/operations/traffic-sources</code></td><td>查询搜索、推荐、付费、私域等流量构成。</td></tr>
+        <tr><td>20</td><td>Portal → SaaS</td><td><code>GET</code></td><td><code>/api/operations/ad-performance</code></td><td>查询广告计划统计，不执行启停或调价。</td></tr>
+        <tr><td>21</td><td>Portal → SaaS</td><td><code>GET</code></td><td><code>/api/operations/content-performance</code></td><td>查询短视频和图文表现。</td></tr>
+        <tr><td>22</td><td>Portal → SaaS</td><td><code>GET</code></td><td><code>/api/operations/live-performance</code></td><td>查询直播场次表现。</td></tr>
+        <tr><td>23</td><td>Portal → SaaS</td><td><code>GET</code></td><td><code>/api/operations/activity-performance</code></td><td>查询平台活动表现，不报名或配置活动。</td></tr>
+        <tr><td>24</td><td>Portal → SaaS</td><td><code>GET</code></td><td><code>/api/operations/inventory-snapshots</code></td><td>查询库存快照，不调整库存或生成补货单。</td></tr>
+        <tr><td>25</td><td>Portal → SaaS</td><td><code>GET</code></td><td><code>/api/operations/finance-summaries</code></td><td>查询平台可得收入、费用和估算利润。</td></tr>
+      </table>
+    </section>
+
+    <section id="common">
+      <h2>4. 通用约定</h2>
+      <h3>4.1 Header</h3>
+      <pre><code>Authorization: Bearer &lt;access_token&gt;
+X-AllMall-Request-Id: req_20260717_001
+X-AllMall-Idempotency-Key: idem_sync_20260717_001
+X-AllMall-Timestamp: 2026-07-17T09:30:00+08:00
+X-AllMall-Signature: hmac-sha256=&lt;signature&gt;</code></pre>
+      <p class="subtle"><code>X-AllMall-Idempotency-Key</code>、时间戳和签名对 Agent 写入回调必填；Portal 的 GET 请求无需幂等键。</p>
+
+      <h3>4.2 响应信封</h3>
+      <pre><code>{
+  "success": true,
+  "requestId": "req_20260717_001",
+  "data": {},
+  "error": null
+}</code></pre>
+      <pre><code>{
+  "success": false,
+  "requestId": "req_20260717_001",
+  "data": null,
+  "error": {
+    "code": "OPERATIONS_DATA_NOT_READY",
+    "message": "Requested date has not completed synchronization",
+    "retryable": true
+  }
+}</code></pre>
+
+      <h3>4.3 时间与统计区间</h3>
+      <ul>
+        <li>时间戳使用 RFC 3339；业务日期使用 <code>YYYY-MM-DD</code>。</li>
+        <li>默认使用店铺配置时区；未配置时使用 <code>Asia/Shanghai</code>。</li>
+        <li><code>dateFrom</code> 与 <code>dateTo</code> 均为闭区间业务日期。</li>
+        <li>日报以平台后台展示的自然日为准；接口必须返回 <code>timezone</code> 和 <code>dataThrough</code>。</li>
+      </ul>
+
+      <h3>4.4 金额、比例与缺失值</h3>
+      <ul>
+        <li>金额使用整数最小货币单位，例如人民币分：<code>{ "amount": 128800, "currency": "CNY" }</code>。</li>
+        <li>比例统一使用 0 到 1 的小数，例如 3.25% 表示为 <code>0.0325</code>。</li>
+        <li>ROI 使用倍数，例如投入 100 元带来 300 元成交额，<code>roi = 3.0</code>。</li>
+        <li>平台不提供、权限不足或口径无法映射时返回 <code>null</code>，并在 <code>quality.issues</code> 中说明原因。</li>
+      </ul>
+
+      <h3>4.5 分页与排序</h3>
+      <pre><code>GET /api/operations/products?storeId=store_001&amp;date=2026-07-16&amp;limit=50&amp;cursor=cur_xxx&amp;sort=-gmv</code></pre>
+      <p>默认 <code>limit=50</code>，最大 <code>limit=200</code>。响应返回 <code>nextCursor</code>；排序字段前的 <code>-</code> 表示降序。</p>
+    </section>
+
+    <section id="create-store">
+      <h2>5. 创建店铺</h2>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/stores</span></div>
+      <p><strong>方向：</strong>Portal → SaaS。创建租户下的店铺资源，初始状态为待授权。</p>
+      <h3>Request Body</h3>
+      <pre><code>{
+  "platform": "tiktok_shop",
+  "storeName": "Demo TikTok Store",
+  "platformRegion": "CN",
+  "timezone": "Asia/Shanghai"
+}</code></pre>
+      <h3>Response · 201 Created</h3>
+      <pre><code>{
+  "success": true,
+  "requestId": "req_20260717_101",
+  "data": {
+    "storeId": "store_001",
+    "platform": "tiktok_shop",
+    "storeName": "Demo TikTok Store",
+    "platformRegion": "CN",
+    "timezone": "Asia/Shanghai",
+    "authorizationStatus": "pending",
+    "createdAt": "2026-07-17T10:00:00+08:00"
+  },
+  "error": null
+}</code></pre>
+      <h3>约束</h3>
+      <ul>
+        <li><code>platform</code> 支持 <code>taobao</code>、<code>pinduoduo</code>、<code>tiktok_shop</code> 和 <code>jd</code>。</li>
+        <li>店铺创建不代表平台授权完成；成功绑定 Runtime session 后才可变更为 <code>connected</code>。</li>
+        <li>租户内相同平台店铺的唯一性应在取得平台店铺标识后校验。</li>
+      </ul>
+    </section>
+
+    <section id="store-login-binding">
+      <h2>6. 店铺登录绑定</h2>
+
+      <h3>6.1 生成 connectToken</h3>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/stores/{storeId}/connect-token</span></div>
+      <p><strong>方向：</strong>Portal → SaaS。生成一次性、短期有效的店铺登录绑定令牌。</p>
+      <h4>Request Body</h4>
+      <pre><code>{
+  "purpose": "login_bootstrap",
+  "runtimeProvider": "mulerun"
+}</code></pre>
+      <h4>Response · 201 Created</h4>
+      <pre><code>{
+  "success": true,
+  "requestId": "req_20260717_102",
+  "data": {
+    "connectToken": "arkops_connect_xxx",
+    "storeId": "store_001",
+    "purpose": "login_bootstrap",
+    "runtimeProvider": "mulerun",
+    "expiresAt": "2026-07-17T10:15:00+08:00",
+    "status": "issued"
+  },
+  "error": null
+}</code></pre>
+
+      <h3>6.2 绑定 Runtime session</h3>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/runtime/session-bindings</span></div>
+      <p><strong>方向：</strong>Agent / Runtime → SaaS。用户在 Runtime 沙箱完成平台登录后，回传 session 引用并绑定店铺。</p>
+      <h4>Request Body</h4>
+      <pre><code>{
+  "connectToken": "arkops_connect_xxx",
+  "storeId": "store_001",
+  "platform": "tiktok_shop",
+  "runtimeProvider": "mulerun",
+  "runtimeSessionId": "mr_session_xxx",
+  "status": "connected",
+  "verifiedAt": "2026-07-17T10:08:30+08:00"
+}</code></pre>
+      <h4>Response · 200 OK</h4>
+      <pre><code>{
+  "success": true,
+  "requestId": "req_20260717_103",
+  "data": {
+    "storeId": "store_001",
+    "sessionBindingId": "binding_001",
+    "authorizationStatus": "connected",
+    "runtimeProvider": "mulerun",
+    "boundAt": "2026-07-17T10:08:31+08:00"
+  },
+  "error": null
+}</code></pre>
+
+      <h3>6.3 生成重新登录令牌</h3>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/stores/{storeId}/reauth-token</span></div>
+      <p><strong>方向：</strong>Portal → SaaS。平台 session 失效或需要人工验证时，生成重新登录令牌。</p>
+      <h4>Request Body</h4>
+      <pre><code>{
+  "reason": "session_expired",
+  "runtimeProvider": "mulerun"
+}</code></pre>
+      <h4>Response · 201 Created</h4>
+      <pre><code>{
+  "success": true,
+  "requestId": "req_20260717_104",
+  "data": {
+    "reauthToken": "arkops_reauth_xxx",
+    "storeId": "store_001",
+    "reason": "session_expired",
+    "expiresAt": "2026-07-17T10:30:00+08:00",
+    "authorizationStatus": "reauth_required"
+  },
+  "error": null
+}</code></pre>
+      <h3>约束</h3>
+      <ul>
+        <li>connectToken 和 reauthToken 必须一次性使用，默认有效期 15 分钟。</li>
+        <li>SaaS 只保存加密的 session 引用，不保存电商平台账号密码。</li>
+        <li>Runtime 回调必须校验签名、时间戳、令牌用途、店铺归属和幂等键。</li>
+      </ul>
+    </section>
+
+    <section id="tasks">
+      <h2>7. Agent 任务</h2>
+
+      <h3>7.1 创建 Agent 任务</h3>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/tasks</span></div>
+      <p><strong>方向：</strong>Portal → SaaS。创建 Agent 任务及初始 Run。</p>
+      <h4>Request Body</h4>
+      <pre><code>{
+  "storeId": "store_001",
+  "agentType": "ads_optimizer",
+  "goal": "分析低 ROI 广告计划并提出预算调整建议",
+  "constraints": {
+    "maxBudgetChangePercent": 15,
+    "requiresApprovalAboveAmount": 500
+  }
+}</code></pre>
+      <h4>Response · 202 Accepted</h4>
+      <pre><code>{
+  "success": true,
+  "requestId": "req_20260717_105",
+  "data": {
+    "taskId": "task_123",
+    "runId": "run_456",
+    "storeId": "store_001",
+    "agentType": "ads_optimizer",
+    "status": "queued",
+    "createdAt": "2026-07-17T10:20:00+08:00"
+  },
+  "error": null
+}</code></pre>
+
+      <h3>7.2 查询任务详情</h3>
+      <div class="endpoint"><span class="method">GET</span><span class="path">/api/tasks/{taskId}</span></div>
+      <p><strong>方向：</strong>Portal → SaaS。查询任务目标、当前 Run、状态和执行摘要。</p>
+      <h4>Response · 200 OK</h4>
+      <pre><code>{
+  "success": true,
+  "requestId": "req_20260717_106",
+  "data": {
+    "taskId": "task_123",
+    "storeId": "store_001",
+    "agentType": "ads_optimizer",
+    "goal": "分析低 ROI 广告计划并提出预算调整建议",
+    "status": "running",
+    "currentRunId": "run_456",
+    "summary": "正在分析广告计划数据",
+    "createdAt": "2026-07-17T10:20:00+08:00",
+    "updatedAt": "2026-07-17T10:22:10+08:00"
+  },
+  "error": null
+}</code></pre>
+
+      <h3>7.3 查询执行时间线</h3>
+      <div class="endpoint"><span class="method">GET</span><span class="path">/api/runs/{runId}/timeline</span></div>
+      <p><strong>方向：</strong>Portal → SaaS。按时间顺序查询 Run 的步骤和状态事件。</p>
+      <h4>Response · 200 OK</h4>
+      <pre><code>{
+  "success": true,
+  "requestId": "req_20260717_107",
+  "data": {
+    "runId": "run_456",
+    "taskId": "task_123",
+    "status": "running",
+    "events": [
+      {
+        "eventId": "event_001",
+        "eventType": "step_completed",
+        "stepName": "Analyze campaign ROI",
+        "status": "succeeded",
+        "summary": "发现 3 个广告计划低于目标 ROI。",
+        "occurredAt": "2026-07-17T10:22:00+08:00"
+      }
+    ]
+  },
+  "error": null
+}</code></pre>
+      <h3>约束</h3>
+      <ul>
+        <li>任务创建必须提供有效的 <code>storeId</code> 和已注册的 <code>agentType</code>。</li>
+        <li>高风险动作必须在 <code>constraints</code> 中声明审批阈值，并由 Runtime 通过审批事件暂停执行。</li>
+        <li>任务状态枚举：<code>queued</code>、<code>running</code>、<code>waiting_approval</code>、<code>waiting_login</code>、<code>succeeded</code>、<code>failed</code>、<code>cancelled</code>。</li>
+      </ul>
+    </section>
+
+    <section id="runtime">
+      <h2>8. Agent Runtime 事件回调</h2>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/runtime/events</span></div>
+      <p><strong>方向：</strong>Agent / Runtime → SaaS。统一回传运行步骤、审批请求、登录失效和完成状态。</p>
+
+      <h3>8.1 步骤完成事件</h3>
+      <h4>Request Body</h4>
+      <pre><code>{
+  "eventId": "event_001",
+  "taskId": "task_123",
+  "runId": "run_456",
+  "eventType": "step_completed",
+  "stepName": "Analyze campaign ROI",
+  "status": "succeeded",
+  "summary": "发现 3 个广告计划低于目标 ROI。",
+  "occurredAt": "2026-07-17T10:22:00+08:00",
+  "artifacts": [
+    {
+      "type": "screenshot",
+      "url": "s3://arkops-artifacts/run_456/roi-dashboard.png"
+    }
+  ]
+}</code></pre>
+
+      <h3>8.2 需要人工审批事件</h3>
+      <h4>Request Body</h4>
+      <pre><code>{
+  "eventId": "event_002",
+  "taskId": "task_123",
+  "runId": "run_456",
+  "eventType": "approval_required",
+  "reason": "预算调整超过租户阈值",
+  "proposedAction": {
+    "type": "pause_campaign",
+    "campaignId": "campaign_102"
+  },
+  "riskLevel": "high",
+  "occurredAt": "2026-07-17T10:23:00+08:00"
+}</code></pre>
+
+      <h3>8.3 需要重新登录事件</h3>
+      <h4>Request Body</h4>
+      <pre><code>{
+  "eventId": "event_003",
+  "taskId": "task_123",
+  "runId": "run_456",
+  "eventType": "login_required",
+  "storeId": "store_001",
+  "reason": "TikTok Shop session expired or requires human verification",
+  "occurredAt": "2026-07-17T10:24:00+08:00"
+}</code></pre>
+
+      <h3>Response · 200 OK</h3>
+      <pre><code>{
+  "success": true,
+  "requestId": "req_20260717_108",
+  "data": {
+    "eventId": "event_001",
+    "accepted": true,
+    "duplicate": false,
+    "runStatus": "running"
+  },
+  "error": null
+}</code></pre>
+      <h3>约束</h3>
+      <ul>
+        <li><code>eventId</code> 在 Runtime 范围内唯一，并作为事件幂等标识。</li>
+        <li><code>approval_required</code> 必须使 Run 进入 <code>waiting_approval</code>，批准前不得继续执行 proposedAction。</li>
+        <li><code>login_required</code> 必须使 Run 进入 <code>waiting_login</code>，并将店铺授权状态更新为 <code>reauth_required</code>。</li>
+      </ul>
+    </section>
+
+    <section id="approvals">
+      <h2>9. 审批</h2>
+
+      <h3>9.1 查询审批列表</h3>
+      <div class="endpoint"><span class="method">GET</span><span class="path">/api/approvals?status=pending</span></div>
+      <p><strong>方向：</strong>Portal → SaaS。按租户上下文查询审批请求，支持状态、店铺和风险等级过滤。</p>
+      <h4>Response · 200 OK</h4>
+      <pre><code>{
+  "success": true,
+  "requestId": "req_20260717_109",
+  "data": {
+    "items": [
+      {
+        "approvalId": "approval_001",
+        "taskId": "task_123",
+        "runId": "run_456",
+        "storeId": "store_001",
+        "status": "pending",
+        "riskLevel": "high",
+        "reason": "预算调整超过租户阈值",
+        "proposedAction": {
+          "type": "pause_campaign",
+          "campaignId": "campaign_102"
+        },
+        "expiresAt": "2026-07-17T18:00:00+08:00"
+      }
+    ],
+    "nextCursor": null
+  },
+  "error": null
+}</code></pre>
+
+      <h3>9.2 批准审批请求</h3>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/approvals/{approvalId}/approve</span></div>
+      <h4>Request Body</h4>
+      <pre><code>{
+  "comment": "同意本次预算调整"
+}</code></pre>
+      <h4>Response · 200 OK</h4>
+      <pre><code>{
+  "success": true,
+  "requestId": "req_20260717_110",
+  "data": {
+    "approvalId": "approval_001",
+    "status": "approved",
+    "decidedBy": "user_001",
+    "comment": "同意本次预算调整",
+    "decidedAt": "2026-07-17T10:30:00+08:00"
+  },
+  "error": null
+}</code></pre>
+
+      <h3>9.3 拒绝审批请求</h3>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/approvals/{approvalId}/reject</span></div>
+      <h4>Request Body</h4>
+      <pre><code>{
+  "comment": "暂不调整该广告计划"
+}</code></pre>
+      <h4>Response · 200 OK</h4>
+      <pre><code>{
+  "success": true,
+  "requestId": "req_20260717_111",
+  "data": {
+    "approvalId": "approval_001",
+    "status": "rejected",
+    "decidedBy": "user_001",
+    "comment": "暂不调整该广告计划",
+    "decidedAt": "2026-07-17T10:31:00+08:00"
+  },
+  "error": null
+}</code></pre>
+      <h3>约束</h3>
+      <ul>
+        <li>只有 <code>pending</code> 状态可被批准或拒绝；重复提交相同决定应返回当前结果。</li>
+        <li>过期审批返回 <code>APPROVAL_EXPIRED</code>，不得继续触发 Runtime 动作。</li>
+        <li>审批决定必须记录操作者、角色、时间、评论和请求 ID，供审计追溯。</li>
+        <li>只读运营数据同步正常情况下不创建审批。</li>
+      </ul>
+    </section>
+
+    <section id="data-model">
+      <h2>10. 日常运营数据模型</h2>
+      <p>Agent 从平台后台读取数据后，按以下 <code>datasetType</code> 标准化。单次同步可只请求部分数据集；平台不支持的数据集应标记为 <code>unsupported</code>，不可伪造空记录。</p>
+      <table>
+        <tr><th>datasetType</th><th>粒度</th><th>核心字段</th><th>日常用途</th></tr>
+        <tr><td><code>store_daily_summary</code></td><td>店铺 × 日</td><td>访客、浏览量、点击、支付订单、销量、GMV、转化率、UV 价值、退款率、差评数。</td><td>每日经营总览。</td></tr>
+        <tr><td><code>product_daily_performance</code></td><td>商品/SKU × 日</td><td>曝光、访客、点击率、转化率、销量、GMV、退款率。</td><td>爆款、利润款及异常商品对比。</td></tr>
+        <tr><td><code>keyword_daily_ranking</code></td><td>商品 × 关键词 × 日</td><td>关键词、排名、搜索曝光、点击、成交。</td><td>核心词与长尾词变化。</td></tr>
+        <tr><td><code>traffic_source_daily</code></td><td>来源 × 日</td><td>来源类型、访客、点击、订单、GMV、流量占比。</td><td>免费、付费、私域流量结构。</td></tr>
+        <tr><td><code>ad_campaign_daily</code></td><td>广告计划 × 日</td><td>曝光、点击、花费、CPC、订单、成交额、转化率、ROI。</td><td>只读分析投放效率。</td></tr>
+        <tr><td><code>inventory_snapshot</code></td><td>SKU × 快照时刻</td><td>在库、可售、锁定、在途、近 3/7/30 日销量。</td><td>盘点、缺货与滞销风险统计。</td></tr>
+        <tr><td><code>content_daily_performance</code></td><td>内容 × 日</td><td>曝光、播放、完播率、互动、商品点击、订单、GMV。</td><td>短视频和种草内容复盘。</td></tr>
+        <tr><td><code>live_session_performance</code></td><td>直播场次</td><td>观看人数、峰值在线、互动、商品点击、订单、GMV、转化率。</td><td>直播周复盘。</td></tr>
+        <tr><td><code>activity_daily_performance</code></td><td>活动 × 日</td><td>访客、订单、销量、GMV、优惠金额、平台费用。</td><td>活动效果统计。</td></tr>
+        <tr><td><code>finance_daily_summary</code></td><td>店铺 × 日</td><td>销售额、退款、广告费、平台费、物流费、商品成本、估算利润。</td><td>周/月盈利核对。</td></tr>
+      </table>
+      <div class="note warning"><strong>数据口径：</strong><code>finance_daily_summary</code> 中平台后台无法直接提供的成本或利润必须标记 <code>isEstimated=true</code> 并返回 <code>calculationVersion</code>。退款率和 GMV 应同时保留平台原始口径名称。</div>
+    </section>
+
+    <section id="sync-create">
+      <h2>11. 创建运营数据同步</h2>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/operations/data-syncs</span></div>
+      <p>创建只读数据同步任务。推荐每天在店铺时区次日 02:00 后同步前一自然日，并允许最近 7 天回补。</p>
+      <h3>Request Body</h3>
+      <pre><code>{
+  "storeId": "store_001",
+  "dateFrom": "2026-07-16",
+  "dateTo": "2026-07-16",
+  "datasetTypes": [
+    "store_daily_summary",
+    "product_daily_performance",
+    "keyword_daily_ranking",
+    "traffic_source_daily",
+    "ad_campaign_daily",
+    "inventory_snapshot",
+    "content_daily_performance",
+    "live_session_performance",
+    "activity_daily_performance",
+    "finance_daily_summary"
+  ],
+  "mode": "incremental",
+  "reason": "scheduled_daily_sync"
+}</code></pre>
+      <h3>Response · 202 Accepted</h3>
+      <pre><code>{
+  "success": true,
+  "requestId": "req_20260717_001",
+  "data": {
+    "syncId": "sync_20260717_001",
+    "taskId": "task_20260717_001",
+    "runId": "run_20260717_001",
+    "status": "queued",
+    "readOnly": true,
+    "createdAt": "2026-07-17T09:30:00+08:00"
+  },
+  "error": null
+}</code></pre>
+      <h3>约束</h3>
+      <ul>
+        <li>单次同步只允许一个 <code>storeId</code>，最大日期范围 31 天。</li>
+        <li><code>mode</code> 可选 <code>incremental</code> 或 <code>full_replace</code>；后者只替换指定日期和数据集。</li>
+        <li>同一店铺、日期范围、数据集和模式的运行中任务应返回现有 <code>syncId</code>，避免重复抓取。</li>
+      </ul>
+    </section>
+
+    <section id="sync-status">
+      <h2>12. 查询运营数据同步状态</h2>
+      <div class="endpoint"><span class="method">GET</span><span class="path">/api/operations/data-syncs/{syncId}</span></div>
+      <pre><code>{
+  "success": true,
+  "requestId": "req_20260717_002",
+  "data": {
+    "syncId": "sync_20260717_001",
+    "storeId": "store_001",
+    "dateFrom": "2026-07-16",
+    "dateTo": "2026-07-16",
+    "status": "running",
+    "progressPercent": 70,
+    "datasets": [
+      { "datasetType": "store_daily_summary", "status": "succeeded", "recordCount": 1 },
+      { "datasetType": "product_daily_performance", "status": "succeeded", "recordCount": 128 },
+      { "datasetType": "keyword_daily_ranking", "status": "running", "recordCount": 800 },
+      { "datasetType": "live_session_performance", "status": "unsupported", "recordCount": 0 }
+    ],
+    "startedAt": "2026-07-17T09:30:05+08:00",
+    "completedAt": null,
+    "error": null
+  },
+  "error": null
+}</code></pre>
+      <p>同步状态枚举：<code>queued</code>、<code>running</code>、<code>partially_succeeded</code>、<code>succeeded</code>、<code>failed</code>、<code>cancelled</code>。</p>
+    </section>
+
+    <section id="batch-upload">
+      <h2>13. Agent 分批回传运营数据</h2>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/agent/operations/data-batches</span></div>
+      <p>Agent 每次只回传一个数据集。建议每批不超过 500 条或 2 MB；服务端按 <code>syncId + datasetType + batchNo</code> 幂等写入。</p>
+      <h3>Request Body</h3>
+      <pre><code>{
+  "syncId": "sync_20260717_001",
+  "runId": "run_20260717_001",
+  "storeId": "store_001",
+  "platform": "tiktok_shop",
+  "datasetType": "store_daily_summary",
+  "schemaVersion": "operations.store_daily_summary.v1",
+  "batchNo": 1,
+  "isLastBatch": true,
+  "collectedAt": "2026-07-17T09:31:20+08:00",
+  "source": {
+    "pageCode": "data_compass_overview",
+    "platformTimezone": "Asia/Shanghai",
+    "platformMetricNames": {
+      "gmv": "成交金额",
+      "paidOrders": "成交订单数"
+    }
+  },
+  "records": [
+    {
+      "businessDate": "2026-07-16",
+      "visitors": 12840,
+      "pageViews": 35620,
+      "impressions": 220310,
+      "clicks": 18120,
+      "paidOrders": 526,
+      "unitsSold": 603,
+      "gmv": { "amount": 12880000, "currency": "CNY" },
+      "refundAmount": { "amount": 320000, "currency": "CNY" },
+      "conversionRate": 0.040966,
+      "clickThroughRate": 0.082247,
+      "refundRate": 0.024845,
+      "uvValue": { "amount": 1003, "currency": "CNY" },
+      "negativeReviewCount": 3,
+      "rawRef": "artifact://run_20260717_001/store-overview-20260716.json"
+    }
+  ]
+}</code></pre>
+      <h3>Response</h3>
+      <pre><code>{
+  "success": true,
+  "requestId": "req_20260717_003",
+  "data": {
+    "syncId": "sync_20260717_001",
+    "datasetType": "store_daily_summary",
+    "batchNo": 1,
+    "acceptedRecords": 1,
+    "rejectedRecords": 0,
+    "duplicate": false
+  },
+  "error": null
+}</code></pre>
+    </section>
+
+    <section id="sync-complete">
+      <h2>14. Agent 完成运营数据同步</h2>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/api/agent/operations/data-syncs/{syncId}/complete</span></div>
+      <pre><code>{
+  "runId": "run_20260717_001",
+  "status": "partially_succeeded",
+  "dataThrough": "2026-07-16T23:59:59+08:00",
+  "quality": {
+    "completeness": 0.92,
+    "issues": [
+      {
+        "datasetType": "live_session_performance",
+        "code": "PLATFORM_DATA_UNAVAILABLE",
+        "message": "No live session occurred in the requested date range"
+      }
+    ]
+  },
+  "recordCounts": {
+    "store_daily_summary": 1,
+    "product_daily_performance": 128,
+    "keyword_daily_ranking": 800,
+    "traffic_source_daily": 12,
+    "ad_campaign_daily": 24,
+    "inventory_snapshot": 286
+  },
+  "completedAt": "2026-07-17T09:35:42+08:00"
+}</code></pre>
+      <div class="note">只有收到完成回调后，SaaS 才将本次同步的数据版本设为查询默认版本。部分成功的数据可查询，但响应必须携带质量问题。</div>
+    </section>
+
+    <section id="daily-summary">
+      <h2>15. 查询店铺日运营总览</h2>
+      <div class="endpoint"><span class="method">GET</span><span class="path">/api/operations/daily-summaries?storeId=store_001&amp;date=2026-07-16</span></div>
+      <pre><code>{
+  "success": true,
+  "requestId": "req_20260717_004",
+  "data": {
+    "storeId": "store_001",
+    "platform": "tiktok_shop",
+    "businessDate": "2026-07-16",
+    "timezone": "Asia/Shanghai",
+    "dataThrough": "2026-07-16T23:59:59+08:00",
+    "freshness": "complete",
+    "metrics": {
+      "visitors": 12840,
+      "pageViews": 35620,
+      "paidOrders": 526,
+      "unitsSold": 603,
+      "gmv": { "amount": 12880000, "currency": "CNY" },
+      "conversionRate": 0.040966,
+      "uvValue": { "amount": 1003, "currency": "CNY" },
+      "refundRate": 0.024845,
+      "negativeReviewCount": 3,
+      "adSpend": { "amount": 2180000, "currency": "CNY" },
+      "adRoi": 4.18,
+      "estimatedProfit": { "amount": 2860000, "currency": "CNY" }
+    },
+    "quality": {
+      "completeness": 0.98,
+      "issues": []
+    }
+  },
+  "error": null
+}</code></pre>
+    </section>
+
+    <section id="trends">
+      <h2>16. 查询运营趋势</h2>
+      <div class="endpoint"><span class="method">GET</span><span class="path">/api/operations/trends</span></div>
+      <pre><code>GET /api/operations/trends
+  ?storeId=store_001
+  &amp;dateFrom=2026-07-10
+  &amp;dateTo=2026-07-16
+  &amp;granularity=day
+  &amp;metrics=gmv,paidOrders,visitors,conversionRate,refundRate,adRoi</code></pre>
+      <pre><code>{
+  "success": true,
+  "requestId": "req_20260717_005",
+  "data": {
+    "storeId": "store_001",
+    "timezone": "Asia/Shanghai",
+    "granularity": "day",
+    "series": [
+      {
+        "period": "2026-07-16",
+        "gmv": { "amount": 12880000, "currency": "CNY" },
+        "paidOrders": 526,
+        "visitors": 12840,
+        "conversionRate": 0.040966,
+        "refundRate": 0.024845,
+        "adRoi": 4.18
+      }
+    ],
+    "comparison": {
+      "type": "previous_period",
+      "gmvChangeRate": 0.083,
+      "paidOrdersChangeRate": 0.051
+    }
+  },
+  "error": null
+}</code></pre>
+      <p><code>granularity</code> 支持 <code>day</code>、<code>week</code>、<code>month</code>。周以店铺时区周一开始，月以自然月计算。</p>
+    </section>
+
+    <section id="dimensions">
+      <h2>17. 细分维度查询</h2>
+      <p>以下接口共享 <code>storeId</code>、<code>date</code> 或 <code>dateFrom/dateTo</code>、<code>limit</code>、<code>cursor</code> 和 <code>sort</code> 参数；响应均返回 <code>dataThrough</code>、<code>quality</code> 和分页信息。</p>
+      <table>
+        <tr><th>接口</th><th>常用过滤</th><th>返回重点</th><th>明确不做</th></tr>
+        <tr><td><code>GET /api/operations/products</code></td><td><code>productId</code>, <code>skuId</code>, <code>keyword</code></td><td>商品曝光、点击、访客、订单、销量、GMV、退款率、关键词排名。</td><td>不上下架、不改标题/价格/SKU。</td></tr>
+        <tr><td><code>GET /api/operations/traffic-sources</code></td><td><code>sourceType</code></td><td>搜索、推荐、付费、私域和其他来源的访客、订单、GMV、占比。</td><td>不投放、不触达用户。</td></tr>
+        <tr><td><code>GET /api/operations/ad-performance</code></td><td><code>channel</code>, <code>campaignId</code></td><td>广告计划曝光、点击、花费、CPC、订单、GMV、ROI。</td><td>不启停计划、不改预算/出价/素材。</td></tr>
+        <tr><td><code>GET /api/operations/content-performance</code></td><td><code>contentType</code>, <code>contentId</code></td><td>短视频/图文曝光、播放、完播、互动、商品点击、订单、GMV。</td><td>不生成、不发布、不删除内容。</td></tr>
+        <tr><td><code>GET /api/operations/live-performance</code></td><td><code>liveSessionId</code></td><td>直播观看、峰值在线、互动、商品点击、订单、GMV、转化率。</td><td>不控制直播间或商品。</td></tr>
+        <tr><td><code>GET /api/operations/activity-performance</code></td><td><code>activityId</code>, <code>activityType</code></td><td>活动访客、订单、销量、GMV、优惠和平台费用。</td><td>不报名活动、不配置优惠。</td></tr>
+        <tr><td><code>GET /api/operations/inventory-snapshots</code></td><td><code>productId</code>, <code>skuId</code>, <code>riskType</code></td><td>在库、可售、锁定、在途、近 3/7/30 日销量和风险标签。</td><td>不调库存、不下架、不生成采购单。</td></tr>
+        <tr><td><code>GET /api/operations/finance-summaries</code></td><td><code>granularity</code></td><td>销售、退款、广告费、平台费、成本和估算利润。</td><td>不记账、不付款、不提现。</td></tr>
+      </table>
+      <h3>商品维度响应示例</h3>
+      <pre><code>{
+  "success": true,
+  "requestId": "req_20260717_006",
+  "data": {
+    "items": [
+      {
+        "businessDate": "2026-07-16",
+        "productId": "prod_001",
+        "platformProductId": "platform_prod_987",
+        "productName": "316 不锈钢保温杯",
+        "impressions": 45600,
+        "visitors": 3200,
+        "clickThroughRate": 0.087,
+        "conversionRate": 0.051,
+        "paidOrders": 163,
+        "unitsSold": 188,
+        "gmv": { "amount": 3860000, "currency": "CNY" },
+        "refundRate": 0.018,
+        "topKeywordRank": 12
+      }
+    ],
+    "nextCursor": "cur_product_002",
+    "dataThrough": "2026-07-16T23:59:59+08:00",
+    "quality": { "completeness": 1, "issues": [] }
+  },
+  "error": null
+}</code></pre>
+    </section>
+
+    <section id="platform-mapping">
+      <h2>18. 多平台映射要求</h2>
+      <table>
+        <tr><th>标准平台码</th><th>平台</th><th>常见后台数据域</th><th>说明</th></tr>
+        <tr><td><code>taobao</code></td><td>淘宝 / 天猫</td><td>生意参谋、直通车、万相台、直播/内容、订单与库存统计。</td><td>字段名和可用粒度以店铺权限为准。</td></tr>
+        <tr><td><code>pinduoduo</code></td><td>拼多多</td><td>经营数据、推广中心、商品、活动、订单与库存统计。</td><td>推荐/场景流量需保留平台原始来源名。</td></tr>
+        <tr><td><code>tiktok_shop</code></td><td>抖音电商</td><td>电商罗盘、千川、短视频、直播、商品与库存统计。</td><td>内容和直播数据可与商品成交归因口径不同。</td></tr>
+        <tr><td><code>jd</code></td><td>京东</td><td>商智、京准通、商品、活动、订单与库存统计。</td><td>品牌/店铺口径应在来源元数据中区分。</td></tr>
+      </table>
+      <ul>
+        <li>每个标准字段必须保留 <code>source.pageCode</code>、平台原始指标名及采集时间。</li>
+        <li>同名指标口径不一致时，以标准字段承载可比值，同时在 <code>source.metricDefinition</code> 保存平台口径。</li>
+        <li>Agent 不得为绕过权限而抓取店铺未授权页面；权限不足返回 <code>PLATFORM_PERMISSION_DENIED</code>。</li>
+      </ul>
+    </section>
+
+    <section id="errors">
+      <h2>19. 错误码</h2>
+      <table>
+        <tr><th>HTTP</th><th>code</th><th>说明</th><th>是否可重试</th></tr>
+        <tr><td>400</td><td><code>INVALID_DATE_RANGE</code></td><td>日期范围非法或超过 31 天。</td><td>否，修正请求。</td></tr>
+        <tr><td>400</td><td><code>UNSUPPORTED_DATASET_TYPE</code></td><td>请求了未知数据集。</td><td>否。</td></tr>
+        <tr><td>401</td><td><code>INVALID_AGENT_SIGNATURE</code></td><td>Agent 签名、时间戳或凭证无效。</td><td>否，刷新凭证。</td></tr>
+        <tr><td>403</td><td><code>PLATFORM_PERMISSION_DENIED</code></td><td>店铺账号无权访问平台数据页面。</td><td>否，需补权限。</td></tr>
+        <tr><td>409</td><td><code>SYNC_ALREADY_RUNNING</code></td><td>相同范围的数据同步正在执行。</td><td>查询已有任务。</td></tr>
+        <tr><td>409</td><td><code>BATCH_SEQUENCE_CONFLICT</code></td><td>批次号重复但内容摘要不同。</td><td>否，检查幂等键。</td></tr>
+        <tr><td>422</td><td><code>DATA_SCHEMA_VALIDATION_FAILED</code></td><td>数据不符合对应 schemaVersion。</td><td>否，修正数据。</td></tr>
+        <tr><td>424</td><td><code>STORE_LOGIN_REQUIRED</code></td><td>平台 session 失效或需要人工验证。</td><td>完成重新登录后可重试。</td></tr>
+        <tr><td>429</td><td><code>PLATFORM_RATE_LIMITED</code></td><td>平台限流。</td><td>是，按 Retry-After 退避。</td></tr>
+        <tr><td>503</td><td><code>PLATFORM_DATA_UNAVAILABLE</code></td><td>平台后台暂时无法提供指定数据。</td><td>是。</td></tr>
+        <tr><td>503</td><td><code>OPERATIONS_DATA_NOT_READY</code></td><td>请求日期尚未同步完成。</td><td>是。</td></tr>
+      </table>
+    </section>
+
+    <section id="security">
+      <h2>20. 安全、审计与保留策略</h2>
+      <ul>
+        <li>Agent 使用店铺绑定产生的 Runtime session；账号密码、Cookie 和 session 原文不得进入运营数据 payload。</li>
+        <li>Agent 回调使用 HMAC-SHA256 签名；服务端校验 5 分钟时间窗、防重放和幂等键。</li>
+        <li>每次同步记录租户、店铺、平台、任务、Runtime session 引用、数据集、记录数、操作者/触发器和时间线。</li>
+        <li>原始页面导出或截图作为 artifact 单独加密存储，payload 只保存引用；访问遵循租户隔离和最小权限。</li>
+        <li>默认保存标准化日报 24 个月、同步运行日志 12 个月；原始 artifact 保存期限由租户策略配置。</li>
+        <li>包含买家个人信息的订单明细不属于本版采集范围；如平台导出文件包含个人信息，Agent 必须在回传前删除或脱敏。</li>
+      </ul>
+    </section>
+
+    <section id="acceptance">
+      <h2>21. 联调验收条件</h2>
+      <ol>
+        <li>可对一个已绑定店铺创建昨日数据同步，并查询到最终状态。</li>
+        <li>Agent 可对至少三种数据集分批回传；重复批次不会产生重复数据。</li>
+        <li>同一业务日期重新同步后，默认查询返回最新完成版本，旧版本仍可审计追溯。</li>
+        <li>日报、趋势和商品维度的金额、比例、时区与平台后台抽样值一致。</li>
+        <li>平台无数据、无权限、登录失效和限流均返回明确状态，不以零值掩盖。</li>
+        <li>数据采集流程不会对平台侧订单、商品、广告、库存、内容、活动或用户产生任何写操作。</li>
+      </ol>
+    </section>
+  </main>
+</body>
+</html>
