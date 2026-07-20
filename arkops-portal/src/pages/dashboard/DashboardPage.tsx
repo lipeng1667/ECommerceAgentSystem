@@ -9,12 +9,17 @@ import {
   LineChartOutlined,
   PlayCircleOutlined,
   RobotOutlined,
+  RiseOutlined,
   SettingOutlined,
+  ShoppingCartOutlined,
+  SyncOutlined,
   UnorderedListOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Badge, Button, Card, Col, Progress, Row, Segmented, Space, Statistic, Table, Tag, Typography } from 'antd';
-import { memo, useMemo, useState } from 'react';
+import { Badge, Button, Card, Col, Progress, Row, Segmented, Select, Space, Statistic, Table, Tag, Typography } from 'antd';
+import dayjs from 'dayjs';
+import { memo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { agentsApi } from '../../api/agents';
 import { businessDashboardApi } from '../../api/businessDashboard';
@@ -56,9 +61,16 @@ function changePercent(current: number, previous: number) {
 
 // ===== 统一运营总览 =====
 
-const OperationsOverview = memo(function OperationsOverview({ storesData }: { storesData: Store[] }) {
+const OperationsOverview = memo(function OperationsOverview({
+  storesData,
+  timeRange,
+  selectedStoreName,
+}: {
+  storesData: Store[];
+  timeRange: 'today' | '7d' | '30d';
+  selectedStoreName: string;
+}) {
   const { t } = useI18n();
-  const [timeRange, setTimeRange] = useState<'today' | '7d' | '30d'>('today');
 
   const { data: biz } = useQuery({
     queryKey: ['businessDashboard', timeRange],
@@ -70,67 +82,11 @@ const OperationsOverview = memo(function OperationsOverview({ storesData }: { st
   // 店铺名称 → Store 映射，用于获取真实店铺状态
   const storeByName = new Map(storesData.map(s => [s.name, s]));
 
-  // Agent 实时动态 mock 数据
-  const agentFeed = useMemo(() => [
-    { time: '10:32', agent: 'pricing_strategy', action: '将充电器价格从 $42.00 调整为 $39.99', store: 'TikTok Shop 美国旗舰店', color: '#7c3aed' },
-    { time: '10:28', agent: 'review_manager', action: '回复了 John D. 的 1 星差评', store: 'Amazon 户外用品店', color: '#16a34a' },
-    { time: '10:15', agent: 'ads_optimizer', action: '将 CA-002 预算从 $300 削减至 $150，ROI 偏低 0.8×', store: 'TikTok Shop 美国旗舰店', color: '#2563eb' },
-    { time: '10:02', agent: 'inventory_alert', action: '充电器库存降至 45 件，低于阈值 50', store: 'Shopify 独立站', color: '#ea580c' },
-    { time: '09:48', agent: 'competitor_intel', action: '监测到竞品降价 8%，建议调整运动T恤定价', store: 'Amazon 户外用品店', color: '#6366f1' },
-    { time: '09:30', agent: 'crm_retention', action: '向 320 名沉睡客户发放 $5 唤醒优惠券', store: 'TikTok Shop 美国旗舰店', color: '#0f766e' },
-    { time: '09:15', agent: 'customer_service', action: 'AI 自动回复 3 条买家咨询，0 条转人工', store: 'Shopify 独立站', color: '#0891b2' },
-  ], []);
-
   return (
     <>
-      {/* ===== 1. Agent 实时动态流 ===== */}
+      {/* ===== 店铺经营对比 ===== */}
       <Card
-        title={<><RobotOutlined style={{ color: '#2563eb' }} /> {t('dashboard.agentFeed')}</>}
-        size="small"
-        style={{ marginBottom: 16 }}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-          {agentFeed.map((item, i) => (
-            <div
-              key={i}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '8px 4px',
-                borderBottom: i < agentFeed.length - 1 ? '1px solid var(--ark-border-soft)' : 'none',
-                opacity: 1 - i * 0.08
-              }}
-            >
-              <Typography.Text style={{ fontSize: 11, color: '#94a3b8', minWidth: 40, fontFamily: 'monospace' }}>
-                {item.time}
-              </Typography.Text>
-              <Tag color={item.color} style={{ fontSize: 10, margin: 0, minWidth: 60, textAlign: 'center' }}>
-                {t(`agent.${item.agent}`).length > 6 ? t(`agent.${item.agent}`).slice(0, 6) + '..' : t(`agent.${item.agent}`)}
-              </Tag>
-              <Typography.Text style={{ fontSize: 12, flex: 1, minWidth: 0 }} ellipsis>
-                {item.action}
-              </Typography.Text>
-              <Typography.Text type="secondary" style={{ fontSize: 10, minWidth: 60, textAlign: 'right' }}>
-                {item.store}
-              </Typography.Text>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* ===== 2. 核心指标（按店铺统计） ===== */}
-      <Card
-        title={
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span><DollarOutlined style={{ marginRight: 8 }} />{t('dashboard.coreMetrics')}</span>
-            <Segmented size="small" value={timeRange} onChange={v => setTimeRange(v as 'today' | '7d' | '30d')}
-              options={[
-                { label: t('time.today'), value: 'today' },
-                { label: t('time.7d'), value: '7d' },
-                { label: t('time.30d'), value: '30d' },
-              ]}
-            />
-          </div>
-        }
+        title={<span><DollarOutlined style={{ marginRight: 8 }} />店铺经营对比</span>}
         size="small"
         style={{ marginBottom: 16 }}
       >
@@ -144,7 +100,7 @@ const OperationsOverview = memo(function OperationsOverview({ storesData }: { st
               { storeName: biz.storeGmvRank[0]?.storeName ?? 'Store A', platform: biz.storeGmvRank[0]?.platform ?? '', gmv: biz.storeGmvRank[0]?.gmv ?? 0, orders: 236, roas: 8.2, negativeReviews: 1, status: storeByName.get(biz.storeGmvRank[0]?.storeName ?? '')?.status ?? 'connected' },
               { storeName: biz.storeGmvRank[1]?.storeName ?? 'Store B', platform: biz.storeGmvRank[1]?.platform ?? '', gmv: biz.storeGmvRank[1]?.gmv ?? 0, orders: 128, roas: 5.8, negativeReviews: 1, status: storeByName.get(biz.storeGmvRank[1]?.storeName ?? '')?.status ?? 'connected' },
               { storeName: biz.storeGmvRank[2]?.storeName ?? 'Store C', platform: biz.storeGmvRank[2]?.platform ?? '', gmv: biz.storeGmvRank[2]?.gmv ?? 0, orders: 48, roas: 6.3, negativeReviews: 0, status: storeByName.get(biz.storeGmvRank[2]?.storeName ?? '')?.status ?? 'connected' },
-            ]}
+            ].filter(row => selectedStoreName === 'all' || (row.status !== 'summary' && row.storeName === selectedStoreName))}
             pagination={false}
             size="small"
             columns={[
@@ -299,7 +255,7 @@ const OperationsOverview = memo(function OperationsOverview({ storesData }: { st
                     const colorMap: Record<string, string> = { running: 'blue', succeeded: 'green', failed: 'red', waiting_approval: 'orange', queued: 'default' };
                     return <Tag color={colorMap[v]} style={{ fontSize: 10 }}>{t(`status.${v}`)}</Tag>;
                   }},
-                  { title: t('dashboard.colCreatedAt'), dataIndex: 'createdAt', width: 130, render: (v: string) => <Typography.Text style={{ fontSize: 11 }} type="secondary">{v}</Typography.Text> },
+                  { title: t('dashboard.colCreatedAt'), dataIndex: 'createdAt', width: 130, render: (v: string) => <Typography.Text style={{ fontSize: 11 }} type="secondary">{dayjs(v).format('MM-DD HH:mm')}</Typography.Text> },
                 ]}
               />
             </Card>
@@ -307,65 +263,7 @@ const OperationsOverview = memo(function OperationsOverview({ storesData }: { st
         </Row>
       )}
 
-      {/* ===== 4. 需要关注 ===== */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col span={24}>
-          <Card title={<><AlertOutlined /> {t('dashboard.attention')}</>} size="small">
-            {biz && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {biz.afterSales.negativeReviews - biz.afterSales.respondedReviews > 0 && (
-                  <Link to="/agents/review_manager" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#fef2f2', borderRadius: 8 }}>
-                    <Space>
-                      <span style={{ color: '#dc2626', fontWeight: 600 }}>⚠</span>
-                      <Typography.Text style={{ fontSize: 12 }}>{t('dashboard.negativeReviewPending')}</Typography.Text>
-                      <Typography.Text type="secondary" style={{ fontSize: 10 }}>{t('dashboard.viewTask')}</Typography.Text>
-                    </Space>
-                    <Badge count={biz.afterSales.negativeReviews - biz.afterSales.respondedReviews} size="small" />
-                  </Link>
-                )}
-                {biz.inventory.lowStockCount > 0 && (
-                  <Link to="/products" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#fff7ed', borderRadius: 8 }}>
-                    <Space>
-                      <span style={{ color: '#ea580c', fontWeight: 600 }}>⚠</span>
-                      <Typography.Text style={{ fontSize: 12 }}>{t('dashboard.inventoryAlert')}</Typography.Text>
-                      <Typography.Text type="secondary" style={{ fontSize: 10 }}>{t('dashboard.toProducts')}</Typography.Text>
-                    </Space>
-                    <Badge count={biz.inventory.lowStockCount} size="small" />
-                  </Link>
-                )}
-                {biz.adMetrics.roas < 1.5 && (
-                  <Link to="/agents/ads_optimizer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#fff7ed', borderRadius: 8 }}>
-                    <Space>
-                      <span style={{ color: '#ea580c', fontWeight: 600 }}>⚠</span>
-                      <Typography.Text style={{ fontSize: 12 }}>{t('dashboard.lowAdROI', { roi: biz.adMetrics.roas })}</Typography.Text>
-                      <Typography.Text type="secondary" style={{ fontSize: 10 }}>{t('dashboard.viewTask')}</Typography.Text>
-                    </Space>
-                    <Tag color="orange" style={{ fontSize: 9 }}>{t('dashboard.watch')}</Tag>
-                  </Link>
-                )}
-                {biz.inventory.outOfStockCount > 0 && (
-                  <Link to="/products" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#fef2f2', borderRadius: 8 }}>
-                    <Space>
-                      <span style={{ color: '#dc2626', fontWeight: 600 }}>⚠</span>
-                      <Typography.Text style={{ fontSize: 12 }}>{t('dashboard.outOfStock')}</Typography.Text>
-                      <Typography.Text type="secondary" style={{ fontSize: 10 }}>{t('dashboard.toProductManagement')}</Typography.Text>
-                    </Space>
-                    <Badge count={biz.inventory.outOfStockCount} size="small" />
-                  </Link>
-                )}
-                {(!biz || (biz.afterSales.negativeReviews - biz.afterSales.respondedReviews === 0 && biz.inventory.lowStockCount === 0 && biz.adMetrics.roas >= 1.5 && biz.inventory.outOfStockCount === 0)) && (
-                  <div style={{ textAlign: 'center', padding: '24px 0', color: '#16a34a' }}>
-                    <CheckCircleOutlined style={{ fontSize: 24, marginBottom: 8, display: 'block' }} />
-                    <Typography.Text style={{ fontSize: 13 }}>{t('dashboard.allGood')}</Typography.Text>
-                  </div>
-                )}
-              </div>
-            )}
-          </Card>
-        </Col>
-      </Row>
-
-      {/* ===== 5. 额度 + 健康信号（精简到底部）===== */}
+      {/* ===== 系统额度与健康信号（页面底部）===== */}
       {ops && (
         <Row gutter={[16, 16]}>
           <Col xs={24} lg={12}>
@@ -408,6 +306,8 @@ export function DashboardPage() {
   const { t } = useI18n();
   const { user } = useAuth();
   const { isDemo, enterDemo } = useDemoMode();
+  const [timeRange, setTimeRange] = useState<'today' | '7d' | '30d'>('today');
+  const [selectedStoreName, setSelectedStoreName] = useState('all');
 
   const { data: storesData } = useQuery({
     queryKey: ['stores'],
@@ -434,6 +334,30 @@ export function DashboardPage() {
     enabled: storeCount > 0,
   });
 
+  const { data: businessMetrics } = useQuery({
+    queryKey: ['businessDashboard', timeRange],
+    queryFn: () => businessDashboardApi.getMetrics(timeRange),
+    enabled: storeCount > 0,
+  });
+
+  const { data: dashboardSummary } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: dashboardApi.getSummary,
+    enabled: storeCount > 0,
+  });
+
+  const selectedStoreMetric = businessMetrics?.storeGmvRank.find(item => item.storeName === selectedStoreName);
+  const storeOrders: Record<string, number> = {
+    'TikTok Shop 美国旗舰店': 236,
+    'Amazon 户外用品店': 128,
+    'Shopify 独立站': 48,
+  };
+  const currentGmv = selectedStoreMetric?.gmv ?? businessMetrics?.gmv.today ?? 0;
+  const currentOrders = selectedStoreMetric ? storeOrders[selectedStoreMetric.storeName] ?? 0 : businessMetrics?.orders.today ?? 0;
+  const pendingReviews = businessMetrics ? businessMetrics.afterSales.negativeReviews - businessMetrics.afterSales.respondedReviews : 0;
+  const gmvChange = businessMetrics ? changePercent(businessMetrics.gmv.today, businessMetrics.gmv.yesterday) : { value: 0, up: true };
+  const orderChange = businessMetrics ? changePercent(businessMetrics.orders.today, businessMetrics.orders.yesterday) : { value: 0, up: true };
+
   // 自适应状态条
   const setupIncomplete = storeCount === 0 || enabledAgentCount === 0;
   const statusBarStyle = storeCount === 0
@@ -453,10 +377,33 @@ export function DashboardPage() {
 
   return (
     <div className="page-stack">
-      <PageHeader title={t('dashboard.title')} description={t('dashboard.description')} />
-
-      <AutomationOverview />
-      <ApprovalQueue />
+      <PageHeader
+        title={t('dashboard.title')}
+        description={t('dashboard.description')}
+        actions={
+          <Space size={8} wrap>
+            <Typography.Text type="secondary" style={{ fontSize: 11 }}><SyncOutlined /> 数据更新于 {dayjs().format('HH:mm')}</Typography.Text>
+            <Select
+              value={selectedStoreName}
+              onChange={setSelectedStoreName}
+              style={{ width: 190 }}
+              options={[
+                { label: '全部店铺', value: 'all' },
+                ...(storesData ?? []).map(store => ({ label: store.name, value: store.name })),
+              ]}
+            />
+            <Segmented
+              value={timeRange}
+              onChange={value => setTimeRange(value as 'today' | '7d' | '30d')}
+              options={[
+                { label: '当日', value: 'today' },
+                { label: '7 日', value: '7d' },
+                { label: '30 天', value: '30d' },
+              ]}
+            />
+          </Space>
+        }
+      />
 
       {/* 演示模式入口 — 无店铺时显示 */}
       {!isDemo && storeCount === 0 && (
@@ -479,69 +426,60 @@ export function DashboardPage() {
         </Card>
       )}
 
-      {/* 试用横幅 — 非付费套餐显示 */}
-      {trialStatus && trialStatus.planTier !== 'Enterprise' && storeCount > 0 && (
-        <Card size="small" style={{ marginBottom: 16, background: 'linear-gradient(90deg, #fefce8 0%, #fef9c3 100%)', border: '1px solid #facc15' }}>
-          <Row align="middle" justify="space-between">
-            <Col>
-              <Space size={12}>
-                <Typography.Text strong style={{ fontSize: 13, color: '#854d0e' }}>
-                  {t('dashboard.trialDaysLeft', { days: trialStatus.trialDaysLeft })}
-                </Typography.Text>
-                <Tag color="orange" style={{ fontSize: 10 }}>
-                  {t('dashboard.trialUsedStores', { used: trialStatus.usedStores, limit: trialStatus.trialStoreLimit })}
-                </Tag>
-                <Tag color={trialStatus.usedAgentCalls > trialStatus.agentCallLimit * 0.8 ? 'red' : 'orange'} style={{ fontSize: 10 }}>
-                  {t('dashboard.trialAgentCalls', { used: trialStatus.usedAgentCalls, limit: trialStatus.agentCallLimit })}
-                </Tag>
-                <Typography.Text style={{ fontSize: 11, color: '#a16207' }}>
-                  {t('dashboard.premiumAgentsLocked', { count: trialStatus.premiumAgents.length })}
-                </Typography.Text>
-              </Space>
+      {businessMetrics && (
+        <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+          {[
+            { title: 'GMV', value: formatCurrency(currentGmv), meta: `${gmvChange.up ? '↑' : '↓'} ${Math.abs(gmvChange.value)}% 较昨日`, color: '#2563eb', icon: <DollarOutlined /> },
+            { title: '订单', value: formatNumber(currentOrders), meta: `${orderChange.up ? '↑' : '↓'} ${Math.abs(orderChange.value)}% 较昨日`, color: '#0f766e', icon: <ShoppingCartOutlined /> },
+            { title: '预计利润', value: formatCurrency(Math.round(currentGmv * 0.21)), meta: '按 21% 预计净利率', color: '#16a34a', icon: <RiseOutlined /> },
+            { title: '广告 ROI', value: `${businessMetrics.adMetrics.roas.toFixed(1)}×`, meta: `目标 ${businessMetrics.adMetrics.targetRoas.toFixed(1)}×`, color: '#7c3aed', icon: <DashboardOutlined /> },
+            { title: '差评待回复', value: String(pendingReviews), meta: `回复率 ${businessMetrics.afterSales.reviewResponseRate}%`, color: pendingReviews > 0 ? '#dc2626' : '#16a34a', icon: <WarningOutlined /> },
+            { title: '低库存 SKU', value: String(businessMetrics.inventory.lowStockCount), meta: `${businessMetrics.inventory.outOfStockCount} 个已断货`, color: '#ea580c', icon: <AlertOutlined /> },
+          ].map(metric => (
+            <Col key={metric.title} xs={12} md={8} xl={4}>
+              <Card size="small" className="business-kpi-card">
+                <Space align="start" style={{ width: '100%', justifyContent: 'space-between' }}>
+                  <div>
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>{metric.title}</Typography.Text>
+                    <Typography.Title level={3} style={{ margin: '6px 0 2px', color: metric.color }}>{metric.value}</Typography.Title>
+                    <Typography.Text type="secondary" style={{ fontSize: 11 }}>{metric.meta}</Typography.Text>
+                  </div>
+                  <span className="business-kpi-icon" style={{ color: metric.color }}>{metric.icon}</span>
+                </Space>
+              </Card>
             </Col>
-            <Col>
-              <Link to="/settings/billing">
-                <Button type="primary" size="small" style={{ background: '#ca8a04', borderColor: '#ca8a04' }}>
-                  {t('dashboard.upgradePlan')}
-                </Button>
-              </Link>
-            </Col>
-          </Row>
-        </Card>
+          ))}
+        </Row>
       )}
 
-      {/* 自适应状态条 */}
-      <Card size="small" style={{ ...statusBarStyle, marginBottom: 16 }}>
-        <Row align="middle" justify="space-between">
-          <Col>
-            <Space size="middle">
-              <Badge status={storeCount === 0 ? 'warning' : enabledAgentCount === 0 ? 'processing' : 'success'} />
-              {storeCount === 0 ? (
-                <Typography.Text strong style={{ fontSize: 13, color: '#c2410c' }}>
-                  {t('dashboard.connectStoreHint')}
-                </Typography.Text>
-              ) : enabledAgentCount === 0 ? (
-                <Typography.Text strong style={{ fontSize: 13, color: '#1d4ed8' }}>
-                  {t('dashboard.storeConnectedNoAgent')}
-                </Typography.Text>
-              ) : (
-                <>
-                  <Typography.Text strong style={{ fontSize: 13 }}>{t('setup.runningStatus')}</Typography.Text>
-                  <Tag color="green" style={{ fontSize: 10 }}>{storeCount} {t('setup.storesOnline')}</Tag>
-                  <Tag color="blue" style={{ fontSize: 10 }}>{enabledAgentCount} Agents {t('setup.agentsRunning')}</Tag>
-                </>
-              )}
-            </Space>
+      {businessMetrics && (
+        <Row gutter={[16, 16]} style={{ marginBottom: 16 }} align="stretch">
+          <Col xs={24} lg={10}>
+            <Card className="ai-business-brief" title={<Space><RobotOutlined />AI 经营简报</Space>}>
+              <Typography.Paragraph strong style={{ fontSize: 15, marginBottom: 12 }}>
+                今日 GMV 较昨日增长 {Math.abs(gmvChange.value)}%，整体经营稳定，但库存和店铺授权需要优先处理。
+              </Typography.Paragraph>
+              <Space direction="vertical" size={8}>
+                <Typography.Text>• TikTok Shop 贡献当前最高 GMV，广告 ROI 高于目标。</Typography.Text>
+                <Typography.Text>• Amazon 店铺需要重新登录，否则后续数据可能停止更新。</Typography.Text>
+                <Typography.Text>• {businessMetrics.inventory.lowStockCount} 个 SKU 库存偏低，建议今天确认补货计划。</Typography.Text>
+              </Space>
+            </Card>
           </Col>
-          <Col>
-            <Link to="/setup">
-              <Button type={setupIncomplete ? 'primary' : 'default'} size="small" icon={<SettingOutlined />}>
-                {setupIncomplete ? t('dashboard.quickSetup') : t('setup.manageConfig')}
-              </Button>
-            </Link>
+          <Col xs={24} lg={14}>
+            <Card title={<Space><AlertOutlined style={{ color: '#ea580c' }} />今日待办</Space>} extra={<Typography.Text type="secondary">按紧急程度排序</Typography.Text>} style={{ height: '100%' }}>
+              <div className="dashboard-priority-list">
+                {dashboardSummary && dashboardSummary.loginRequiredStores > 0 && <Link to="/stores"><span><Tag color="red">紧急</Tag>Amazon 店铺需要重新登录</span><strong>{dashboardSummary.loginRequiredStores} 家 →</strong></Link>}
+                {dashboardSummary && dashboardSummary.pendingApprovals > 0 && <Link to="/agents/approvals"><span><Tag color="orange">审批</Tag>Agent 操作等待人工确认</span><strong>{dashboardSummary.pendingApprovals} 项 →</strong></Link>}
+                {pendingReviews > 0 && <Link to="/agents/review_manager"><span><Tag color="gold">评价</Tag>差评等待回复</span><strong>{pendingReviews} 条 →</strong></Link>}
+                {businessMetrics.inventory.lowStockCount > 0 && <Link to="/products"><span><Tag color="blue">库存</Tag>SKU 库存不足</span><strong>{businessMetrics.inventory.lowStockCount} 个 →</strong></Link>}
+              </div>
+            </Card>
           </Col>
         </Row>
-      </Card>
+      )}
+
+      <ApprovalQueue />
 
       {/* Agent 今日成果卡片 */}
       {achievements && storeCount > 0 && (
@@ -609,7 +547,34 @@ export function DashboardPage() {
         </Card>
       )}
 
-      <OperationsOverview storesData={storesData ?? []} />
+      <OperationsOverview storesData={storesData ?? []} timeRange={timeRange} selectedStoreName={selectedStoreName} />
+
+      <AutomationOverview />
+
+      <Card size="small" style={{ ...statusBarStyle, marginBottom: 16 }}>
+        <Row align="middle" justify="space-between" gutter={[12, 12]}>
+          <Col>
+            <Space size="middle" wrap>
+              <Badge status={enabledAgentCount === 0 ? 'processing' : 'success'} />
+              <Typography.Text strong style={{ fontSize: 13 }}>
+                {enabledAgentCount === 0 ? '店铺已连接，配置 Agent 后可开始智能运营' : '自动化方案运行正常'}
+              </Typography.Text>
+              <Tag color="green">{storeCount} 家店铺在线</Tag>
+              {trialStatus && trialStatus.planTier !== 'Enterprise' && (
+                <Tag color={trialStatus.usedAgentCalls > trialStatus.agentCallLimit * 0.8 ? 'red' : 'orange'}>
+                  试用剩余 {trialStatus.trialDaysLeft} 天 · 调用 {trialStatus.usedAgentCalls}/{trialStatus.agentCallLimit}
+                </Tag>
+              )}
+            </Space>
+          </Col>
+          <Col>
+            <Space>
+              {trialStatus && trialStatus.planTier !== 'Enterprise' && <Link to="/settings/billing"><Button size="small">查看套餐</Button></Link>}
+              <Link to="/setup"><Button type={setupIncomplete ? 'primary' : 'default'} size="small" icon={<SettingOutlined />}>配置自动化方案</Button></Link>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
     </div>
   );
 }

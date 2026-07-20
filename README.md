@@ -559,8 +559,8 @@ This repository currently contains design artifacts, business planning materials
 - `docs/architecture/AllMall_Internal_Technical_Route_V0.3.html`: combined platform architecture, internal technical route, team collaboration plan, and MuleRun beta integration plan
 - `docs/architecture/AllMall_SaaS_Technical_Architecture_V0.1.html`: SaaS platform technical architecture
 - `docs/architecture/AllMall_SaaS_Database_Design_V0.1.html`: SaaS platform database design
-- `docs/architecture/AllMall_SaaS_API_Specification_V0.1.html`: SaaS platform API specification
-- `docs/architecture/AllMall_SaaS_Agent_Interface_Specification_V0.1.html`: SaaS-to-Agent interface specification for login binding and competitor research
+- `docs/architecture/AllMall_SaaS_API_Specification_V0.2.html`: current SaaS platform API specification, including daily operations data collection APIs
+- `docs/architecture/AllMall_SaaS_Agent_Interface_Specification_V0.3.html`: current SaaS-to-Agent interface specification for login binding, competitor research, scheduled operations data collection, and full initial store synchronization
 - `docs/architecture/AllMall_AI_Vertical_Model_Technical_Route_V0.1.html`: AI vertical model technical architecture and roadmap
 - `docs/architecture/system design.html`: an earlier system design document
 - `arkops-portal/`: React + TypeScript + Vite + Ant Design frontend MVP; the directory name is legacy, while the product name is AllMall

@@ -118,7 +118,7 @@ export const dashboardApi = {
   /** Agent 今日成果 — 量化 AI 创造的价值 */
   getAgentAchievements: () =>
     mockDelay({
-      hoursSaved: tasks.filter((t) => t.status === 'succeeded').length * 0.2,
+      hoursSaved: Number((tasks.filter((t) => t.status === 'succeeded').length * 0.2).toFixed(1)),
       hoursSavedTrend: 18,
       revenueUplift: 1247,
       revenueUpliftTrend: 23,

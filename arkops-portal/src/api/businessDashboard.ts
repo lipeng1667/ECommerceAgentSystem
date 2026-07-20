@@ -1,6 +1,12 @@
 import { mockDelay } from './client';
 import type { BusinessMetrics } from '../types/domain';
 
+function recentDay(daysAgo: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() - daysAgo);
+  return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+
 export const businessDashboardApi = {
   getMetrics: (_timeRange?: string): Promise<BusinessMetrics> =>
     mockDelay({
@@ -9,13 +15,13 @@ export const businessDashboardApi = {
       aov: 69.5,
       storeCount: { online: 3, total: 3 },
       gmvTrend: [
-        { date: '6/9', gmv: 23500, orders: 342 },
-        { date: '6/10', gmv: 24900, orders: 356 },
-        { date: '6/11', gmv: 26100, orders: 370 },
-        { date: '6/12', gmv: 25800, orders: 365 },
-        { date: '6/13', gmv: 27900, orders: 398 },
-        { date: '6/14', gmv: 27350, orders: 388 },
-        { date: '6/15', gmv: 28640, orders: 412 }
+        { date: recentDay(6), gmv: 23500, orders: 342 },
+        { date: recentDay(5), gmv: 24900, orders: 356 },
+        { date: recentDay(4), gmv: 26100, orders: 370 },
+        { date: recentDay(3), gmv: 25800, orders: 365 },
+        { date: recentDay(2), gmv: 27900, orders: 398 },
+        { date: recentDay(1), gmv: 27350, orders: 388 },
+        { date: recentDay(0), gmv: 28640, orders: 412 }
       ],
       storeGmvRank: [
         { storeName: 'TikTok Shop 美国旗舰店', gmv: 15620, platform: 'TikTok Shop' },
@@ -32,13 +38,13 @@ export const businessDashboardApi = {
         budgetLimit: 5000,
         targetRoas: 5.0,
         trend: [
-          { date: '6/9', spend: 3200, gmv: 21120 },
-          { date: '6/10', spend: 3580, gmv: 24900 },
-          { date: '6/11', spend: 3700, gmv: 27520 },
-          { date: '6/12', spend: 3450, gmv: 25360 },
-          { date: '6/13', spend: 3900, gmv: 29250 },
-          { date: '6/14', spend: 3750, gmv: 27350 },
-          { date: '6/15', spend: 3840, gmv: 28640 }
+          { date: recentDay(6), spend: 3200, gmv: 21120 },
+          { date: recentDay(5), spend: 3580, gmv: 24900 },
+          { date: recentDay(4), spend: 3700, gmv: 27520 },
+          { date: recentDay(3), spend: 3450, gmv: 25360 },
+          { date: recentDay(2), spend: 3900, gmv: 29250 },
+          { date: recentDay(1), spend: 3750, gmv: 27350 },
+          { date: recentDay(0), spend: 3840, gmv: 28640 }
         ],
         lowPerformingPlans: [
           { name: '广告计划 C-102', spend: 612, roi: 1.42 },
@@ -56,13 +62,13 @@ export const businessDashboardApi = {
         disputes: { pending: 2, processing: 1 },
         avgResponseMinutes: 120,
         reviewTrend: [
-          { date: '6/9', returnRate: 2.9, negativeCount: 4 },
-          { date: '6/10', returnRate: 3.1, negativeCount: 6 },
-          { date: '6/11', returnRate: 2.8, negativeCount: 3 },
-          { date: '6/12', returnRate: 3.5, negativeCount: 7 },
-          { date: '6/13', returnRate: 3.3, negativeCount: 5 },
-          { date: '6/14', returnRate: 3.0, negativeCount: 4 },
-          { date: '6/15', returnRate: 3.2, negativeCount: 5 }
+          { date: recentDay(6), returnRate: 2.9, negativeCount: 4 },
+          { date: recentDay(5), returnRate: 3.1, negativeCount: 6 },
+          { date: recentDay(4), returnRate: 2.8, negativeCount: 3 },
+          { date: recentDay(3), returnRate: 3.5, negativeCount: 7 },
+          { date: recentDay(2), returnRate: 3.3, negativeCount: 5 },
+          { date: recentDay(1), returnRate: 3.0, negativeCount: 4 },
+          { date: recentDay(0), returnRate: 3.2, negativeCount: 5 }
         ]
       },
       inventory: {

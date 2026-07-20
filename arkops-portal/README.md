@@ -11,10 +11,13 @@ The current implementation has been updated according to `product-design.md`. It
 Frontend status:
 
 - The main SaaS console pages have been implemented with mock data.
+- The local login page provides separate first-time and established-merchant experience accounts.
+- First-time merchants enter a guided existing-store synchronization flow and see empty business pages until a store is connected.
+- Existing-store import and cross-platform product migration are available through the guided store onboarding page.
 - The navigation has been updated to match the latest product design.
 - Agent tasks are now managed inside Agent detail pages rather than through standalone task list/detail pages.
 - Billing ledger is available from the main navigation; the standalone subscription page has been removed from the latest navigation.
-- Exception Center, Order Automation, Operations Center, and Usage Guide are available from the main navigation.
+- Exception Center, Order Automation, the unified Dashboard, and Usage Guide are available from the main navigation.
 - Model Center has been redesigned around Agent-to-model assignment.
 - The approval badge in the sidebar reflects pending approvals from mock summary data.
 - Light, dark, and system theme switching are available.
@@ -81,29 +84,46 @@ Default local URL:
 http://localhost:5173/
 ```
 
+### Local Experience Accounts
+
+The local frontend has two explicit merchant personas. Both use the password `demo123`.
+
+| Account | Merchant stage | Login destination |
+| --- | --- | --- |
+| `new@allmall.cn` | New merchant with no connected stores | Existing-store synchronization wizard at `/stores/onboarding?journey=import` |
+| `merchant@allmall.cn` | Established merchant with stores and operating data | Business dashboard at `/dashboard` |
+
+The new-merchant persona intentionally has no store, product, order, Agent-run, exception, approval, or dashboard operating data. If the user chooses “稍后继续” in the synchronization wizard, the application remains browsable but business pages show a unified connect-store empty state.
+
+Local authentication is frontend-only. A deployment identifier is generated whenever the Vite dev server starts or a production build is created. Sessions survive refreshes within the same deployment, while a newly started deployment returns the browser to `/login`. This behavior is for local product-flow validation and is not a production authentication design.
+
 ## Implemented Navigation
 
 | Route | Page | Status | Purpose |
 | --- | --- | --- | --- |
-| `/login` | Login | Implemented | User authentication entry page with mock flow. |
-| `/dashboard` | Dashboard | Implemented | Business overview, Agent monitoring, and new user onboarding wizard. |
+| `/login` | Login | Implemented | Select a first-time or established local merchant persona. |
+| `/dashboard` | Dashboard | Implemented | Business overview and Agent monitoring; empty until a new merchant connects a store. |
 | `/setup` | Quick Setup | Implemented | Centralized config for pricing, ads, customer, and inventory across all agents. |
-| `/exception-center` | Exception Center | Implemented | High-priority issues that require operator intervention. |
-| `/approvals` | Approval List | Implemented | Pending approval list. |
-| `/approvals/:approvalId` | Approval Detail | Implemented | Approve or reject high-risk actions. |
 | `/orders` | Order Automation | Implemented | Order handling, automation progress, and exception workflows. |
+| `/products` | Product Management | Implemented | Imported products, drafts, prices, and inventory. |
 | `/stores` | Store List | Implemented | Store list, authorization status, service tags, add-store entry. |
+| `/stores/onboarding` | Store Import and Migration | Implemented | Guided initial store synchronization and cross-platform product migration. |
 | `/stores/new` | Add Store | Implemented | Store creation / onboarding flow. |
 | `/stores/:storeId` | Store Detail | Implemented | Store business overview and settings tabs. |
 | `/agents` | Agent Center | Implemented | My Agents and available Agents panels. |
 | `/agents/:agentType` | Agent Detail | Implemented | Agent stats, run instructions, task history, task creation modal. |
-| `/models` | Model Center | Implemented | Agent model assignment, custom models, monthly usage. |
-| `/operations` | Operations Center | Implemented | Business, cost, product, and efficiency analysis. |
-| `/audit-logs` | Audit Logs | Implemented | System and execution audit records. |
-| `/billing` | Billing Ledger | Implemented | Usage, monthly cost, bills, invoices. |
-| `/guide` | Usage Guide | Implemented | Product usage guide and core workflow explanations. |
+| `/agents/exceptions` | Exception Center | Implemented | High-priority issues that require operator intervention. |
+| `/agents/approvals` | Approval List | Implemented | Pending approval list. |
+| `/agents/approvals/:approvalId` | Approval Detail | Implemented | Approve or reject high-risk actions. |
+| `/settings/stores` | Store Settings Entry | Implemented | Store management entry within Settings. |
+| `/settings/models` | Model Center | Implemented | Agent model assignment, custom models, monthly usage. |
+| `/settings/audit-logs` | Audit Logs | Implemented | System and execution audit records. |
+| `/settings/billing` | Billing Ledger | Implemented | Usage, monthly cost, bills, invoices. |
+| `/settings/guide` | Usage Guide | Implemented | Product usage guide and core workflow explanations. |
 | `/settings/members` | Members | Implemented | Member list and invitations. |
 | `/settings/notifications` | Notifications | Implemented | Notification channels and preferences. |
+
+Legacy routes such as `/exception-center`, `/approvals`, `/models`, `/audit-logs`, `/billing`, and `/guide` remain as redirects to the current route structure.
 
 Removed from the latest navigation:
 
@@ -114,17 +134,14 @@ Removed from the latest navigation:
 - `/settings/approval-policy`
 
 Task creation and task history now belong to each Agent detail page.
-Subscription, payment, invoice, and enterprise plan content now belong to `/billing`.
+Subscription, payment, invoice, and enterprise plan content now belong to `/settings/billing`.
 Approval rules are configured in Agent/risk-control contexts rather than through a standalone approval policy page.
 
 ## Implemented Modules
 
 ### Dashboard
 
-Two tabs are implemented:
-
-- Business Overview
-- Agent Monitoring
+The dashboard combines the business overview and Agent monitoring into one operational view.
 
 The dashboard includes:
 
@@ -152,6 +169,9 @@ Implemented:
 - Store settings tab
 - Service connection display
 - Authorization status display
+- Guided import of products, orders, reviews, inventory, and other existing-store data
+- Cross-platform product migration with source and target platform selection
+- A reusable pre-connection empty state across business pages for first-time merchants
 
 The latest design removed technical columns such as execution environment and last validation from the store list. Store rows now emphasize business-facing service tags such as Qianchuan and Feige.
 
@@ -232,13 +252,9 @@ Implemented:
 - Exception handling actions
 - Order detail modal and execution timeline
 
-### Operations Center
+### Unified Operations Overview
 
-Implemented:
-
-- Business and efficiency analysis panels
-- Cost and product performance views
-- Operational insights for follow-up automation work
+Business metrics, Agent activity, cost, product performance, and operational insights are now composed in `/dashboard`. The legacy `/operations` route redirects there.
 
 ### Billing
 
@@ -331,7 +347,7 @@ Future API and database work must follow the repository-level conventions in the
 Relevant interface document:
 
 ```text
-../docs/architecture/AllMall_SaaS_Agent_Interface_Specification_V0.1.html
+../docs/architecture/AllMall_SaaS_Agent_Interface_Specification_V0.3.html
 ```
 
 ## Suggested Directory Structure
@@ -347,10 +363,13 @@ arkops-portal/
   src/
     api/
     app/
+      auth.tsx
       i18n.tsx
+      loginAccounts.ts
       layout/
       providers.tsx
       router.tsx
+      session.ts
       theme.tsx
     components/
     pages/
@@ -412,6 +431,9 @@ Use this table as the first stop when a collaborator or AI coding tool needs to 
 | Path | Type | Purpose | Change when |
 | --- | --- | --- | --- |
 | `src/app/router.tsx` | Router | Defines lazy-loaded routes and route-to-page mapping. | Adding/removing/renaming a page route. |
+| `src/app/auth.tsx` | Authentication | Restores the local deployment session and exposes login, logout, user, and role state. | Local login/session behavior or user personas change. |
+| `src/app/loginAccounts.ts` | Local account data | Defines first-time and established local experience accounts. | A local product-testing persona changes. |
+| `src/app/session.ts` | Session utility | Stores mock tokens and defines the local session user shape. | Token persistence or session fields change. |
 | `src/app/layout/AppShell.tsx` | Layout | Main SaaS frame, sidebar navigation, badges, header, theme and language controls. | Navigation, shell layout, badge behavior, or header controls change. |
 | `src/app/providers.tsx` | Providers | Root app providers such as query client, theme, and i18n wrappers. | Global provider setup changes. |
 | `src/app/theme.tsx` | Theme | Light/dark/system theme state and Ant Design theme integration. | Theme behavior or token mapping changes. |
@@ -446,6 +468,7 @@ Use this table as the first stop when a collaborator or AI coding tool needs to 
 | `src/components/PageHeader.tsx` | Shared component | Standard page title, subtitle, and action row. | Page header layout changes globally. |
 | `src/components/StatusBadge.tsx` | Shared component | Localized status and risk tags. | Status/risk display mapping changes. |
 | `src/components/EmptyState.tsx` | Shared component | Common empty-state UI. | Empty state style or behavior changes. |
+| `src/components/StoreConnectionEmptyState.tsx` | Shared component | Connect-store empty state used by business pages for first-time merchants. | Pre-connection business-page behavior changes. |
 | `src/components/AgentLiveConsole.tsx` | Shared component | Task-level simulated Agent/runtime execution console. | Agent task live-console behavior changes. |
 | `src/components/DashboardLiveFeed.tsx` | Shared component | Dashboard-level rolling event feed. | Global live-feed behavior changes. |
 | `src/components/metrics/MetricCard.tsx` | Shared component | KPI/stat card wrapper. | Metric card layout changes across pages. |
@@ -463,7 +486,9 @@ Use this table as the first stop when a collaborator or AI coding tool needs to 
 | --- | --- | --- | --- |
 | `src/pages/auth/LoginPage.tsx` | Page | Mock login entry. | Login screen or mock auth flow changes. |
 | `src/pages/dashboard/DashboardPage.tsx` | Page | Business overview and Agent monitoring dashboard. | Dashboard metrics, tabs, or panels change. |
+| `src/pages/products/ProductManagementPage.tsx` | Page | Imported product list, drafts, pricing, and inventory. | Product synchronization or management UI changes. |
 | `src/pages/stores/StoreListPage.tsx` | Page | Store list and store entry point. | Store table, columns, or add-store entry changes. |
+| `src/pages/stores/StoreOnboardingPage.tsx` | Page | Guided existing-store import and cross-platform product migration. | Initial synchronization or migration steps change. |
 | `src/pages/stores/StoreDetailPage.tsx` | Page | Add-store flow, store business overview, and store settings. | Store onboarding, detail tabs, or service connection flows change. |
 | `src/pages/agents/AgentListPage.tsx` | Page | Agent center list, enabled Agents, and available Agent catalog. | Agent catalog/list UI changes. |
 | `src/pages/agents/AgentConfigPage.tsx` | Page | Agent detail orchestration, stats, strategy config, task creation, active runs, and logs. | Agent detail behavior changes. |
@@ -477,7 +502,6 @@ Use this table as the first stop when a collaborator or AI coding tool needs to 
 | `src/pages/approvals/ApprovalListPage.tsx` | Page | Approval list. | Approval table or filters change. |
 | `src/pages/approvals/ApprovalDetailPage.tsx` | Page | Approval detail and approve/reject actions. | Approval decision UI changes. |
 | `src/pages/operations/ExceptionCenterPage.tsx` | Page | Operator exception queue. | Exception workflow or filters change. |
-| `src/pages/operations/OperationsCenterPage.tsx` | Page | Business, cost, product, and efficiency analysis. | Operations analysis UI changes. |
 | `src/pages/operations/exceptionCenterColumns.tsx` | Page helper | Exception center table columns. | Exception table column/action definitions change. |
 | `src/pages/operations/exceptionCenterMockData.ts` | Page data | Exception center demo records. | Exception demo content changes. |
 | `src/pages/orders/OrderAutomationPage.tsx` | Page | Order automation, exception handling, order detail, and timeline. | Order workflow UI changes. |
@@ -501,6 +525,7 @@ Current shared component groups:
 
 - `PageHeader.tsx`: page title, subtitle, and action area.
 - `StatusBadge.tsx`: localized status/risk tags.
+- `StoreConnectionEmptyState.tsx`: unified pre-connection empty state and synchronization action.
 - `metrics/MetricCard.tsx`: reusable KPI cards.
 - `charts/TrendBarChart.tsx`: compact bar trend chart used by dashboard, stores, models, and billing.
 - `table/DataTableCard.tsx`: Ant Design table inside a card with optional toolbar and description.
@@ -528,8 +553,9 @@ Current page domains:
 - `stores/`: store list, add-store flow, store detail, store business overview, store settings.
 - `dashboard/`: business dashboard and Agent monitoring.
 - `approvals/`: approval list and detail.
-- `operations/`: exception center and operations center.
+- `operations/`: exception center helpers and mock data; the former operations overview now lives in the dashboard.
 - `orders/`: order automation page and order exception workflows.
+- `products/`: imported products, drafts, prices, and inventory.
 - `billing/`: billing page and billing section components.
 - `models/`: model center.
 - `settings/`: members and notifications.

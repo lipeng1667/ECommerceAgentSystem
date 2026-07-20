@@ -270,7 +270,7 @@ export function AppShell() {
                 <Typography.Text style={{ fontSize: 12, color: '#92400e', fontWeight: 500 }}>
                   {t('app.demoBanner')}
                 </Typography.Text>
-                <Tag color="gold" style={{ fontSize: 10, margin: 0 }}>2 家店铺 · 12 个商品 · 10 个任务</Tag>
+                <Tag color="gold" style={{ fontSize: 10, margin: 0 }}>完整经营场景体验</Tag>
               </Space>
               <Button size="small" type="text" icon={<CloseOutlined />} onClick={exitDemo}
                 style={{ color: '#92400e', fontSize: 11 }}>
