@@ -21,12 +21,14 @@ import { businessDashboardApi } from '../../api/businessDashboard';
 import { dashboardApi } from '../../api/dashboard';
 import { financeApi } from '../../api/finance';
 import { storesApi } from '../../api/stores';
+import { useAuth } from '../../app/auth';
 import { useDemoMode } from '../../app/demoMode';
 import { useI18n } from '../../app/i18n';
 import { TrendBarChart } from '../../components/charts/TrendBarChart';
 import { EmptyState } from '../../components/EmptyState';
 import { PageHeader } from '../../components/PageHeader';
 import { StatusBadge } from '../../components/StatusBadge';
+import { StoreConnectionEmptyState } from '../../components/StoreConnectionEmptyState';
 import { AutomationOverview } from '../../components/AutomationOverview';
 import { ApprovalQueue } from '../../components/ApprovalQueue';
 import type { Store } from '../../types/domain';
@@ -404,6 +406,7 @@ const OperationsOverview = memo(function OperationsOverview({ storesData }: { st
 
 export function DashboardPage() {
   const { t } = useI18n();
+  const { user } = useAuth();
   const { isDemo, enterDemo } = useDemoMode();
 
   const { data: storesData } = useQuery({
@@ -438,6 +441,15 @@ export function DashboardPage() {
     : enabledAgentCount === 0
       ? { background: '#eff6ff', border: '1px solid #bfdbfe' }
       : { background: '#f0fdf4', border: '1px solid #bbf7d0' };
+
+  if (user?.experience === 'onboarding') {
+    return (
+      <div className="page-stack">
+        <PageHeader title={t('dashboard.title')} description={t('dashboard.description')} />
+        <StoreConnectionEmptyState description="连接第一家店铺后，这里会显示 GMV、订单、库存、评价和 Agent 运营结果。当前账号尚未产生经营数据。" />
+      </div>
+    );
+  }
 
   return (
     <div className="page-stack">

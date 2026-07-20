@@ -35,8 +35,10 @@ import type { UploadFile } from 'antd';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { storesApi } from '../../api/stores';
+import { useAuth } from '../../app/auth';
 import { useI18n } from '../../app/i18n';
 import { PageHeader } from '../../components/PageHeader';
+import { StoreConnectionEmptyState } from '../../components/StoreConnectionEmptyState';
 import type { AllMallId } from '../../types/domain';
 
 interface ProductSimple {
@@ -117,6 +119,7 @@ const initialDrafts: ProductDraft[] = [
 
 export function ProductManagementPage() {
   const { t } = useI18n();
+  const { user } = useAuth();
   const [products, setProducts] = useState<ProductSimple[]>(initialProducts);
   const [drafts, setDrafts] = useState<ProductDraft[]>(initialDrafts);
   const [selectedStoreId, setSelectedStoreId] = useState<AllMallId | null>(null);
@@ -293,6 +296,15 @@ export function ProductManagementPage() {
       ),
     },
   ];
+
+  if (user?.experience === 'onboarding') {
+    return (
+      <div className="page-stack">
+        <PageHeader title={t('products.title')} description={t('products.description')} />
+        <StoreConnectionEmptyState description="尚未同步商品。连接已有店铺后，在售商品、SKU、价格和库存会自动出现在这里。" />
+      </div>
+    );
+  }
 
   return (
     <div className="page-stack">

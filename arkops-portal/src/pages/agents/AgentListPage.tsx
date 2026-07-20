@@ -18,9 +18,11 @@ import { useNavigate } from 'react-router-dom';
 import { agentsApi } from '../../api/agents';
 import type { AgentListItem } from '../../api/agents';
 import { financeApi } from '../../api/finance';
+import { useAuth } from '../../app/auth';
 import { useI18n } from '../../app/i18n';
 import { PageHeader } from '../../components/PageHeader';
 import { StatusBadge } from '../../components/StatusBadge';
+import { StoreConnectionEmptyState } from '../../components/StoreConnectionEmptyState';
 import { MetricCard } from '../../components/metrics/MetricCard';
 import type { AgentConfig, AgentLayer, AgentType } from '../../types/domain';
 import type { AgentRunStats } from '../../types/domain';
@@ -48,6 +50,7 @@ const layerColors: Record<AgentLayer, string> = {
 
 export function AgentListPage() {
   const { t } = useI18n();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: agents = [] } = useQuery({ queryKey: ['agents'], queryFn: agentsApi.list });
@@ -316,6 +319,15 @@ export function AgentListPage() {
       )
     }
   ];
+
+  if (user?.experience === 'onboarding') {
+    return (
+      <div className="page-stack">
+        <PageHeader title={t('agent.title')} description={t('agent.description')} />
+        <StoreConnectionEmptyState description="连接店铺并完成首次同步后，运营 Agent 才会开始分析数据并执行任务。" />
+      </div>
+    );
+  }
 
   return (
     <div className="page-stack">

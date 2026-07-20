@@ -16,9 +16,8 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import type { PropsWithChildren } from 'react';
 import type { Role } from './rolePermissions';
+import { LOCAL_LOGIN_ACCOUNTS } from './loginAccounts';
 import {
-  hasActiveSession,
-  getUserFromToken,
   storeTokens,
   clearSession,
   createMockToken,
@@ -29,30 +28,33 @@ import {
 } from './session';
 
 const AUTH_STORAGE_KEY = 'allmall-current-role';
+const SESSION_USER_KEY = 'allmall-session-user';
+const SESSION_DEPLOYMENT_KEY = 'allmall-session-deployment';
 
-/** Mock demo users for prototype login */
-const MOCK_USERS: Record<string, { password: string; user: SessionUser }> = {
-  'owner@allmall.io': {
-    password: 'demo123',
-    user: { id: 'u_001', email: 'owner@allmall.io', name: '张明', role: 'Owner', tenantId: 't_001' },
-  },
-  'operator@allmall.io': {
-    password: 'demo123',
-    user: { id: 'u_002', email: 'operator@allmall.io', name: '李华', role: 'Operator', tenantId: 't_001' },
-  },
-  'approver@allmall.io': {
-    password: 'demo123',
-    user: { id: 'u_003', email: 'approver@allmall.io', name: '王芳', role: 'Approver', tenantId: 't_001' },
-  },
-  'finance@allmall.io': {
-    password: 'demo123',
-    user: { id: 'u_004', email: 'finance@allmall.io', name: '赵强', role: 'Finance', tenantId: 't_001' },
-  },
-  'viewer@allmall.io': {
-    password: 'demo123',
-    user: { id: 'u_005', email: 'viewer@allmall.io', name: '陈静', role: 'Viewer', tenantId: 't_001' },
-  },
-};
+const MOCK_USERS = Object.fromEntries(
+  LOCAL_LOGIN_ACCOUNTS.map(account => [account.email, { password: account.password, user: account.user }]),
+) as Record<string, { password: string; user: SessionUser }>;
+
+function restoreDeploymentSession(): SessionUser | null {
+  try {
+    const storedDeployment = sessionStorage.getItem(SESSION_DEPLOYMENT_KEY);
+    const storedUser = sessionStorage.getItem(SESSION_USER_KEY);
+    if (storedDeployment !== __ALLMALL_DEPLOYMENT_ID__ || !storedUser) {
+      sessionStorage.removeItem(SESSION_DEPLOYMENT_KEY);
+      sessionStorage.removeItem(SESSION_USER_KEY);
+      sessionStorage.removeItem('allmall-demo-mode');
+      clearSession();
+      return null;
+    }
+
+    const user = JSON.parse(storedUser) as SessionUser;
+    storeTokens(createMockToken(user, 3600_000));
+    return user;
+  } catch {
+    clearSession();
+    return null;
+  }
+}
 
 export interface AuthContextValue {
   /** Whether the user is currently authenticated */
@@ -72,13 +74,7 @@ export interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: PropsWithChildren) {
-  const [sessionUser, setSessionUser] = useState<SessionUser | null>(() => {
-    // Restore session from existing token on mount
-    if (hasActiveSession()) {
-      return getUserFromToken();
-    }
-    return null;
-  });
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(restoreDeploymentSession);
 
   // Fallback to legacy localStorage role (for backward compatibility during migration)
   const [legacyRole, setLegacyRoleState] = useState<Role>(() => {
@@ -94,16 +90,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     // In production: call POST /auth/refresh with refreshToken
     // For prototype: extend session with a new mock token
-    const currentUser = getUserFromToken();
+    const currentUser = sessionUser;
     if (currentUser) {
       const newTokens = createMockToken(currentUser, 3600_000);
       storeTokens(newTokens);
     }
-  }, []);
+  }, [sessionUser]);
 
-  const isAuthenticated = sessionUser !== null || hasActiveSession();
+  const isAuthenticated = sessionUser !== null;
 
-  const user = sessionUser ?? getUserFromToken();
+  const user = sessionUser;
 
   const role: Role | null = user ? (user.role as Role) : legacyRole;
 
@@ -111,16 +107,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
     // Validate credentials against mock users (prototype only)
     const mockUser = MOCK_USERS[email.toLowerCase()];
     if (!mockUser || mockUser.password !== password) {
-      throw new Error('Invalid email or password');
+      throw new Error('账号或密码不正确，请选择体验账号后重试。');
     }
 
     const tokens = createMockToken(mockUser.user, 3600_000);
     storeTokens(tokens);
     setSessionUser(mockUser.user);
 
-    // Sync legacy role storage for backward compatibility
+    // Keep the session across refreshes only while the same deployment is running.
     try {
       localStorage.setItem(AUTH_STORAGE_KEY, mockUser.user.role);
+      sessionStorage.setItem(SESSION_USER_KEY, JSON.stringify(mockUser.user));
+      sessionStorage.setItem(SESSION_DEPLOYMENT_KEY, __ALLMALL_DEPLOYMENT_ID__);
     } catch {
       // ignore
     }
@@ -133,6 +131,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setSessionUser(null);
     try {
       localStorage.removeItem(AUTH_STORAGE_KEY);
+      sessionStorage.removeItem(SESSION_USER_KEY);
+      sessionStorage.removeItem(SESSION_DEPLOYMENT_KEY);
     } catch {
       // ignore
     }

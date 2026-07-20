@@ -30,10 +30,12 @@ import { useState, type Key } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useI18n } from '../../app/i18n';
+import { useAuth } from '../../app/auth';
 import { dashboardApi } from '../../api/dashboard';
 import { exceptionsApi } from '../../api/exceptions';
 import { PageFilterBar } from '../../components/filters/PageFilterBar';
 import { PageHeader } from '../../components/PageHeader';
+import { StoreConnectionEmptyState } from '../../components/StoreConnectionEmptyState';
 import { createAgentLogColumns, createExceptionColumns } from './exceptionCenterColumns';
 import {
   ALL_AGENT_TYPES,
@@ -45,6 +47,7 @@ import type { ExceptionItem, ExceptionStatus, ExceptionType } from './exceptionC
 
 export function ExceptionCenterPage() {
   const { t } = useI18n();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<ExceptionStatus>('pending');
@@ -158,6 +161,15 @@ export function ExceptionCenterPage() {
     },
   });
   const logColumns = createAgentLogColumns(t);
+
+  if (user?.experience === 'onboarding') {
+    return (
+      <div className="page-stack">
+        <PageHeader title={t('exc.title')} description={t('exc.description')} />
+        <StoreConnectionEmptyState description="当前没有运营异常。连接店铺后，订单、库存和 Agent 执行异常会集中显示在这里。" />
+      </div>
+    );
+  }
 
   return (
     <div className="page-stack">

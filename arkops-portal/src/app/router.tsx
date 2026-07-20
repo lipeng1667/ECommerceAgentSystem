@@ -1,8 +1,9 @@
 import { lazy, Suspense } from 'react';
 import type { ReactNode } from 'react';
-import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom';
+import { Navigate, RouterProvider, createBrowserRouter, useLocation } from 'react-router-dom';
 import { Spin } from 'antd';
 import { AppShell } from './layout/AppShell';
+import { useAuth } from './auth';
 import { RoleGuard } from '../components/RoleGuard';
 import { DashboardSkeleton, AgentListSkeleton, TablePageSkeleton } from '../components/PageSkeleton';
 
@@ -47,12 +48,29 @@ function guarded(path: string, element: ReactNode, fallback?: ReactNode) {
   return withSuspense(<RoleGuard path={path}>{element}</RoleGuard>, fallback ?? routeFallback);
 }
 
+function ProtectedAppShell() {
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+  return <AppShell />;
+}
+
+function LoginEntry() {
+  const { isAuthenticated, user } = useAuth();
+  if (isAuthenticated && user) {
+    return <Navigate to={user.experience === 'onboarding' ? '/stores/onboarding?journey=import' : '/dashboard'} replace />;
+  }
+  return withSuspense(<LoginPage />);
+}
+
 const router = createBrowserRouter(
   [
-    { path: '/login', element: withSuspense(<LoginPage />) },
+    { path: '/login', element: <LoginEntry /> },
     {
       path: '/',
-      element: <AppShell />,
+      element: <ProtectedAppShell />,
       children: [
         { index: true, element: <Navigate to="/dashboard" replace /> },
 

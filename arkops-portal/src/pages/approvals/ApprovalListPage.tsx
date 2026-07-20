@@ -8,10 +8,12 @@ import { Link } from 'react-router-dom';
 import { agentsApi } from '../../api/agents';
 import { approvalsApi } from '../../api/approvals';
 import { approvalPolicyApi } from '../../api/approvalPolicies';
+import { useAuth } from '../../app/auth';
 import { useI18n } from '../../app/i18n';
 import { PageFilterBar } from '../../components/filters/PageFilterBar';
 import { PageHeader } from '../../components/PageHeader';
 import { StatusBadge } from '../../components/StatusBadge';
+import { StoreConnectionEmptyState } from '../../components/StoreConnectionEmptyState';
 import { DataTableCard } from '../../components/table/DataTableCard';
 import type { AgentConfig, AgentType, Approval, ApprovalPolicy } from '../../types/domain';
 
@@ -29,6 +31,7 @@ const actionTags: Record<ApprovalPolicy['action'], string> = {
 
 export function ApprovalListPage() {
   const { t } = useI18n();
+  const { user } = useAuth();
   const { data: approvals = [] } = useQuery({ queryKey: ['approvals'], queryFn: approvalsApi.list });
   const { data: agents = [] } = useQuery({ queryKey: ['agents'], queryFn: agentsApi.list });
   const { data: policies = [] } = useQuery({ queryKey: ['approval-policies'], queryFn: approvalPolicyApi.list });
@@ -89,6 +92,15 @@ export function ApprovalListPage() {
       }
     }
   ];
+
+  if (user?.experience === 'onboarding') {
+    return (
+      <div className="page-stack">
+        <PageHeader title={t('approvals.title')} description={t('approvals.description')} />
+        <StoreConnectionEmptyState description="当前没有待审批事项。连接店铺并启用 Agent 后，需要人工确认的操作会出现在这里。" />
+      </div>
+    );
+  }
 
   return (
     <div className="page-stack">

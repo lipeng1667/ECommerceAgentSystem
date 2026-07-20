@@ -4,8 +4,10 @@ import { Button, Space, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { Link, useNavigate } from 'react-router-dom';
 import { storesApi } from '../../api/stores';
+import { useAuth } from '../../app/auth';
 import { useI18n } from '../../app/i18n';
 import { PageHeader } from '../../components/PageHeader';
+import { StoreConnectionEmptyState } from '../../components/StoreConnectionEmptyState';
 import { DataTableCard } from '../../components/table/DataTableCard';
 import type { Store } from '../../types/domain';
 import { SERVICE_ICONS, getSessionHealthColor, renderSessionTag } from '../../utils/storeDisplay';
@@ -24,6 +26,7 @@ const ordersByStoreName: Record<string, number> = {
 
 export function StoreListPage() {
   const { t } = useI18n();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { data = [] } = useQuery({ queryKey: ['stores'], queryFn: storesApi.list });
 
@@ -86,12 +89,16 @@ export function StoreListPage() {
           </Space>
         }
       />
-      <DataTableCard<Store>
-        rowKey="id"
-        columns={columns}
-        dataSource={data}
-        scroll={{ x: 1100 }}
-      />
+      {user?.experience === 'onboarding' ? (
+        <StoreConnectionEmptyState description="你还没有连接任何店铺。完成授权后，店铺、商品、订单、评价和库存会自动同步到这里。" />
+      ) : (
+        <DataTableCard<Store>
+          rowKey="id"
+          columns={columns}
+          dataSource={data}
+          scroll={{ x: 1100 }}
+        />
+      )}
     </div>
   );
 }

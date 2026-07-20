@@ -39,7 +39,7 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 type Journey = 'import' | 'migrate';
 type PlatformKey = 'pinduoduo' | 'taobao' | 'jd';
@@ -154,7 +154,11 @@ function JourneyChoice({ onSelect }: { onSelect: (journey: Journey) => void }) {
 
 export function StoreOnboardingPage() {
   const navigate = useNavigate();
-  const [journey, setJourney] = useState<Journey | null>(null);
+  const [searchParams] = useSearchParams();
+  const [journey, setJourney] = useState<Journey | null>(() => {
+    const requestedJourney = searchParams.get('journey');
+    return requestedJourney === 'import' || requestedJourney === 'migrate' ? requestedJourney : null;
+  });
   const [step, setStep] = useState(0);
   const [sourcePlatform, setSourcePlatform] = useState<PlatformKey>('pinduoduo');
   const [targetPlatform, setTargetPlatform] = useState<PlatformKey>('taobao');

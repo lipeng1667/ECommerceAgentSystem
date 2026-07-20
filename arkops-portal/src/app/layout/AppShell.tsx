@@ -11,6 +11,7 @@ import {
   DollarOutlined,
   ExperimentOutlined as LabOutlined,
   ExperimentOutlined,
+  LogoutOutlined,
   MoonOutlined,
   RobotOutlined,
   SettingOutlined,
@@ -62,8 +63,14 @@ export function AppShell() {
   const { language, setLanguage, t } = useI18n();
   const { mode, setMode } = useTheme();
   const { isDemo, exitDemo } = useDemoMode();
-  const { role, setRole } = useAuth();
+  const { role, setRole, user, logout } = useAuth();
   const accessiblePaths = getAccessiblePaths(role ?? 'Owner');
+
+  const handleLogout = () => {
+    exitDemo();
+    logout();
+    navigate('/login', { replace: true });
+  };
 
   /** Filter menu items based on role permissions */
   function filterMenuByRole(items: any[]): any[] {
@@ -88,9 +95,10 @@ export function AppShell() {
     refetchInterval: 30_000
   });
 
-  const pendingApprovals = dashboard?.pendingApprovals ?? 0;
-  const exceptionPending = dashboard?.exceptionCenterPending ?? 0;
-  const orderExceptions = dashboard?.orderExceptions ?? 0;
+  const hasBusinessData = user?.experience !== 'onboarding';
+  const pendingApprovals = hasBusinessData ? dashboard?.pendingApprovals ?? 0 : 0;
+  const exceptionPending = hasBusinessData ? dashboard?.exceptionCenterPending ?? 0 : 0;
+  const orderExceptions = hasBusinessData ? dashboard?.orderExceptions ?? 0 : 0;
   const selectedMenuKey = getSelectedMenuKey(location.pathname);
 
   const menuItems = [
@@ -193,7 +201,9 @@ export function AppShell() {
         <Header className="app-header">
           <Space>
             <Badge status="processing" text={t('app.beta')} />
-            <Typography.Text type="secondary">{t('app.tenant')}</Typography.Text>
+            <Typography.Text type="secondary">
+              {user?.experience === 'onboarding' ? '租户：新用户体验空间' : t('app.tenant')}
+            </Typography.Text>
           </Space>
           <Space>
             <Segmented
@@ -230,7 +240,18 @@ export function AppShell() {
                 { label: 'Viewer', value: 'Viewer' },
               ]}
             />
-            <Avatar style={{ background: '#2563eb' }}>LP</Avatar>
+            <Space size={8} className="header-user-summary">
+              <Avatar style={{ background: user?.experience === 'onboarding' ? '#2563eb' : '#16a34a' }}>
+                {user?.name.slice(-2) ?? 'AM'}
+              </Avatar>
+              <div>
+                <Typography.Text strong style={{ display: 'block', fontSize: 12 }}>{user?.name}</Typography.Text>
+                <Typography.Text type="secondary" style={{ display: 'block', fontSize: 10 }}>
+                  {user?.experience === 'onboarding' ? '新用户' : '成熟商家'}
+                </Typography.Text>
+              </div>
+            </Space>
+            <Button type="text" icon={<LogoutOutlined />} onClick={handleLogout} title="退出登录" />
           </Space>
         </Header>
         <Content className="app-content">

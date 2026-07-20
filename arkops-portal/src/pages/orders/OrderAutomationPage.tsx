@@ -34,10 +34,12 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useMemo, useState } from 'react';
+import { useAuth } from '../../app/auth';
 import { useI18n } from '../../app/i18n';
 import { PageFilterBar } from '../../components/filters/PageFilterBar';
 import { MetricCard } from '../../components/metrics/MetricCard';
 import { PageHeader } from '../../components/PageHeader';
+import { StoreConnectionEmptyState } from '../../components/StoreConnectionEmptyState';
 import { DataTableCard } from '../../components/table/DataTableCard';
 import { TableActionGroup } from '../../components/table/TableActionGroup';
 
@@ -165,6 +167,7 @@ const orders: OrderItem[] = [
 
 export function OrderAutomationPage() {
   const { t } = useI18n();
+  const { user } = useAuth();
   const [tabFilter, setTabFilter] = useState<'all' | 'exception' | 'auto'>('all');
   const [orderItems, setOrderItems] = useState<OrderItem[]>(() =>
     orders.map((order) => ({ ...order, timeline: [...order.timeline] }))
@@ -375,6 +378,15 @@ export function OrderAutomationPage() {
     stop: <StopOutlined style={{ color: '#dc2626' }} />,
     close: <ExclamationCircleOutlined style={{ color: '#64748b' }} />,
   };
+
+  if (user?.experience === 'onboarding') {
+    return (
+      <div className="page-stack">
+        <PageHeader title={t('order.title')} description={t('order.description')} />
+        <StoreConnectionEmptyState description="尚未同步订单。连接店铺后，历史订单和后续新增订单会汇总到这里。" />
+      </div>
+    );
+  }
 
   return (
     <div className="page-stack">

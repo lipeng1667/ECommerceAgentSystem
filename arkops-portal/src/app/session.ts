@@ -20,6 +20,7 @@ export interface SessionUser {
   name: string;
   role: string;
   tenantId: string;
+  experience: 'onboarding' | 'established';
 }
 
 export interface SessionTokens {
@@ -30,6 +31,14 @@ export interface SessionTokens {
 
 const REFRESH_TOKEN_KEY = 'allmall-refresh-token';
 const TOKEN_REFRESH_THRESHOLD_MS = 5 * 60 * 1000; // Refresh 5 minutes before expiry
+
+function encodeJwtPart(value: Record<string, unknown>): string {
+  const json = JSON.stringify(value);
+  const bytes = encodeURIComponent(json).replace(/%([0-9A-F]{2})/g, (_match, hex: string) =>
+    String.fromCharCode(Number.parseInt(hex, 16)),
+  );
+  return btoa(bytes).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+}
 
 // In-memory storage for access token (never persisted to localStorage)
 let inMemoryAccessToken: string | null = null;
@@ -116,6 +125,7 @@ export function getUserFromToken(): SessionUser | null {
     name: (payload.name as string) ?? '',
     role: (payload.role as string) ?? 'Viewer',
     tenantId: (payload.tenant_id as string) ?? '',
+    experience: (payload.experience as SessionUser['experience']) ?? 'established',
   };
 }
 
@@ -148,18 +158,17 @@ export function createMockToken(user: SessionUser, ttlMs: number = 3600_000): Se
   const now = Date.now();
   const expiresAt = now + ttlMs;
 
-  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-  const payload = btoa(
-    JSON.stringify({
+  const header = encodeJwtPart({ alg: 'HS256', typ: 'JWT' });
+  const payload = encodeJwtPart({
       sub: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
       tenant_id: user.tenantId,
+      experience: user.experience,
       iat: Math.floor(now / 1000),
       exp: Math.floor(expiresAt / 1000),
-    })
-  );
+    });
   const signature = btoa('mock_signature_placeholder');
 
   return {
