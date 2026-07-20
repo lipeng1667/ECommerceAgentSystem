@@ -99,6 +99,8 @@ Local authentication is frontend-only. A deployment identifier is generated when
 
 ## Implemented Navigation
 
+The sidebar is ordered around merchant tasks: Overview → Stores → Products → Orders → Action Center → Agent Center → Platform Settings, followed by independent Plans & Billing and Help Center entries. Only the active submenu group expands; opening another group collapses the previous one.
+
 | Route | Page | Status | Purpose |
 | --- | --- | --- | --- |
 | `/login` | Login | Implemented | Select a first-time or established local merchant persona. |

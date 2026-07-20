@@ -39,23 +39,26 @@ AllMall 是一个电商店铺自动化运营平台，通过 AI Agent 代替运�
 ### 2.2 导航结构
 
 ```
-控制台 (Dashboard) — 新用户引导 / 运营中状态
-异常中心 (Exception Center) — 待处理异常数角标
-审批中心 (Approvals) — 待审批数角标
-订单自动化 (Order Automation) — 订单异常数角标
-店铺管理 (Stores)
-Agent中心 (Agents)
-模型中心 (Models)
-经营中心 (Operations)
-审计日志 (Audit Logs)
-财务台账 (Billing)
-使用说明 (Guide)
-设置 (Settings)
-  ├─ 成员管理 (Members)
-  └─ 通知设置 (Notifications)
+经营总览 (Dashboard)
+店铺管理 (Stores) — 新用户未连接时显示“连接店铺”
+商品管理 (Products)
+订单管理 (Orders) — 订单异常数角标
+待办中心 (Action Center) — 异常与审批总数角标
+  ├─ 异常处理 (Exceptions)
+  └─ 审批任务 (Approvals)
+Agent 中心 (Agents)
+  ├─ Agent 管理
+  └─ 自动化配置 (Setup)
+平台设置 (Settings)
+  ├─ 成员与权限 (Members)
+  ├─ 模型配置 (Models)
+  ├─ 通知设置 (Notifications)
+  └─ 审计日志 (Audit Logs)
+套餐与账单 (Billing)
+帮助中心 (Guide)
 ```
 
-> 与早期设计的主要差异：Agent 任务已合并至 Agent 详情页；订阅计划与审批策略不再作为独立导航；新增异常中心、订单自动化、经营中心和使用说明；模型中心完全重新设计。新增新用户引导流程（Dashboard 空状态→连接店铺→场景化开通→自动运营）和集中配置页 `/setup`。
+> 导航按照用户任务组织：店铺、商品和订单是高频经营入口；异常与审批统一进入待办中心；Agent 管理与自动化配置归入 Agent 中心；平台设置只保留管理类配置。套餐与帮助保持独立入口。新用户引导流程为 Dashboard 空状态→连接店铺→场景化开通→自动运营。
 
 ### 2.3 模块实现总览
 

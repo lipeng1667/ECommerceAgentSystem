@@ -3,7 +3,6 @@ import {
   AppstoreOutlined,
   AuditOutlined,
   BellOutlined,
-  BookOutlined,
   CheckSquareOutlined,
   CloseOutlined,
   DashboardOutlined,
@@ -18,7 +17,9 @@ import {
   ShoppingCartOutlined,
   ShopOutlined,
   SunOutlined,
-  TeamOutlined
+  TeamOutlined,
+  ThunderboltOutlined,
+  QuestionCircleOutlined,
 } from '@ant-design/icons';
 import { Avatar, Badge, Button, Layout, Menu, Segmented, Select, Space, Tag, Typography } from 'antd';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -31,6 +32,7 @@ import { useAuth } from '../auth';
 import { getAccessiblePaths } from '../rolePermissions';
 import type { Role } from '../rolePermissions';
 import { OnboardingTour } from '../../components/OnboardingTour';
+import { useEffect, useState } from 'react';
 
 const { Header, Sider, Content } = Layout;
 
@@ -45,16 +47,24 @@ const routeMenuPrefixes = [
 
 function getSelectedMenuKey(pathname: string) {
   if (pathname === '/') return '/dashboard';
+  if (pathname === '/settings/stores') return '/stores';
   // settings sub-items match their exact path
   if (pathname.startsWith('/settings/')) return pathname;
-  // store workflow pages belong to the Store Management settings item
-  if (pathname === '/stores' || pathname.startsWith('/stores/')) return '/settings/stores';
+  // store workflow pages belong to the top-level Store Management item
+  if (pathname === '/stores' || pathname.startsWith('/stores/')) return '/stores';
   // agents sub-items
   if (pathname === '/agents/exceptions') return '/agents/exceptions';
   if (pathname === '/agents/approvals') return '/agents/approvals';
   if (pathname.startsWith('/agents/')) return '/agents';
   if (pathname === '/agents') return '/agents';
   return routeMenuPrefixes.find((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) ?? pathname;
+}
+
+function getActiveMenuGroup(selectedKey: string): string | null {
+  if (selectedKey === '/agents/exceptions' || selectedKey === '/agents/approvals') return 'todo-group';
+  if (selectedKey === '/agents' || selectedKey === '/setup') return 'agents-group';
+  if (selectedKey.startsWith('/settings/') && selectedKey !== '/settings/billing' && selectedKey !== '/settings/guide') return 'settings-group';
+  return null;
 }
 
 export function AppShell() {
@@ -100,12 +110,28 @@ export function AppShell() {
   const exceptionPending = hasBusinessData ? dashboard?.exceptionCenterPending ?? 0 : 0;
   const orderExceptions = hasBusinessData ? dashboard?.orderExceptions ?? 0 : 0;
   const selectedMenuKey = getSelectedMenuKey(location.pathname);
+  const activeMenuGroup = getActiveMenuGroup(selectedMenuKey);
+  const [openMenuKeys, setOpenMenuKeys] = useState<string[]>(() => activeMenuGroup ? [activeMenuGroup] : []);
+
+  useEffect(() => {
+    setOpenMenuKeys(activeMenuGroup ? [activeMenuGroup] : []);
+  }, [activeMenuGroup]);
 
   const menuItems = [
     // 1. 经营总览
     { key: '/dashboard', icon: <DashboardOutlined />, label: t('nav.dashboard') },
 
-    // 2. 订单管理 — 日常订单处理
+    // 2. 店铺管理 — 新用户连接入口与多店铺管理
+    {
+      key: '/stores',
+      icon: <ShopOutlined />,
+      label: user?.experience === 'onboarding' ? t('nav.connectStore') : t('nav.storeManagement')
+    },
+
+    // 3. 商品管理
+    { key: '/products', icon: <AppstoreOutlined />, label: t('nav.products') },
+
+    // 4. 订单管理 — 日常订单处理
     {
       key: '/orders',
       icon: <ShoppingCartOutlined />,
@@ -119,20 +145,19 @@ export function AppShell() {
       )
     },
 
-    // 3. 商品管理
-    { key: '/products', icon: <AppstoreOutlined />, label: t('nav.products') },
-
-    // 4. Agent 中心
+    // 5. 待办中心 — 聚合异常和审批
     {
-      key: 'agents-group',
-      icon: <RobotOutlined />,
-      label: t('nav.agents'),
+      key: 'todo-group',
+      icon: <CheckSquareOutlined />,
+      label: (
+        <span>
+          {t('nav.todoCenter')}
+          {exceptionPending + pendingApprovals > 0 && (
+            <Badge count={exceptionPending + pendingApprovals} size="small" offset={[8, -2]} style={{ marginLeft: 8 }} />
+          )}
+        </span>
+      ),
       children: [
-        {
-          key: '/agents',
-          icon: <RobotOutlined />,
-          label: t('nav.agentList')
-        },
         {
           key: '/agents/exceptions',
           icon: <AlertOutlined />,
@@ -160,21 +185,33 @@ export function AppShell() {
       ]
     },
 
-    // 5. 设置
+    // 6. Agent 中心
     {
-      key: 'settings',
-      icon: <SettingOutlined />,
-      label: t('nav.settings'),
+      key: 'agents-group',
+      icon: <RobotOutlined />,
+      label: t('nav.agents'),
       children: [
-        { key: '/settings/stores', icon: <ShopOutlined />, label: t('nav.storeManagement') },
-        { key: '/settings/members', icon: <TeamOutlined />, label: t('nav.memberManagement') },
-        { key: '/settings/models', icon: <ExperimentOutlined />, label: t('nav.models') },
-        { key: '/settings/billing', icon: <DollarOutlined />, label: t('nav.billingFinance') },
-        { key: '/settings/audit-logs', icon: <AuditOutlined />, label: t('nav.auditLogs') },
-        { key: '/settings/notifications', icon: <BellOutlined />, label: t('nav.notificationSettings') },
-        { key: '/settings/guide', icon: <BookOutlined />, label: t('nav.usageGuide') },
+        { key: '/agents', icon: <RobotOutlined />, label: t('nav.agentManagement') },
+        { key: '/setup', icon: <ThunderboltOutlined />, label: t('nav.automationConfig') },
       ]
     },
+
+    // 7. 平台设置
+    {
+      key: 'settings-group',
+      icon: <SettingOutlined />,
+      label: t('nav.platformSettings'),
+      children: [
+        { key: '/settings/members', icon: <TeamOutlined />, label: t('nav.memberManagement') },
+        { key: '/settings/models', icon: <ExperimentOutlined />, label: t('nav.models') },
+        { key: '/settings/notifications', icon: <BellOutlined />, label: t('nav.notificationSettings') },
+        { key: '/settings/audit-logs', icon: <AuditOutlined />, label: t('nav.auditLogs') },
+      ]
+    },
+
+    // 8-9. 账户与帮助
+    { key: '/settings/billing', icon: <DollarOutlined />, label: t('nav.planBilling') },
+    { key: '/settings/guide', icon: <QuestionCircleOutlined />, label: t('nav.helpCenter') },
   ];
 
   return (
@@ -192,7 +229,11 @@ export function AppShell() {
         <Menu
           mode="inline"
           selectedKeys={[selectedMenuKey]}
-          defaultOpenKeys={['agents-group', 'settings']}
+          openKeys={openMenuKeys}
+          onOpenChange={(keys) => {
+            const latestKey = keys.find(key => !openMenuKeys.includes(key));
+            setOpenMenuKeys(latestKey ? [latestKey] : []);
+          }}
           items={filterMenuByRole(menuItems)}
           onClick={({ key }) => navigate(key)}
         />
