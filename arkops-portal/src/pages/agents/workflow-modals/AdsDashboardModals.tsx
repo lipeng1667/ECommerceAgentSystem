@@ -41,7 +41,7 @@ export function AdsDashboardModals(props: AdsDashboardModalsProps) {
               width={800}
             >
               <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
-                {`${t('ads.last7DaysOverview')} · ${t('ads.targetROI')}: 1.5× · ${t('ads.totalSpend')}: $${mockCampaigns.reduce((s, c) => s + c.spend, 0)}`}
+                {`${t('ads.last7DaysOverview')} · ${t('ads.targetROI')}: 1.5× · ${t('ads.totalSpend')}: ¥${mockCampaigns.reduce((s, c) => s + c.spend, 0)}`}
               </Typography.Text>
               {mockCampaigns.map(c => (
                 <Card
@@ -66,13 +66,13 @@ export function AdsDashboardModals(props: AdsDashboardModalsProps) {
                     <Col span={6}>
                       <div style={{ marginBottom: 4 }}>
                         <Typography.Text type="secondary" style={{ fontSize: 10 }}>{t('ads.budgetUsed')}</Typography.Text>
-                        <Typography.Text strong style={{ display: 'block', fontSize: 14 }}>${c.budget}</Typography.Text>
+                        <Typography.Text strong style={{ display: 'block', fontSize: 14 }}>¥{c.budget}</Typography.Text>
                       </div>
                       <Progress
                         percent={Math.round(c.spend / c.budget * 100)}
                         size="small"
                         status={c.roi < 1.0 ? 'exception' : c.roi >= 1.5 ? 'success' : 'active'}
-                        format={() => `$${c.spend}`}
+                        format={() => `¥${c.spend}`}
                       />
                     </Col>
                     <Col span={4}>
@@ -127,12 +127,12 @@ export function AdsDashboardModals(props: AdsDashboardModalsProps) {
                       <Row gutter={8}>
                         <Col span={12}>
                           <Typography.Text type="secondary" style={{ fontSize: 10 }}>{t('ads.current')}</Typography.Text>
-                          <Typography.Text strong style={{ display: 'block', fontSize: 16, color: '#64748b' }}>${s.current}</Typography.Text>
+                          <Typography.Text strong style={{ display: 'block', fontSize: 16, color: '#64748b' }}>¥{s.current}</Typography.Text>
                         </Col>
                         <Col span={12}>
                           <Typography.Text type="secondary" style={{ fontSize: 10 }}>{t('ads.suggested')}</Typography.Text>
                           <Typography.Text strong style={{ display: 'block', fontSize: 16, color: s.suggested > s.current ? '#16a34a' : s.suggested < s.current ? '#dc2626' : '#64748b' }}>
-                            ${s.suggested}
+                            ¥{s.suggested}
                           </Typography.Text>
                         </Col>
                       </Row>

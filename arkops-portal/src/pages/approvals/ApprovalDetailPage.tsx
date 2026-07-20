@@ -38,31 +38,31 @@ export function ApprovalDetailPage() {
     if (titleLower.includes('budget')) {
       return {
         beforeItems: [
-          { label: '旧预算', value: '$5,000.00' },
-          { label: '日上限', value: '$200/天' },
-          { label: '月上限', value: '$5,000/月' },
+          { label: '旧预算', value: '¥5,000.00' },
+          { label: '日上限', value: '¥200/天' },
+          { label: '月上限', value: '¥5,000/月' },
         ],
         afterItems: [
-          { label: '新预算', value: '$8,000.00' },
-          { label: '日上限', value: '$350/天' },
-          { label: '月上限', value: '$8,000/月' },
+          { label: '新预算', value: '¥8,000.00' },
+          { label: '日上限', value: '¥350/天' },
+          { label: '月上限', value: '¥8,000/月' },
         ],
-        changeAmount: '+$3,000.00',
+        changeAmount: '+¥3,000.00',
       };
     }
     if (titleLower.includes('price')) {
       return {
         beforeItems: [
-          { label: '原价', value: '$39.99' },
-          { label: '成本', value: '$18.50' },
+          { label: '原价', value: '¥39.99' },
+          { label: '成本', value: '¥18.50' },
           { label: '利润率', value: '53.7%' },
         ],
         afterItems: [
-          { label: '新价', value: '$45.99' },
-          { label: '成本', value: '$18.50' },
+          { label: '新价', value: '¥45.99' },
+          { label: '成本', value: '¥18.50' },
           { label: '利润率', value: '59.8%' },
         ],
-        changeAmount: '+$6.00',
+        changeAmount: '+¥6.00',
       };
     }
     return {

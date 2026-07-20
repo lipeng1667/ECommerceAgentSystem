@@ -6,7 +6,7 @@ import {
   CheckCircleOutlined,
   CrownOutlined,
   CustomerServiceOutlined,
-  DollarOutlined,
+  PayCircleOutlined,
   EditOutlined,
   EyeOutlined,
   FileSearchOutlined,
@@ -68,7 +68,7 @@ export function AgentBuiltinTasksSection({
 
   const sections: Partial<Record<AgentType, AgentTaskSectionConfig>> = {
     pricing_strategy: {
-      titleIcon: <DollarOutlined />,
+      titleIcon: <PayCircleOutlined />,
       tasks: [
         task(<EyeOutlined style={taskIconStyle('#2563eb')} />, 'priceScan', 'priceScanDesc', 'scheduled', 'purple'),
         task(<ToolOutlined style={taskIconStyle('#16a34a')} />, 'dynamicPrice', 'dynamicPriceDesc', 'auto', 'green'),
@@ -179,7 +179,7 @@ export function AgentBuiltinTasksSection({
       titleIcon: <GiftOutlined />,
       tasks: [
         task(<ThunderboltOutlined style={taskIconStyle('#dc2626')} />, 'flashSaleSetup', 'flashSaleSetupDesc', 'auto', 'green'),
-        task(<DollarOutlined style={taskIconStyle('#2563eb')} />, 'couponCampaign', 'couponCampaignDesc', 'scheduled', 'purple'),
+        task(<PayCircleOutlined style={taskIconStyle('#2563eb')} />, 'couponCampaign', 'couponCampaignDesc', 'scheduled', 'purple'),
         task(<ShoppingCartOutlined style={taskIconStyle('#16a34a')} />, 'bundleDeal', 'bundleDealDesc', 'auto', 'green')
       ]
     },

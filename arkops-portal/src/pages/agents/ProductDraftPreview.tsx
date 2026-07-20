@@ -28,7 +28,7 @@ export function ProductDraftPreview({ draft, task, onRegenerate, onCancel }: Pro
               <Typography.Text type="secondary" style={{ fontSize: 11 }}>{draft.category}</Typography.Text>
             </Space>
             <Space size="small">
-              <Statistic title={t('draft.sellingPrice')} value={draft.sellingPrice} prefix="$" precision={2} valueStyle={{ fontSize: 14, color: '#2563eb' }} />
+              <Statistic title={t('draft.sellingPrice')} value={draft.sellingPrice} prefix="¥" precision={2} valueStyle={{ fontSize: 14, color: '#2563eb' }} />
               <Statistic title={t('draft.grossMargin')} value={((draft.sellingPrice - draft.costPrice) / draft.sellingPrice * 100).toFixed(0)} suffix="%" valueStyle={{ fontSize: 14, color: '#16a34a' }} />
               <Statistic title={t('draft.totalStock')} value={draft.totalStock} valueStyle={{ fontSize: 14 }} />
             </Space>
@@ -89,15 +89,15 @@ export function ProductDraftPreview({ draft, task, onRegenerate, onCancel }: Pro
           columns={[
             { title: t('draft.spec'), dataIndex: 'spec', ellipsis: true },
             { title: t('draft.skuCode'), dataIndex: 'skuCode', width: 130, ellipsis: true, render: (v: string) => <Typography.Text code style={{ fontSize: 11 }}>{v}</Typography.Text> },
-            { title: t('draft.price'), dataIndex: 'price', width: 80, align: 'right' as const, render: (v: number) => <Typography.Text strong>${v.toFixed(2)}</Typography.Text> },
+            { title: t('draft.price'), dataIndex: 'price', width: 80, align: 'right' as const, render: (v: number) => <Typography.Text strong>¥{v.toFixed(2)}</Typography.Text> },
             { title: t('draft.stock'), dataIndex: 'stock', width: 70, align: 'right' as const },
           ]}
         />
 
         {/* 价格体系 */}
         <Row gutter={12} style={{ marginBottom: 16 }}>
-          <Col span={8}><Statistic title={t('draft.costPrice')} value={draft.costPrice} prefix="$" precision={2} valueStyle={{ fontSize: 16 }} /></Col>
-          <Col span={8}><Statistic title={t('draft.sellingPrice')} value={draft.sellingPrice} prefix="$" precision={2} valueStyle={{ fontSize: 16, color: '#2563eb' }} /></Col>
+          <Col span={8}><Statistic title={t('draft.costPrice')} value={draft.costPrice} prefix="¥" precision={2} valueStyle={{ fontSize: 16 }} /></Col>
+          <Col span={8}><Statistic title={t('draft.sellingPrice')} value={draft.sellingPrice} prefix="¥" precision={2} valueStyle={{ fontSize: 16, color: '#2563eb' }} /></Col>
           <Col span={8}><Statistic title={t('draft.grossMargin')} value={((draft.sellingPrice - draft.costPrice) / draft.sellingPrice * 100).toFixed(0)} suffix="%" valueStyle={{ fontSize: 16, color: '#16a34a' }} /></Col>
         </Row>
 

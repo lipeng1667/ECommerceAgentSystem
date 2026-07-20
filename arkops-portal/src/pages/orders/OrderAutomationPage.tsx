@@ -69,12 +69,12 @@ interface OrderItem {
   timeline: TimelineStep[];
 }
 
-const storeNames = ['TikTok Shop 美国旗舰店', 'Amazon 户外用品店', 'Shopify 独立站'];
+const storeNames = ['拼多多旗舰店', '淘宝户外用品店', '京东自营店'];
 
 const orders: OrderItem[] = [
   {
     id: 'ord_001', orderNo: '#ORD-2406-0820',
-    storeName: 'TikTok Shop 美国旗舰店', buyerName: 'Jessica Lee',
+    storeName: '拼多多旗舰店', buyerName: '李女士',
     items: '蓝牙耳机 Pro ×1', amount: 39.99,
     status: 'auto_completed', trackingNo: '1Z999AA1234567890',
     logisticsStatus: '已签收',
@@ -90,23 +90,23 @@ const orders: OrderItem[] = [
   },
   {
     id: 'ord_002', orderNo: '#ORD-2406-0821',
-    storeName: 'Amazon 户外用品店', buyerName: 'Mark Thompson',
+    storeName: '淘宝户外用品店', buyerName: '张先生',
     items: '折叠露营椅 ×2, LED 露营灯 ×1', amount: 115.97,
     status: 'auto_shipped', trackingNo: '1Z999AA0987654321',
     logisticsStatus: '运输中 · 预计 6 月 24 日送达',
-    agentAction: '智能分仓 → US-East 仓发货 → 已创建运单',
+    agentAction: '智能分仓 → 华东仓发货 → 已创建运单',
     createdAt: '2026-06-21',
     timeline: [
       { title: '付款确认', at: '06-21 08:15', icon: 'check' },
       { title: '风控通过', at: '06-21 08:15', icon: 'shield' },
-      { title: '智能分仓 US-East', at: '06-21 08:16', icon: 'sync' },
+      { title: '智能分仓 华东仓', at: '06-21 08:16', icon: 'sync' },
       { title: '创建运单', at: '06-21 08:30', icon: 'truck' },
       { title: '预计送达', at: '06-24', icon: 'truck', estimated: '06-24 18:00' },
     ],
   },
   {
     id: 'ord_003', orderNo: '#ORD-2406-0822',
-    storeName: 'Shopify 独立站', buyerName: 'Sophie Chen',
+    storeName: '京东自营店', buyerName: '陈女士',
     items: '定制手机壳 ×3', amount: 38.97,
     status: 'awaiting_shipment', trackingNo: undefined,
     logisticsStatus: '待发货',
@@ -121,11 +121,11 @@ const orders: OrderItem[] = [
   },
   {
     id: 'ord_004', orderNo: '#ORD-2406-0823',
-    storeName: 'TikTok Shop 美国旗舰店', buyerName: 'PO Box 8842',
+    storeName: '拼多多旗舰店', buyerName: '王先生',
     items: '65W GaN 充电器 ×2', amount: 39.98,
     status: 'exception', exceptionType: 'address_invalid', trackingNo: undefined,
     logisticsStatus: '—',
-    exceptionReason: '收货地址含 PO Box，USPS/FedEx 均不支持配送。\n建议联系买家获取街道地址或取消退款。',
+    exceptionReason: '收货地址缺少门牌号，物流商暂无法配送。\n建议联系买家补充完整地址或取消订单。',
     agentAction: '自动拦截 → 推送到异常列表待运营处理',
     createdAt: '2026-06-21',
     timeline: [
@@ -136,11 +136,11 @@ const orders: OrderItem[] = [
   },
   {
     id: 'ord_005', orderNo: '#ORD-2406-0824',
-    storeName: 'Amazon 户外用品店', buyerName: 'Anonymous Buyer',
+    storeName: '淘宝户外用品店', buyerName: '匿名买家',
     items: '户外登山包 40L ×3', amount: 137.97,
     status: 'fraud_blocked', exceptionType: 'fraud_suspected', trackingNo: undefined,
     logisticsStatus: '—',
-    exceptionReason: '高风险标记（3/5 规则命中）:\n• 新注册账号（注册不足 7 天）\n• 发卡行位于菲律宾，收货地为美国\n• 单笔购买 3 件高单价商品',
+    exceptionReason: '高风险标记（3/5 规则命中）:\n• 新注册账号（注册不足 7 天）\n• 支付账号实名信息与收货人不一致\n• 单笔购买 3 件高单价商品',
     agentAction: '风控命中多项规则 → 自动阻断 → 等待人工审核',
     createdAt: '2026-06-21',
     timeline: [
@@ -151,7 +151,7 @@ const orders: OrderItem[] = [
   },
   {
     id: 'ord_006', orderNo: '#ORD-2406-0825',
-    storeName: 'TikTok Shop 美国旗舰店', buyerName: 'David Kim',
+    storeName: '拼多多旗舰店', buyerName: '刘先生',
     items: '运动挂脖耳机 ×1', amount: 24.99,
     status: 'cancelled', trackingNo: undefined,
     logisticsStatus: '—',
@@ -313,7 +313,7 @@ export function OrderAutomationPage() {
       dataIndex: 'amount',
       width: 80,
       align: 'right',
-      render: (v: number) => <Typography.Text strong>${v.toFixed(2)}</Typography.Text>,
+      render: (v: number) => <Typography.Text strong>¥{v.toFixed(2)}</Typography.Text>,
     },
     {
       title: t('order.status'),
@@ -569,7 +569,7 @@ export function OrderAutomationPage() {
               </Descriptions.Item>
               <Descriptions.Item label={t('order.buyer')}>{detailOrder.buyerName}</Descriptions.Item>
               <Descriptions.Item label={t('order.amount')}>
-                <Typography.Text strong>${detailOrder.amount.toFixed(2)}</Typography.Text>
+                <Typography.Text strong>¥{detailOrder.amount.toFixed(2)}</Typography.Text>
               </Descriptions.Item>
               <Descriptions.Item label={t('order.createdAt')}>{detailOrder.createdAt}</Descriptions.Item>
               {detailOrder.trackingNo && (

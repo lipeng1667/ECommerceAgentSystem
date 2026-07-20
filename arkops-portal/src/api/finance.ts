@@ -2,16 +2,16 @@ import { mockDelay } from './client';
 import type { BillingDetail, BillingRecord, CostAnalysis, SubscriptionPlan } from '../types/domain';
 
 const plans: SubscriptionPlan[] = [
-  { tier: 'Free', storeLimit: 1, agentConcurrency: 1, monthlyOps: 100, tokenQuota: 100000, price: 0, currency: 'USD' },
-  { tier: 'Starter', storeLimit: 5, agentConcurrency: 2, monthlyOps: 500, tokenQuota: 500000, price: 49, currency: 'USD' },
-  { tier: 'Professional', storeLimit: 20, agentConcurrency: 5, monthlyOps: 2000, tokenQuota: 2000000, price: 199, currency: 'USD' },
-  { tier: 'Enterprise', storeLimit: 999, agentConcurrency: 999, monthlyOps: 99999, tokenQuota: 99999999, price: 599, currency: 'USD' }
+  { tier: 'Free', storeLimit: 1, agentConcurrency: 1, monthlyOps: 100, tokenQuota: 100000, price: 0, currency: 'CNY' },
+  { tier: 'Starter', storeLimit: 5, agentConcurrency: 2, monthlyOps: 500, tokenQuota: 500000, price: 49, currency: 'CNY' },
+  { tier: 'Professional', storeLimit: 20, agentConcurrency: 5, monthlyOps: 2000, tokenQuota: 2000000, price: 199, currency: 'CNY' },
+  { tier: 'Enterprise', storeLimit: 999, agentConcurrency: 999, monthlyOps: 99999, tokenQuota: 99999999, price: 599, currency: 'CNY' }
 ];
 
 const billingRecords: BillingRecord[] = [
-  { id: 'inv_202606', period: '2026年6月', status: 'pending', amount: 49, currency: 'USD', dueDate: '2026-07-01' },
-  { id: 'inv_202605', period: '2026年5月', status: 'paid', amount: 49, currency: 'USD', dueDate: '2026-06-01', paidAt: '2026-05-28', invoiceUrl: '#' },
-  { id: 'inv_202604', period: '2026年4月', status: 'paid', amount: 49, currency: 'USD', dueDate: '2026-05-01', paidAt: '2026-04-29', invoiceUrl: '#' }
+  { id: 'inv_202606', period: '2026年6月', status: 'pending', amount: 49, currency: 'CNY', dueDate: '2026-07-01' },
+  { id: 'inv_202605', period: '2026年5月', status: 'paid', amount: 49, currency: 'CNY', dueDate: '2026-06-01', paidAt: '2026-05-28', invoiceUrl: '#' },
+  { id: 'inv_202604', period: '2026年4月', status: 'paid', amount: 49, currency: 'CNY', dueDate: '2026-05-01', paidAt: '2026-04-29', invoiceUrl: '#' }
 ];
 
 let currentPlan: SubscriptionPlan = { ...plans[1] };
@@ -48,13 +48,13 @@ export const financeApi = {
     mockDelay({
       baseSubscription: 49,
       overageItems: [
-        { description: '广告优化 Agent (超额 120 次)', amount: 9.6, currency: 'USD' },
-        { description: 'CRM 复购 Agent (超额 45 次)', amount: 3.6, currency: 'USD' },
-        { description: 'Token 超额 186,000', amount: 5.58, currency: 'USD' }
+        { description: '广告优化 Agent (超额 120 次)', amount: 9.6, currency: 'CNY' },
+        { description: 'CRM 复购 Agent (超额 45 次)', amount: 3.6, currency: 'CNY' },
+        { description: 'Token 超额 186,000', amount: 5.58, currency: 'CNY' }
       ],
       discount: 0,
       total: 67.78,
-      currency: 'USD'
+      currency: 'CNY'
     }),
   getUsageOverview: () =>
     mockDelay({
@@ -76,9 +76,9 @@ export const financeApi = {
   getCostAnalysis: (): Promise<CostAnalysis> =>
     mockDelay({
       byStore: [
-        { storeName: 'TikTok Shop 美国旗舰店', agentCalls: 320, tokenCost: 28.5 },
-        { storeName: 'Amazon 户外用品店', agentCalls: 245, tokenCost: 18.2 },
-        { storeName: 'Shopify 独立站', agentCalls: 100, tokenCost: 6.8 }
+        { storeName: '拼多多旗舰店', agentCalls: 320, tokenCost: 28.5 },
+        { storeName: '淘宝户外用品店', agentCalls: 245, tokenCost: 18.2 },
+        { storeName: '京东自营店', agentCalls: 100, tokenCost: 6.8 }
       ],
       byAgent: [
         { agentType: 'ads_optimizer', calls: 220, cost: 22.4 },

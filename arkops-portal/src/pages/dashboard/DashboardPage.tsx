@@ -5,7 +5,7 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   DashboardOutlined,
-  DollarOutlined,
+  PayCircleOutlined,
   LineChartOutlined,
   PlayCircleOutlined,
   RobotOutlined,
@@ -45,8 +45,8 @@ const statusColors: Record<string, string> = {
   failed: '#dc2626'
 };
 
-function formatCurrency(value: number, currency = 'USD') {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+function formatCurrency(value: number, currency = 'CNY') {
+  return new Intl.NumberFormat('zh-CN', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
 }
 
 function formatNumber(value: number) {
@@ -86,7 +86,7 @@ const OperationsOverview = memo(function OperationsOverview({
     <>
       {/* ===== 店铺经营对比 ===== */}
       <Card
-        title={<span><DollarOutlined style={{ marginRight: 8 }} />店铺经营对比</span>}
+        title={<span><PayCircleOutlined style={{ marginRight: 8 }} />店铺经营对比</span>}
         size="small"
         style={{ marginBottom: 16 }}
       >
@@ -132,7 +132,7 @@ const OperationsOverview = memo(function OperationsOverview({
                   const pct = idx === 0 ? changePercent(biz.gmv.today, biz.gmv.yesterday) : null;
                   return (
                     <span style={{ fontWeight: idx === 0 ? 700 : 400, color: idx === 0 ? '#2563eb' : 'inherit' }}>
-                      ${formatNumber(v)}
+                      ¥{formatNumber(v)}
                       {pct && (
                         <span style={{ fontSize: 10, marginLeft: 4, color: pct.up ? '#16a34a' : '#dc2626' }}>
                           {pct.up ? '▲' : '▼'}{Math.abs(pct.value)}%
@@ -190,7 +190,7 @@ const OperationsOverview = memo(function OperationsOverview({
                   key: point.date,
                   label: point.date,
                   bars: [
-                    { value: point.gmv, max: 35000, title: `GMV: $${formatNumber(point.gmv)}`, className: 'trend-bar-runs', minHeight: 10 },
+                    { value: point.gmv, max: 35000, title: `GMV: ¥${formatNumber(point.gmv)}`, className: 'trend-bar-runs', minHeight: 10 },
                     { value: point.orders, max: 500, title: t('dashboard.ordersColon', { count: point.orders }), className: 'trend-bar-approvals', minHeight: 6 }
                   ]
                 }))}
@@ -348,9 +348,9 @@ export function DashboardPage() {
 
   const selectedStoreMetric = businessMetrics?.storeGmvRank.find(item => item.storeName === selectedStoreName);
   const storeOrders: Record<string, number> = {
-    'TikTok Shop 美国旗舰店': 236,
-    'Amazon 户外用品店': 128,
-    'Shopify 独立站': 48,
+    '拼多多旗舰店': 236,
+    '淘宝户外用品店': 128,
+    '京东自营店': 48,
   };
   const currentGmv = selectedStoreMetric?.gmv ?? businessMetrics?.gmv.today ?? 0;
   const currentOrders = selectedStoreMetric ? storeOrders[selectedStoreMetric.storeName] ?? 0 : businessMetrics?.orders.today ?? 0;
@@ -429,7 +429,7 @@ export function DashboardPage() {
       {businessMetrics && (
         <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
           {[
-            { title: 'GMV', value: formatCurrency(currentGmv), meta: `${gmvChange.up ? '↑' : '↓'} ${Math.abs(gmvChange.value)}% 较昨日`, color: '#2563eb', icon: <DollarOutlined /> },
+            { title: 'GMV', value: formatCurrency(currentGmv), meta: `${gmvChange.up ? '↑' : '↓'} ${Math.abs(gmvChange.value)}% 较昨日`, color: '#2563eb', icon: <PayCircleOutlined /> },
             { title: '订单', value: formatNumber(currentOrders), meta: `${orderChange.up ? '↑' : '↓'} ${Math.abs(orderChange.value)}% 较昨日`, color: '#0f766e', icon: <ShoppingCartOutlined /> },
             { title: '预计利润', value: formatCurrency(Math.round(currentGmv * 0.21)), meta: '按 21% 预计净利率', color: '#16a34a', icon: <RiseOutlined /> },
             { title: '广告 ROI', value: `${businessMetrics.adMetrics.roas.toFixed(1)}×`, meta: `目标 ${businessMetrics.adMetrics.targetRoas.toFixed(1)}×`, color: '#7c3aed', icon: <DashboardOutlined /> },
@@ -460,8 +460,8 @@ export function DashboardPage() {
                 今日 GMV 较昨日增长 {Math.abs(gmvChange.value)}%，整体经营稳定，但库存和店铺授权需要优先处理。
               </Typography.Paragraph>
               <Space direction="vertical" size={8}>
-                <Typography.Text>• TikTok Shop 贡献当前最高 GMV，广告 ROI 高于目标。</Typography.Text>
-                <Typography.Text>• Amazon 店铺需要重新登录，否则后续数据可能停止更新。</Typography.Text>
+                <Typography.Text>• 拼多多 贡献当前最高 GMV，广告 ROI 高于目标。</Typography.Text>
+                <Typography.Text>• 淘宝 店铺需要重新登录，否则后续数据可能停止更新。</Typography.Text>
                 <Typography.Text>• {businessMetrics.inventory.lowStockCount} 个 SKU 库存偏低，建议今天确认补货计划。</Typography.Text>
               </Space>
             </Card>
@@ -469,7 +469,7 @@ export function DashboardPage() {
           <Col xs={24} lg={14}>
             <Card title={<Space><AlertOutlined style={{ color: '#ea580c' }} />今日待办</Space>} extra={<Typography.Text type="secondary">按紧急程度排序</Typography.Text>} style={{ height: '100%' }}>
               <div className="dashboard-priority-list">
-                {dashboardSummary && dashboardSummary.loginRequiredStores > 0 && <Link to="/stores"><span><Tag color="red">紧急</Tag>Amazon 店铺需要重新登录</span><strong>{dashboardSummary.loginRequiredStores} 家 →</strong></Link>}
+                {dashboardSummary && dashboardSummary.loginRequiredStores > 0 && <Link to="/stores"><span><Tag color="red">紧急</Tag>淘宝 店铺需要重新登录</span><strong>{dashboardSummary.loginRequiredStores} 家 →</strong></Link>}
                 {dashboardSummary && dashboardSummary.pendingApprovals > 0 && <Link to="/agents/approvals"><span><Tag color="orange">审批</Tag>Agent 操作等待人工确认</span><strong>{dashboardSummary.pendingApprovals} 项 →</strong></Link>}
                 {pendingReviews > 0 && <Link to="/agents/review_manager"><span><Tag color="gold">评价</Tag>差评等待回复</span><strong>{pendingReviews} 条 →</strong></Link>}
                 {businessMetrics.inventory.lowStockCount > 0 && <Link to="/products"><span><Tag color="blue">库存</Tag>SKU 库存不足</span><strong>{businessMetrics.inventory.lowStockCount} 个 →</strong></Link>}
@@ -510,9 +510,9 @@ export function DashboardPage() {
                 </Col>
                 <Col>
                   <Statistic
-                    title={<Space size={2}><DollarOutlined style={{ fontSize: 10 }} /><span style={{ fontSize: 10 }}>{t('dashboard.achievementRevenue')}</span></Space>}
+                    title={<Space size={2}><PayCircleOutlined style={{ fontSize: 10 }} /><span style={{ fontSize: 10 }}>{t('dashboard.achievementRevenue')}</span></Space>}
                     value={achievements.revenueUplift}
-                    prefix="$"
+                    prefix="¥"
                     suffix={
                       <span style={{ fontSize: 12, color: achievements.revenueUpliftTrend > 0 ? '#16a34a' : '#dc2626' }}>
                         <ArrowUpOutlined style={{ fontSize: 10 }} /> {achievements.revenueUpliftTrend}%

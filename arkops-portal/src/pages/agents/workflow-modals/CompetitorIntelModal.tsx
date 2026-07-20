@@ -18,10 +18,10 @@ const mockCompetitorPrices = [
 ];
 
 const mockProductResearch = [
-  { id: 1, category: 'Wireless Earbuds', marketCapacity: '$2.4M/mo', competitorCount: 47, avgPrice: 29.50, priceRange: '$12 - $89', monthlySales: 82000, opportunityScore: 72 },
-  { id: 2, category: 'Bluetooth Speakers', marketCapacity: '$1.1M/mo', competitorCount: 31, avgPrice: 22.00, priceRange: '$8 - $65', monthlySales: 50000, opportunityScore: 58 },
-  { id: 3, category: 'Smart Watches', marketCapacity: '$3.8M/mo', competitorCount: 89, avgPrice: 42.00, priceRange: '$15 - $120', monthlySales: 90000, opportunityScore: 81 },
-  { id: 4, category: 'USB-C Chargers', marketCapacity: '$0.9M/mo', competitorCount: 25, avgPrice: 21.00, priceRange: '$9 - $45', monthlySales: 43000, opportunityScore: 45 },
+  { id: 1, category: 'Wireless Earbuds', marketCapacity: '¥2.4M/mo', competitorCount: 47, avgPrice: 29.50, priceRange: '¥12 - ¥89', monthlySales: 82000, opportunityScore: 72 },
+  { id: 2, category: 'Bluetooth Speakers', marketCapacity: '¥1.1M/mo', competitorCount: 31, avgPrice: 22.00, priceRange: '¥8 - ¥65', monthlySales: 50000, opportunityScore: 58 },
+  { id: 3, category: 'Smart Watches', marketCapacity: '¥3.8M/mo', competitorCount: 89, avgPrice: 42.00, priceRange: '¥15 - ¥120', monthlySales: 90000, opportunityScore: 81 },
+  { id: 4, category: 'USB-C Chargers', marketCapacity: '¥0.9M/mo', competitorCount: 25, avgPrice: 21.00, priceRange: '¥9 - ¥45', monthlySales: 43000, opportunityScore: 45 },
 ];
 
 const mockTrendingKeywords = [
@@ -57,19 +57,19 @@ export function CompetitorIntelModal({ open, onClose }: CompetitorIntelModalProp
     { title: t('intel.product'), dataIndex: 'product', ellipsis: true },
     {
       title: t('intel.theirPrice'), dataIndex: 'theirPrice', width: 100,
-      render: (v: number) => <Typography.Text style={{ fontSize: 13 }}>${v.toFixed(2)}</Typography.Text>,
+      render: (v: number) => <Typography.Text style={{ fontSize: 13 }}>¥{v.toFixed(2)}</Typography.Text>,
     },
     {
       title: t('intel.ourPrice'), dataIndex: 'ourPrice', width: 100,
-      render: (v: number) => <Typography.Text style={{ fontSize: 13 }}>${v.toFixed(2)}</Typography.Text>,
+      render: (v: number) => <Typography.Text style={{ fontSize: 13 }}>¥{v.toFixed(2)}</Typography.Text>,
     },
     {
       title: t('intel.priceDiff'), width: 110,
       render: (_: unknown, r: typeof mockCompetitorPrices[0]) => {
         const diff = r.theirPrice - r.ourPrice;
         if (Math.abs(diff) < 0.01) return <Tag style={{ fontSize: 11 }}>{t('intel.priceParity')}</Tag>;
-        if (diff < 0) return <Tag color="red" style={{ fontSize: 11 }}>{t('intel.cheaperThanUs')} ${Math.abs(diff).toFixed(2)}</Tag>;
-        return <Tag color="green" style={{ fontSize: 11 }}>{t('intel.moreExpensive')} ${diff.toFixed(2)}</Tag>;
+        if (diff < 0) return <Tag color="red" style={{ fontSize: 11 }}>{t('intel.cheaperThanUs')} ¥{Math.abs(diff).toFixed(2)}</Tag>;
+        return <Tag color="green" style={{ fontSize: 11 }}>{t('intel.moreExpensive')} ¥{diff.toFixed(2)}</Tag>;
       },
     },
     {
@@ -85,7 +85,7 @@ export function CompetitorIntelModal({ open, onClose }: CompetitorIntelModalProp
     },
     { title: t('intel.marketCapacity'), dataIndex: 'marketCapacity', width: 120 },
     { title: t('intel.competitorCount'), dataIndex: 'competitorCount', width: 100, render: (v: number) => <Tag>{v}</Tag> },
-    { title: t('intel.avgPrice'), dataIndex: 'avgPrice', width: 90, render: (v: number) => `$${v.toFixed(2)}` },
+    { title: t('intel.avgPrice'), dataIndex: 'avgPrice', width: 90, render: (v: number) => `¥${v.toFixed(2)}` },
     { title: t('intel.priceRange'), dataIndex: 'priceRange', width: 110 },
     { title: t('intel.monthlySales'), dataIndex: 'monthlySales', width: 110, render: (v: number) => v.toLocaleString() },
     {
@@ -129,7 +129,7 @@ export function CompetitorIntelModal({ open, onClose }: CompetitorIntelModalProp
       render: (v: string) => <Tag icon={<ShopOutlined />} style={{ fontSize: 11 }}>{v}</Tag>,
     },
     { title: t('intel.firstSeen'), dataIndex: 'firstSeen', width: 120, render: (v: string) => <Typography.Text type="secondary" style={{ fontSize: 11 }}>{v}</Typography.Text> },
-    { title: t('intel.initialPrice'), dataIndex: 'initialPrice', width: 100, render: (v: number) => `$${v.toFixed(2)}` },
+    { title: t('intel.initialPrice'), dataIndex: 'initialPrice', width: 100, render: (v: number) => `¥${v.toFixed(2)}` },
   ];
 
   return (
@@ -167,7 +167,7 @@ export function CompetitorIntelModal({ open, onClose }: CompetitorIntelModalProp
                         <Typography.Text type="secondary" style={{ fontSize: 11 }}>{t('intel.competitorCount')}: {r.competitorCount}</Typography.Text>
                       </Space>
                       <Space size="large">
-                        <Typography.Text type="secondary" style={{ fontSize: 11 }}>{t('intel.avgPrice')}: ${r.avgPrice.toFixed(2)}</Typography.Text>
+                        <Typography.Text type="secondary" style={{ fontSize: 11 }}>{t('intel.avgPrice')}: ¥{r.avgPrice.toFixed(2)}</Typography.Text>
                         <Typography.Text type="secondary" style={{ fontSize: 11 }}>{t('intel.priceRange')}: {r.priceRange}</Typography.Text>
                       </Space>
                       <Typography.Text type="secondary" style={{ fontSize: 11 }}>{t('intel.monthlySales')}: {r.monthlySales.toLocaleString()}</Typography.Text>

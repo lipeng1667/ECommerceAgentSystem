@@ -7,7 +7,7 @@ import {
   CloseOutlined,
   DashboardOutlined,
   DesktopOutlined,
-  DollarOutlined,
+  PayCircleOutlined,
   ExperimentOutlined as LabOutlined,
   ExperimentOutlined,
   LogoutOutlined,
@@ -210,7 +210,7 @@ export function AppShell() {
     },
 
     // 8-9. 账户与帮助
-    { key: '/settings/billing', icon: <DollarOutlined />, label: t('nav.planBilling') },
+    { key: '/settings/billing', icon: <PayCircleOutlined />, label: t('nav.planBilling') },
     { key: '/settings/guide', icon: <QuestionCircleOutlined />, label: t('nav.helpCenter') },
   ];
 

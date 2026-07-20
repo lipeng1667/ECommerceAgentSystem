@@ -74,7 +74,7 @@ interface MigrationPreview {
 
 const platforms: PlatformOption[] = [
   { key: 'pinduoduo', name: '拼多多', short: '拼', color: '#e02e24', soft: '#fff1f0', description: '拼多多商家后台' },
-  { key: 'taobao', name: '淘宝 / 天猫', short: '淘', color: '#ff6a00', soft: '#fff7e6', description: '千牛商家工作台' },
+  { key: 'taobao', name: '淘宝', short: '淘', color: '#ff6a00', soft: '#fff7e6', description: '千牛商家工作台' },
   { key: 'jd', name: '京东', short: '京', color: '#e1251b', soft: '#fff1f0', description: '京麦商家中心' },
 ];
 

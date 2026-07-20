@@ -53,7 +53,7 @@ export const agentConfigs: AgentConfig[] = [
     timeoutMinutes: 20,
     enabled: false,
     strategyConfig: {
-      productLaunchConfig: { defaultCategory: '', targetMarket: 'US' },
+      productLaunchConfig: { defaultCategory: '', targetMarket: 'CN' },
       seoKeywords: { keywords: ['fast charger', 'GaN charger', '65W charger', 'USB-C PD', '快充充电器'], lastGenerated: '2h ago', source: 'AI generated from product images' },
       targetAudience: { tags: ['tech enthusiasts', 'travelers', 'professionals', '数码爱好者'], lastGenerated: '2h ago', source: 'AI inferred from product category' }
     }
@@ -111,7 +111,7 @@ export const agentConfigs: AgentConfig[] = [
         mode: 'market',
         targetMargin: 30,
         competitorStrategy: 'undercut',
-        currency: 'USD'
+        currency: 'CNY'
       }
     }
   },
@@ -390,7 +390,7 @@ export const agentConfigs: AgentConfig[] = [
     servesFor: [],
     executionParams: [
       { key: 'defaultDurationDays', label: '默认活动周期（天）', defaultValue: '7', type: 'number' },
-      { key: 'targetPlatforms', label: '目标平台', defaultValue: 'TikTok Shop,Amazon' }
+      { key: 'targetPlatforms', label: '目标平台', defaultValue: '京东,淘宝,拼多多' }
     ],
     riskGuard: { maxBudgetPerAction: 500, actionWhitelist: ['create_campaign', 'set_discount', 'schedule_flash_sale', 'create_coupon_batch'], actionBlacklist: ['set_below_floor'] },
     approvalStrategy: { requireApproval: true, approverRole: 'Operator', requireSecondApproval: false, autoApproveRules: { maxBudgetChange: 200 } },
@@ -399,7 +399,7 @@ export const agentConfigs: AgentConfig[] = [
     timeoutMinutes: 20,
     enabled: false,
     strategyConfig: {
-      promotionConfig: { maxDiscountPercent: 50, campaignBudget: 2000, autoSchedule: true, targetPlatforms: ['TikTok Shop', 'Amazon'], autoTriggerRules: { deadStockDays: 60, deadStockDiscount: 35, lowStockClearance: true, competitorPriceDropThreshold: 15, seasonalAutoPromo: true } }
+      promotionConfig: { maxDiscountPercent: 50, campaignBudget: 2000, autoSchedule: true, targetPlatforms: ['京东', '淘宝', '拼多多'], autoTriggerRules: { deadStockDays: 60, deadStockDiscount: 35, lowStockClearance: true, competitorPriceDropThreshold: 15, seasonalAutoPromo: true } }
     }
   },
 

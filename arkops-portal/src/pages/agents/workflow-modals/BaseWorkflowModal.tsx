@@ -12,7 +12,7 @@
  *   open={pricingOpen}
  *   onClose={onClosePricing}
  *   title={t('pricing.title')}
- *   icon={<DollarOutlined />}
+ *   icon={<PayCircleOutlined />}
  *   iconColor="#ea580c"
  *   tabs={[
  *     { key: 'analysis', label: t('pricing.analysisTab'), children: <AnalysisView /> },

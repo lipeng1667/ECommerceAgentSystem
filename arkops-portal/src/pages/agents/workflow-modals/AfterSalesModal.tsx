@@ -10,20 +10,20 @@ interface AfterSalesModalProps {
 }
 
 const mockReturns = [
-  { id: 1, orderId: 'AMZ-10245', buyer: 'user_29481', product: 'Wireless Earbuds Pro 2', reason: 'Defective', amount: 32.99, status: 'pending', requestedAt: '2h ago' },
-  { id: 2, orderId: 'AMZ-10238', buyer: 'shopper_1023', product: 'USB-C Charger 65W', reason: 'Wrong item', amount: 24.99, status: 'pending', requestedAt: '5h ago' },
-  { id: 3, orderId: 'TIK-5567', buyer: 'buyer_8821', product: 'Smart Watch Lite', reason: 'Not as described', amount: 39.99, status: 'auto_approved', requestedAt: '1d ago' },
+  { id: 1, orderId: 'TB-10245', buyer: '李女士', product: '无线耳机 Pro 2', reason: '商品故障', amount: 32.99, status: 'pending', requestedAt: '2 小时前' },
+  { id: 2, orderId: 'JD-10238', buyer: '张先生', product: 'USB-C 65W 充电器', reason: '商品发错', amount: 24.99, status: 'pending', requestedAt: '5 小时前' },
+  { id: 3, orderId: 'PDD-5567', buyer: '王女士', product: '智能手表轻享版', reason: '与描述不符', amount: 39.99, status: 'auto_approved', requestedAt: '1 天前' },
 ];
 
 const mockRefunds = [
-  { id: 1, orderId: 'AMZ-10201', buyer: 'user_5520', product: 'Bluetooth Speaker Mini', reason: 'Late delivery', amount: 18.99, status: 'refunded', requestedAt: '3d ago' },
-  { id: 2, orderId: 'TIK-5501', buyer: 'shopper_3399', product: 'Wireless Earbuds Pro 2', reason: 'Customer changed mind', amount: 32.99, status: 'refunded', requestedAt: '5d ago' },
+  { id: 1, orderId: 'JD-10201', buyer: '赵先生', product: '迷你蓝牙音箱', reason: '配送延迟', amount: 18.99, status: 'refunded', requestedAt: '3 天前' },
+  { id: 2, orderId: 'PDD-5501', buyer: '周女士', product: '无线耳机 Pro 2', reason: '买家改变主意', amount: 32.99, status: 'refunded', requestedAt: '5 天前' },
 ];
 
 const mockLogistics = [
-  { id: 1, orderId: 'AMZ-10245', carrier: 'UPS', trackingNo: '1Z999AA10123456784', status: 'in_transit' },
-  { id: 2, orderId: 'AMZ-10238', carrier: 'FedEx', trackingNo: '771182438921', status: 'exception' },
-  { id: 3, orderId: 'TIK-5567', carrier: 'USPS', trackingNo: '9400111899223197543210', status: 'delivered' },
+  { id: 1, orderId: 'TB-10245', carrier: '顺丰速运', trackingNo: 'SF1234567890123', status: 'in_transit' },
+  { id: 2, orderId: 'JD-10238', carrier: '京东物流', trackingNo: 'JD1234567890123', status: 'exception' },
+  { id: 3, orderId: 'PDD-5567', carrier: '中通快递', trackingNo: 'ZT1234567890123', status: 'delivered' },
 ];
 
 export function AfterSalesModal({ open, onClose }: AfterSalesModalProps) {
@@ -52,7 +52,7 @@ export function AfterSalesModal({ open, onClose }: AfterSalesModalProps) {
     { title: t('aftersales.buyer'), dataIndex: 'buyer', width: 110 },
     { title: t('aftersales.product'), dataIndex: 'product', ellipsis: true },
     { title: t('aftersales.reason'), dataIndex: 'reason', width: 100 },
-    { title: t('aftersales.amount'), dataIndex: 'amount', width: 70, render: (v: number) => `$${v.toFixed(2)}` },
+    { title: t('aftersales.amount'), dataIndex: 'amount', width: 70, render: (v: number) => `¥${v.toFixed(2)}` },
     {
       title: t('aftersales.status'), dataIndex: 'status', width: 100,
       render: (v: string) => { const c = statusConfig[v]; return <Tag color={c.color} style={{ fontSize: 11 }}>{c.tag}</Tag>; },
@@ -74,7 +74,7 @@ export function AfterSalesModal({ open, onClose }: AfterSalesModalProps) {
     { title: t('aftersales.buyer'), dataIndex: 'buyer', width: 110 },
     { title: t('aftersales.product'), dataIndex: 'product', ellipsis: true },
     { title: t('aftersales.reason'), dataIndex: 'reason', width: 120 },
-    { title: t('aftersales.amount'), dataIndex: 'amount', width: 70, render: (v: number) => `$${v.toFixed(2)}` },
+    { title: t('aftersales.amount'), dataIndex: 'amount', width: 70, render: (v: number) => `¥${v.toFixed(2)}` },
     {
       title: t('aftersales.status'), dataIndex: 'status', width: 100,
       render: (v: string) => { const c = statusConfig[v]; return <Tag color={c.color} style={{ fontSize: 11 }}>{c.tag}</Tag>; },

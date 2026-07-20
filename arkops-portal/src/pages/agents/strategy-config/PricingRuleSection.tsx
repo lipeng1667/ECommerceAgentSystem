@@ -165,7 +165,7 @@ export function PricingRuleSection({ agent }: PricingRuleSectionProps) {
                       <InputNumber
                         min={0} step={1}
                         style={{ width: 100 }}
-                        prefix="$"
+                        prefix="¥"
                         value={agent.strategyConfig.pricingRule.floorPrice}
                         onChange={(v) => {
                           updateConfigSection(queryClient, agent, 'pricingRule', (pr) => ({
@@ -179,7 +179,7 @@ export function PricingRuleSection({ agent }: PricingRuleSectionProps) {
                       <InputNumber
                         min={0} step={1}
                         style={{ width: 100 }}
-                        prefix="$"
+                        prefix="¥"
                         value={agent.strategyConfig.pricingRule.ceilingPrice}
                         onChange={(v) => {
                           updateConfigSection(queryClient, agent, 'pricingRule', (pr) => ({

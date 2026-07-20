@@ -105,7 +105,7 @@ export function CrmRetentionModal(props: CrmRetentionModalProps) {
                   <Row gutter={8} style={{ marginTop: 8 }}>
                     <Col span={6}>
                       <Typography.Text type="secondary" style={{ fontSize: 10, display: 'block' }}>{t('crm.minOrder')}</Typography.Text>
-                      <Typography.Text style={{ fontSize: 11 }}>{coupon.minOrder === 0 ? t('crm.noThreshold') : `$${coupon.minOrder}`}</Typography.Text>
+                      <Typography.Text style={{ fontSize: 11 }}>{coupon.minOrder === 0 ? t('crm.noThreshold') : `¥${coupon.minOrder}`}</Typography.Text>
                     </Col>
                     <Col span={6}>
                       <Typography.Text type="secondary" style={{ fontSize: 10, display: 'block' }}>{t('crm.validity')}</Typography.Text>
@@ -117,7 +117,7 @@ export function CrmRetentionModal(props: CrmRetentionModalProps) {
                     </Col>
                     <Col span={6}>
                       <Typography.Text type="secondary" style={{ fontSize: 10, display: 'block' }}>{t('crm.estimatedCost')}</Typography.Text>
-                      <Typography.Text style={{ fontSize: 11, color: '#ea580c' }}>${coupon.estimatedCost}</Typography.Text>
+                      <Typography.Text style={{ fontSize: 11, color: '#ea580c' }}>¥{coupon.estimatedCost}</Typography.Text>
                     </Col>
                   </Row>
                   <div style={{ marginTop: 8, display: 'flex', gap: 4 }}>
@@ -161,7 +161,7 @@ export function CrmRetentionModal(props: CrmRetentionModalProps) {
                     </Col>
                     <Col span={8}>
                       <Typography.Text type="secondary" style={{ fontSize: 10, display: 'block' }}>{t('crm.totalSpent')}</Typography.Text>
-                      <Typography.Text style={{ fontSize: 11 }}>${risk.totalSpent}</Typography.Text>
+                      <Typography.Text style={{ fontSize: 11 }}>¥{risk.totalSpent}</Typography.Text>
                     </Col>
                     <Col span={8}>
                       <Typography.Text type="secondary" style={{ fontSize: 10, display: 'block' }}>{t('crm.historyOrders')}</Typography.Text>

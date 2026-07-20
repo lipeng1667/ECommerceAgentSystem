@@ -66,70 +66,16 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
   });
 
   const [authMethod, setAuthMethod] = useState<Store['authMethod'] | undefined>();
-  const [platform, setPlatform] = useState<string>('tiktok_shop');
+  const [platform, setPlatform] = useState<string>('pinduoduo');
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
 
   // 各平台授权服务名称映射（运营后台 / 投流 / 客服 / 物流 / 财务）
   const platformServiceNames: Record<string, Record<string, { title: string; desc: string }>> = {
-    tiktok_shop: {
-      advertising: { title: 'TikTok Ads', desc: 'TikTok 广告投放平台' },
-      customer_service: { title: 'TikTok Shop Chat', desc: 'TikTok Shop 买家消息' },
-      logistics: { title: 'TikTok Shop Logistics', desc: 'TikTok Shop 物流发货' },
-      finance: { title: 'TikTok Shop Finance', desc: 'TikTok Shop 财务结算' },
-    },
-    amazon: {
-      advertising: { title: 'Amazon Ads', desc: 'Amazon 广告活动管理' },
-      customer_service: { title: 'Buyer-Seller Messaging', desc: 'Amazon 买家消息' },
-      logistics: { title: 'Amazon FBA / Logistics', desc: 'FBA 仓储与物流配送' },
-      finance: { title: 'Amazon Payments', desc: 'Amazon 收款与结算' },
-    },
-    shopify: {
-      advertising: { title: 'Shopify Audiences', desc: 'Shopify 广告受众与投放' },
-      customer_service: { title: 'Shopify Inbox', desc: 'Shopify 买家消息' },
-      logistics: { title: 'Shopify Shipping', desc: 'Shopify 物流发货' },
-      finance: { title: 'Shopify Payments', desc: 'Shopify 收款与结算' },
-    },
-    shopee: {
-      advertising: { title: 'Shopee Ads', desc: '虾皮广告投放平台' },
-      customer_service: { title: '聊聊 (Shopee Chat)', desc: 'Shopee 买家消息' },
-      logistics: { title: 'SLS 物流', desc: 'Shopee 自建物流' },
-      finance: { title: 'Shopee Finance', desc: 'Shopee 财务结算' },
-    },
-    lazada: {
-      advertising: { title: 'Sponsored Solutions', desc: 'Lazada 广告推广' },
-      customer_service: { title: 'Lazada Chat', desc: 'Lazada 买家消息' },
-      logistics: { title: 'LGS 物流', desc: 'Lazada 自建物流' },
-      finance: { title: 'Lazada Finance', desc: 'Lazada 财务结算' },
-    },
-    temu: {
-      advertising: { title: 'Temu Ads', desc: 'Temu 广告投放' },
-      customer_service: { title: 'Temu Chat', desc: 'Temu 买家消息' },
-      logistics: { title: 'Temu Logistics', desc: 'Temu JIT/VMI 物流' },
-      finance: { title: 'Temu Finance', desc: 'Temu 财务结算' },
-    },
-    ebay: {
-      advertising: { title: 'Promoted Listings', desc: 'eBay 广告推广' },
-      customer_service: { title: 'eBay Messages', desc: 'eBay 买家消息' },
-      logistics: { title: 'eBay Shipping', desc: 'eBay 物流发货' },
-      finance: { title: 'eBay Payments', desc: 'eBay 收款与结算' },
-    },
-    douyin: {
-      advertising: { title: '千川', desc: '巨量千川广告投放平台' },
-      customer_service: { title: '飞鸽', desc: '飞鸽客服系统' },
-      logistics: { title: '抖店物流', desc: '抖店物流发货' },
-      finance: { title: '抖店结算', desc: '抖店财务结算中心' },
-    },
     pinduoduo: {
       advertising: { title: '多多搜索 / 全站推广', desc: '拼多多广告投放平台' },
       customer_service: { title: '多多客服', desc: '拼多多买家消息' },
       logistics: { title: '拼多多物流', desc: '拼多多物流发货' },
-      finance: { title: '对账中心', desc: '商家后台对账结算' },
-    },
-    jd: {
-      advertising: { title: '京准通', desc: '京东广告投放平台' },
-      customer_service: { title: '咚咚', desc: '咚咚客服系统' },
-      logistics: { title: '京东物流', desc: '京东物流配送' },
-      finance: { title: '京麦财务', desc: '京东商家财务结算' },
+      finance: { title: '对账中心', desc: '拼多多商家后台对账结算' },
     },
     taobao: {
       advertising: { title: '直通车 / 万相台', desc: '淘宝广告投放平台' },
@@ -137,11 +83,11 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
       logistics: { title: '菜鸟物流', desc: '菜鸟物流发货' },
       finance: { title: '支付宝商家中心', desc: '支付宝收款与结算' },
     },
-    kuaishou: {
-      advertising: { title: '磁力金牛', desc: '快手电商广告投放平台' },
-      customer_service: { title: '快手客服', desc: '快手买家消息' },
-      logistics: { title: '快手物流', desc: '快手物流发货' },
-      finance: { title: '快手财务', desc: '快手财务结算' },
+    jd: {
+      advertising: { title: '京准通', desc: '京东广告投放平台' },
+      customer_service: { title: '咚咚', desc: '咚咚客服系统' },
+      logistics: { title: '京东物流', desc: '京东物流配送' },
+      finance: { title: '京麦财务', desc: '京东商家财务结算' },
     },
   };
 
@@ -154,25 +100,16 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
 
   // 平台 → 地区和币种映射
   const platformDefaults: Record<string, { region: string; currency: string }> = {
-    tiktok_shop: { region: 'US', currency: 'USD' },
-    amazon: { region: 'US', currency: 'USD' },
-    shopify: { region: 'US', currency: 'USD' },
-    shopee: { region: 'SG', currency: 'SGD' },
-    lazada: { region: 'SG', currency: 'SGD' },
-    temu: { region: 'US', currency: 'USD' },
-    ebay: { region: 'US', currency: 'USD' },
     pinduoduo: { region: 'CN', currency: 'CNY' },
-    douyin: { region: 'CN', currency: 'CNY' },
     jd: { region: 'CN', currency: 'CNY' },
     taobao: { region: 'CN', currency: 'CNY' },
-    kuaishou: { region: 'CN', currency: 'CNY' },
   };
 
   if (mode === 'new') {
     const authMethods: { value: Store['authMethod']; label: string; desc: string; platforms: string[] }[] = [
-      { value: 'credentials', label: t('stores.authCredentials'), desc: t('stores.authCredentialsDesc'), platforms: ['tiktok_shop', 'amazon', 'shopee', 'lazada', 'temu', 'ebay', 'pinduoduo', 'douyin', 'jd', 'taobao', 'kuaishou'] },
-      { value: 'api_key', label: t('stores.authApiKey'), desc: t('stores.authApiKeyDesc'), platforms: ['shopify', 'amazon', 'ebay'] },
-      { value: 'oauth', label: t('stores.authOauth'), desc: t('stores.authOauthDesc'), platforms: ['shopify', 'amazon'] }
+      { value: 'credentials', label: t('stores.authCredentials'), desc: t('stores.authCredentialsDesc'), platforms: ['pinduoduo', 'taobao', 'jd'] },
+      { value: 'api_key', label: t('stores.authApiKey'), desc: t('stores.authApiKeyDesc'), platforms: ['jd', 'taobao'] },
+      { value: 'oauth', label: t('stores.authOauth'), desc: t('stores.authOauthDesc'), platforms: ['jd', 'taobao'] }
     ];
 
     return (
@@ -207,12 +144,8 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
                 if (def) form.setFieldsValue({ region: def.region, currency: def.currency });
               }}
               options={[
-                { value: 'tiktok_shop', label: 'TikTok Shop' }, { value: 'amazon', label: 'Amazon' },
-                { value: 'shopify', label: 'Shopify' }, { value: 'shopee', label: 'Shopee' },
-                { value: 'lazada', label: 'Lazada' }, { value: 'temu', label: 'Temu' }, { value: 'ebay', label: 'eBay' },
-                { value: 'pinduoduo', label: '拼多多' }, { value: 'douyin', label: '抖音' },
-                { value: 'jd', label: '京东' }, { value: 'taobao', label: '淘宝' },
-                { value: 'kuaishou', label: '快手' }
+                { value: 'pinduoduo', label: '拼多多' }, { value: 'taobao', label: '淘宝' },
+                { value: 'jd', label: '京东' }
               ]}
             />
           </Form.Item>
@@ -297,7 +230,7 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
                   <Typography.Title level={5}>{t('stores.oauthTitle')}</Typography.Title>
                   <Typography.Paragraph type="secondary">{t('stores.oauthDesc')}</Typography.Paragraph>
                   <Button type="primary" size="large" icon={<LinkOutlined />} onClick={() => message.info(t('stores.oauthMock'))}>
-                    {t('stores.oauthConnect', { platform: platform === 'shopify' ? 'Shopify' : 'Amazon' })}
+                    {t('stores.oauthConnect', { platform: platform === 'jd' ? '京东' : '淘宝' })}
                   </Button>
                   <Typography.Paragraph type="secondary" style={{ marginTop: 12 }}>{t('stores.oauthMockNote')}</Typography.Paragraph>
                 </div>

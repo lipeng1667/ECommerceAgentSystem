@@ -69,19 +69,19 @@ interface ProductDraft {
 }
 
 const initialProducts: ProductSimple[] = [
-  { id: 'prod_001', storeName: 'TikTok Shop 美国旗舰店', sku: 'BT-E01', name: '蓝牙耳机 Pro', cost: 18.5, sellingPrice: 39.99, stock: 420, status: 'active' },
-  { id: 'prod_002', storeName: 'TikTok Shop 美国旗舰店', sku: 'BT-E02', name: '运动挂脖耳机', cost: 12.0, sellingPrice: 24.99, stock: 180, status: 'active' },
-  { id: 'prod_003', storeName: 'TikTok Shop 美国旗舰店', sku: 'CK-C01', name: '65W GaN 充电器', cost: 8.2, sellingPrice: 19.99, stock: 35, status: 'out_of_stock' },
-  { id: 'prod_004', storeName: 'Amazon 户外用品店', sku: 'OG-T01', name: '折叠露营椅', cost: 22.0, sellingPrice: 49.99, stock: 210, status: 'active' },
-  { id: 'prod_005', storeName: 'Amazon 户外用品店', sku: 'OG-L01', name: 'LED 露营灯', cost: 6.5, sellingPrice: 15.99, stock: 95, status: 'active' },
-  { id: 'prod_006', storeName: 'Amazon 户外用品店', sku: 'OG-B01', name: '户外登山包 40L', cost: 18.0, sellingPrice: 45.99, stock: 0, status: 'inactive' },
-  { id: 'prod_007', storeName: 'Shopify 独立站', sku: 'SF-C01', name: '定制手机壳', cost: 3.5, sellingPrice: 12.99, stock: 520, status: 'active' },
+  { id: 'prod_001', storeName: '拼多多旗舰店', sku: 'BT-E01', name: '蓝牙耳机 Pro', cost: 18.5, sellingPrice: 39.99, stock: 420, status: 'active' },
+  { id: 'prod_002', storeName: '拼多多旗舰店', sku: 'BT-E02', name: '运动挂脖耳机', cost: 12.0, sellingPrice: 24.99, stock: 180, status: 'active' },
+  { id: 'prod_003', storeName: '拼多多旗舰店', sku: 'CK-C01', name: '65W GaN 充电器', cost: 8.2, sellingPrice: 19.99, stock: 35, status: 'out_of_stock' },
+  { id: 'prod_004', storeName: '淘宝户外用品店', sku: 'OG-T01', name: '折叠露营椅', cost: 22.0, sellingPrice: 49.99, stock: 210, status: 'active' },
+  { id: 'prod_005', storeName: '淘宝户外用品店', sku: 'OG-L01', name: 'LED 露营灯', cost: 6.5, sellingPrice: 15.99, stock: 95, status: 'active' },
+  { id: 'prod_006', storeName: '淘宝户外用品店', sku: 'OG-B01', name: '户外登山包 40L', cost: 18.0, sellingPrice: 45.99, stock: 0, status: 'inactive' },
+  { id: 'prod_007', storeName: '京东自营店', sku: 'SF-C01', name: '定制手机壳', cost: 3.5, sellingPrice: 12.99, stock: 520, status: 'active' },
 ];
 
 const initialDrafts: ProductDraft[] = [
   {
     id: 'draft_001',
-    storeName: 'TikTok Shop 美国旗舰店',
+    storeName: '拼多多旗舰店',
     sku: 'BT-N01',
     name: '便携式野营炉',
     cost: 14.2,
@@ -93,7 +93,7 @@ const initialDrafts: ProductDraft[] = [
   },
   {
     id: 'draft_002',
-    storeName: 'Amazon 户外用品店',
+    storeName: '淘宝户外用品店',
     sku: 'OG-N01',
     name: '超轻登山杖一对',
     cost: 8.5,
@@ -105,7 +105,7 @@ const initialDrafts: ProductDraft[] = [
   },
   {
     id: 'draft_003',
-    storeName: 'TikTok Shop 美国旗舰店',
+    storeName: '拼多多旗舰店',
     sku: 'BT-N02',
     name: '骨传导运动耳机',
     cost: 22.0,
@@ -235,8 +235,8 @@ export function ProductManagementPage() {
     { title: t('products.store'), dataIndex: 'storeName', width: 180 },
     { title: 'SKU', dataIndex: 'sku', width: 100 },
     { title: t('products.name'), dataIndex: 'name', ellipsis: true },
-    { title: t('products.cost'), dataIndex: 'cost', width: 100, align: 'right', render: (v: number) => `$${v.toFixed(2)}` },
-    { title: t('products.price'), dataIndex: 'sellingPrice', width: 100, align: 'right', render: (v: number) => `$${v.toFixed(2)}` },
+    { title: t('products.cost'), dataIndex: 'cost', width: 100, align: 'right', render: (v: number) => `¥${v.toFixed(2)}` },
+    { title: t('products.price'), dataIndex: 'sellingPrice', width: 100, align: 'right', render: (v: number) => `¥${v.toFixed(2)}` },
     {
       title: t('products.margin'), width: 90, align: 'right',
       render: (_: unknown, r: ProductSimple) => {
@@ -269,7 +269,7 @@ export function ProductManagementPage() {
     { title: t('products.store'), dataIndex: 'storeName', width: 180 },
     { title: 'SKU', dataIndex: 'sku', width: 100 },
     { title: t('products.name'), dataIndex: 'name', ellipsis: true },
-    { title: t('products.price'), dataIndex: 'sellingPrice', width: 100, align: 'right', render: (v: number) => `$${v.toFixed(2)}` },
+    { title: t('products.price'), dataIndex: 'sellingPrice', width: 100, align: 'right', render: (v: number) => `¥${v.toFixed(2)}` },
     {
       title: t('products.status'), dataIndex: 'status', width: 120,
       render: (s: string) => {
@@ -392,8 +392,8 @@ export function ProductManagementPage() {
         onCancel={() => { setProductEditModalOpen(false); productEditForm.resetFields(); }} width={480}>
         <Form form={productEditForm} layout="vertical">
           <Form.Item label={t('products.name')} name="name" rules={[{ required: true }]}><Input /></Form.Item>
-          <Form.Item label={t('products.cost')} name="cost" rules={[{ required: true }]}><InputNumber min={0} step={0.01} style={{ width: '100%' }} prefix="$" /></Form.Item>
-          <Form.Item label={t('products.price')} name="sellingPrice" rules={[{ required: true }]}><InputNumber min={0} step={0.01} style={{ width: '100%' }} prefix="$" /></Form.Item>
+          <Form.Item label={t('products.cost')} name="cost" rules={[{ required: true }]}><InputNumber min={0} step={0.01} style={{ width: '100%' }} prefix="¥" /></Form.Item>
+          <Form.Item label={t('products.price')} name="sellingPrice" rules={[{ required: true }]}><InputNumber min={0} step={0.01} style={{ width: '100%' }} prefix="¥" /></Form.Item>
           <Form.Item label={t('products.stock')} name="stock" rules={[{ required: true }]}><InputNumber min={0} step={1} style={{ width: '100%' }} /></Form.Item>
         </Form>
       </Modal>
@@ -470,10 +470,10 @@ export function ProductManagementPage() {
                       <Input defaultValue={recognitionResult.name} onChange={(e) => setRecognitionResult(prev => prev ? { ...prev, name: e.target.value } : null)} />
                     </Form.Item>
                     <Form.Item label={t('products.price')}>
-                      <InputNumber defaultValue={recognitionResult.sellingPrice} style={{ width: '100%' }} prefix="$" onChange={(v) => setRecognitionResult(prev => prev ? { ...prev, sellingPrice: v ?? 0 } : null)} />
+                      <InputNumber defaultValue={recognitionResult.sellingPrice} style={{ width: '100%' }} prefix="¥" onChange={(v) => setRecognitionResult(prev => prev ? { ...prev, sellingPrice: v ?? 0 } : null)} />
                     </Form.Item>
                     <Form.Item label={t('products.cost')}>
-                      <InputNumber defaultValue={recognitionResult.cost} style={{ width: '100%' }} prefix="$" onChange={(v) => setRecognitionResult(prev => prev ? { ...prev, cost: v ?? 0 } : null)} />
+                      <InputNumber defaultValue={recognitionResult.cost} style={{ width: '100%' }} prefix="¥" onChange={(v) => setRecognitionResult(prev => prev ? { ...prev, cost: v ?? 0 } : null)} />
                     </Form.Item>
                     <Form.Item label={t('products.description')}>
                       <Input.TextArea defaultValue={recognitionResult.description} rows={3} onChange={(e) => setRecognitionResult(prev => prev ? { ...prev, description: e.target.value } : null)} />
@@ -506,7 +506,7 @@ export function ProductManagementPage() {
                 <Typography.Title level={4}>{previewDraft.name}</Typography.Title>
                 <Typography.Text type="secondary">SKU: {previewDraft.sku}</Typography.Text>
                 <Typography.Text type="secondary" style={{ display: 'block', marginTop: 4 }}>{previewDraft.storeName}</Typography.Text>
-                <Typography.Title level={3} style={{ marginTop: 12, color: '#dc2626' }}>${previewDraft.sellingPrice.toFixed(2)}</Typography.Title>
+                <Typography.Title level={3} style={{ marginTop: 12, color: '#dc2626' }}>¥{previewDraft.sellingPrice.toFixed(2)}</Typography.Title>
                 <Typography.Text type="secondary" style={{ fontSize: 13 }}>{previewDraft.description}</Typography.Text>
               </Col>
             </Row>

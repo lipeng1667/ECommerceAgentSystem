@@ -33,22 +33,22 @@ export function PricingAnalysisModal({ open, onClose }: PricingAnalysisModalProp
 
   const comparisonColumns = [
     { title: t('pricing.product'), dataIndex: 'product', render: (v: string) => <Typography.Text strong style={{ fontSize: 13 }}>{v}</Typography.Text> },
-    { title: t('pricing.ourPrice'), dataIndex: 'ourPrice', width: 90, render: (v: number) => <Typography.Text style={{ fontSize: 13 }}>${v.toFixed(2)}</Typography.Text> },
-    { title: t('pricing.costPrice'), dataIndex: 'costPrice', width: 80, render: (v: number) => <Typography.Text type="secondary" style={{ fontSize: 12 }}>${v.toFixed(2)}</Typography.Text> },
+    { title: t('pricing.ourPrice'), dataIndex: 'ourPrice', width: 90, render: (v: number) => <Typography.Text style={{ fontSize: 13 }}>¥{v.toFixed(2)}</Typography.Text> },
+    { title: t('pricing.costPrice'), dataIndex: 'costPrice', width: 80, render: (v: number) => <Typography.Text type="secondary" style={{ fontSize: 12 }}>¥{v.toFixed(2)}</Typography.Text> },
     {
       title: t('pricing.margin'), dataIndex: 'margin', width: 80,
       render: (v: number) => <Tag color={v >= 55 ? 'green' : v >= 40 ? 'orange' : 'red'} style={{ fontSize: 11 }}>{v}%</Tag>,
     },
-    { title: t('pricing.competitorAvg'), dataIndex: 'competitorAvg', width: 100, render: (v: number) => `$${v.toFixed(2)}` },
-    { title: t('pricing.minCompetitor'), dataIndex: 'minCompetitor', width: 100, render: (v: number) => <Typography.Text style={{ color: '#dc2626', fontSize: 12 }}>${v.toFixed(2)}</Typography.Text> },
+    { title: t('pricing.competitorAvg'), dataIndex: 'competitorAvg', width: 100, render: (v: number) => `¥${v.toFixed(2)}` },
+    { title: t('pricing.minCompetitor'), dataIndex: 'minCompetitor', width: 100, render: (v: number) => <Typography.Text style={{ color: '#dc2626', fontSize: 12 }}>¥{v.toFixed(2)}</Typography.Text> },
   ];
 
   const suggestionColumns = [
     { title: t('pricing.product'), dataIndex: 'product', render: (v: string) => <Typography.Text strong style={{ fontSize: 13 }}>{v}</Typography.Text> },
-    { title: t('pricing.ourPrice'), dataIndex: 'ourPrice', width: 90, render: (v: number) => <Typography.Text type="secondary" style={{ fontSize: 12 }}>${v.toFixed(2)}</Typography.Text> },
+    { title: t('pricing.ourPrice'), dataIndex: 'ourPrice', width: 90, render: (v: number) => <Typography.Text type="secondary" style={{ fontSize: 12 }}>¥{v.toFixed(2)}</Typography.Text> },
     {
       title: t('pricing.suggestedPrice'), dataIndex: 'suggestedPrice', width: 110,
-      render: (v: number) => <Typography.Text strong style={{ color: '#2563eb', fontSize: 13 }}>${v.toFixed(2)}</Typography.Text>,
+      render: (v: number) => <Typography.Text strong style={{ color: '#2563eb', fontSize: 13 }}>¥{v.toFixed(2)}</Typography.Text>,
     },
     {
       title: t('pricing.expectedMargin'), dataIndex: 'expectedMargin', width: 100,

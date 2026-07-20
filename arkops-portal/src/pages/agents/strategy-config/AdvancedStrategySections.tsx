@@ -193,7 +193,7 @@ export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProp
                     <InputNumber
                       min={1} step={10}
                       style={{ width: 120 }}
-                      prefix="$"
+                      prefix="¥"
                       value={agent.strategyConfig.financeConfig.discrepancyAlertThreshold}
                       onChange={(v) => {
                         updateConfigSection(queryClient, agent, 'financeConfig', (s) => ({
@@ -245,7 +245,7 @@ export function AdvancedStrategySections({ agent }: AdvancedStrategySectionsProp
                     <InputNumber
                       min={100} step={100}
                       style={{ width: 120 }}
-                      prefix="$"
+                      prefix="¥"
                       value={agent.strategyConfig.promotionConfig.campaignBudget}
                       onChange={(v) => {
                         updateConfigSection(queryClient, agent, 'promotionConfig', (s) => ({

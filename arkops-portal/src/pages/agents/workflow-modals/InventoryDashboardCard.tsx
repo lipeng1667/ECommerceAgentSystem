@@ -6,7 +6,7 @@ import { useI18n } from '../../../app/i18n';
 const mockInventory = [
   { id: 1, sku: 'GN65-BK-001', product: '65W GaN 充电器', stock: 520, threshold: 50, status: 'healthy', lastUpdated: '2h ago' },
   { id: 2, sku: 'EB-PRO-2', product: '蓝牙耳机 Pro', stock: 32, threshold: 50, status: 'low', lastUpdated: '1h ago' },
-  { id: 3, sku: 'TS-SUM-01', product: '夏季运动T恤', stock: 180, threshold: 50, status: 'healthy', lastUpdated: '3h ago' },
+  { id: 3, sku: 'PDD-SUM-01', product: '夏季运动T恤', stock: 180, threshold: 50, status: 'healthy', lastUpdated: '3h ago' },
   { id: 4, sku: 'LED-RGB-5M', product: 'LED 灯带 RGB', stock: 8, threshold: 20, status: 'critical', lastUpdated: '30min ago' },
   { id: 5, sku: 'CAMP-CHAIR', product: '可折叠露营椅', stock: 0, threshold: 30, status: 'dead', lastUpdated: '5h ago' },
 ];

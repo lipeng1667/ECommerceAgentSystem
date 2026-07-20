@@ -28,7 +28,7 @@ import { MetricCard } from '../../../components/metrics/MetricCard';
 import type { BillingRecord, SubscriptionPlan } from '../../../types/domain';
 
 function formatCurrency(value: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(value);
+  return new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY', minimumFractionDigits: 2 }).format(value);
 }
 
 // ===== 顶部概览卡片 =====
@@ -60,10 +60,10 @@ export function FinanceSummary({ onSwitchToSubscription }: { onSwitchToSubscript
         <MetricCard
           title={t('finance.monthlyFee')}
           value={currentBill?.total ?? 0}
-          prefix="$"
+          prefix="¥"
           precision={2}
           valueStyle={{ color: '#2563eb', fontWeight: 'bold', fontSize: 20 }}
-          helper={`${t('finance.baseFee')} $${currentBill?.baseSubscription ?? 0}`}
+          helper={`${t('finance.baseFee')} ¥${currentBill?.baseSubscription ?? 0}`}
         />
       </Col>
       <Col xs={12} sm={6} lg={5}>
@@ -84,7 +84,7 @@ export function FinanceSummary({ onSwitchToSubscription }: { onSwitchToSubscript
         <MetricCard
           title={t('finance.savedAmount')}
           value={analysis?.estimatedSaving.savedAmount ?? 0}
-          prefix="$"
+          prefix="¥"
           valueStyle={{ color: '#16a34a', fontWeight: 'bold', fontSize: 20 }}
           helper={t('finance.savedShort')}
         />
@@ -183,13 +183,13 @@ export function BillingSection() {
     >
       {currentBill && (
         <Row gutter={[16, 8]} style={{ marginBottom: 16 }}>
-          <Col xs={12} sm={6}><Statistic title={t('finance.baseFee')} value={currentBill.baseSubscription} prefix="$" valueStyle={{ fontSize: 16 }} /></Col>
+          <Col xs={12} sm={6}><Statistic title={t('finance.baseFee')} value={currentBill.baseSubscription} prefix="¥" valueStyle={{ fontSize: 16 }} /></Col>
           {currentBill.overageItems.map((item, idx) => (
             <Col xs={12} sm={6} key={idx}>
-              <Statistic title={item.description} value={item.amount} prefix="$" precision={2} valueStyle={{ fontSize: 16, color: '#ea580c' }} />
+              <Statistic title={item.description} value={item.amount} prefix="¥" precision={2} valueStyle={{ fontSize: 16, color: '#ea580c' }} />
             </Col>
           ))}
-          <Col xs={12} sm={6}><Statistic title={t('finance.total')} value={currentBill.total} prefix="$" valueStyle={{ fontSize: 20, color: '#2563eb', fontWeight: 'bold' }} /></Col>
+          <Col xs={12} sm={6}><Statistic title={t('finance.total')} value={currentBill.total} prefix="¥" valueStyle={{ fontSize: 20, color: '#2563eb', fontWeight: 'bold' }} /></Col>
         </Row>
       )}
       <Table rowKey="id" columns={columns} dataSource={records} pagination={false} size="small" />

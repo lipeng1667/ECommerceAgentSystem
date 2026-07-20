@@ -256,7 +256,7 @@ export function UsageGuideSettingsPage() {
           {t('guide.conceptRiskControlDesc')}
         </Typography.Paragraph>
         <Typography.Paragraph style={{ marginBottom: 12 }}>
-          <Typography.Text strong><Tag color="blue" style={{ marginRight: 4 }}>$</Tag>{t('guide.conceptPricing')}：</Typography.Text>
+          <Typography.Text strong><Tag color="blue" style={{ marginRight: 4 }}>¥</Tag>{t('guide.conceptPricing')}：</Typography.Text>
           {t('guide.conceptPricingDesc')}
         </Typography.Paragraph>
         <Typography.Paragraph style={{ marginBottom: 12 }}>

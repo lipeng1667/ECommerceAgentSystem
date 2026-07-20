@@ -6,27 +6,27 @@ const now = dayjs('2026-05-30T10:00:00+08:00');
 export const stores: Store[] = [
   {
     id: 1001,
-    name: 'TikTok Shop 美国旗舰店',
-    platform: 'tiktok_shop',
+    name: '拼多多旗舰店',
+    platform: 'pinduoduo',
     status: 'connected',
     authMethod: 'oauth',
     runtimeProvider: 'mulerun',
-    runtimeSessionId: 'mr_session_tts_001',
-    region: 'US',
-    currency: 'USD',
+    runtimeSessionId: 'mr_session_pdd_001',
+    region: 'CN',
+    currency: 'CNY',
     lastVerifiedAt: now.subtract(2, 'hour').toISOString(),
     createdAt: now.subtract(5, 'day').toISOString(),
     recentTaskIds: [3001, 3002],
     connections: [
       {
         id: 2001,
-        serviceName: 'TikTok 广告管理平台',
+        serviceName: '多多搜索 / 全站推广',
         serviceType: 'advertising',
         authMethod: 'credentials',
         status: 'connected',
-        account: 'seller@tiktokshop.com',
+        account: 'merchant@allmall.cn',
         runtimeProvider: 'mulerun',
-        runtimeSessionId: 'mr_session_tts_001_ads',
+        runtimeSessionId: 'mr_session_pdd_001_ads',
         lastVerifiedAt: now.subtract(3, 'hour').toISOString(),
         createdAt: now.subtract(5, 'day').toISOString()
       }
@@ -34,40 +34,40 @@ export const stores: Store[] = [
   },
   {
     id: 1002,
-    name: 'Amazon 户外用品店',
-    platform: 'amazon',
+    name: '淘宝户外用品店',
+    platform: 'taobao',
     status: 'login_required',
     authMethod: 'oauth',
     runtimeProvider: 'mulerun',
-    runtimeSessionId: 'mr_session_amz_002',
-    account: 'seller@outdoor-gear.com',
-    region: 'US',
-    currency: 'USD',
+    runtimeSessionId: 'mr_session_tb_002',
+    account: 'outdoor@allmall.cn',
+    region: 'CN',
+    currency: 'CNY',
     lastVerifiedAt: now.subtract(2, 'day').toISOString(),
     createdAt: now.subtract(9, 'day').toISOString(),
     recentTaskIds: [3003],
     connections: [
       {
         id: 2003,
-        serviceName: 'Amazon 广告后台',
+        serviceName: '直通车 / 万相台',
         serviceType: 'advertising',
         authMethod: 'credentials',
         status: 'connected',
-        account: 'seller@outdoor-gear.com',
+        account: 'outdoor@allmall.cn',
         runtimeProvider: 'mulerun',
-        runtimeSessionId: 'mr_session_amz_002_ads',
+        runtimeSessionId: 'mr_session_tb_002_ads',
         lastVerifiedAt: now.subtract(1, 'day').toISOString(),
         createdAt: now.subtract(9, 'day').toISOString()
       },
       {
         id: 2004,
-        serviceName: 'Amazon 客服消息',
+        serviceName: '千牛客服',
         serviceType: 'customer_service',
         authMethod: 'credentials',
         status: 'login_required',
-        account: 'seller@outdoor-gear.com',
+        account: 'outdoor@allmall.cn',
         runtimeProvider: 'mulerun',
-        runtimeSessionId: 'mr_session_amz_002_cs',
+        runtimeSessionId: 'mr_session_tb_002_cs',
         lastVerifiedAt: now.subtract(3, 'day').toISOString(),
         createdAt: now.subtract(8, 'day').toISOString()
       }
@@ -75,14 +75,14 @@ export const stores: Store[] = [
   },
   {
     id: 1003,
-    name: 'Shopify 独立站',
-    platform: 'shopify',
+    name: '京东自营店',
+    platform: 'jd',
     status: 'pending_login',
     authMethod: 'api_key',
     runtimeProvider: 'mulerun',
-    apiKey: 'shpat_xxxxxxxxxxxx',
-    region: 'US',
-    currency: 'USD',
+    apiKey: 'jd_api_xxxxxxxxxxxx',
+    region: 'CN',
+    currency: 'CNY',
     createdAt: now.subtract(1, 'day').toISOString(),
     recentTaskIds: [],
     connections: []
@@ -105,7 +105,7 @@ export const tasks: Task[] = [
         id: 4001,
         type: 'run_started',
         title: '任务开始执行',
-        summary: 'MuleRun 已加载绑定的 TikTok Shop 浏览器 Profile。',
+        summary: 'MuleRun 已加载绑定的 拼多多 浏览器 Profile。',
         at: now.subtract(90, 'minute').toISOString()
       },
       {
@@ -154,7 +154,7 @@ export const tasks: Task[] = [
   },
   {
     id: 3003,
-    title: '重新认证 Amazon 店铺',
+    title: '重新认证 淘宝 店铺',
     storeId: 1002,
     agentType: 'login_bootstrap',
     goal: '提醒运营人员刷新平台登录会话。',
@@ -167,7 +167,7 @@ export const tasks: Task[] = [
         id: 4006,
         type: 'login_required',
         title: '需要重新登录',
-        summary: 'Amazon 卖家中心要求重新进行人机校验。',
+        summary: '淘宝 卖家中心要求重新进行人机校验。',
         at: now.subtract(5, 'hour').toISOString()
       },
       {
@@ -181,7 +181,7 @@ export const tasks: Task[] = [
   },
   {
     id: 3004,
-    title: 'TikTok Shop 店铺会话检测',
+    title: '拼多多 店铺会话检测',
     storeId: 1001,
     agentType: 'login_bootstrap',
     goal: '定时检测店铺登录态，如果掉线则自动拉起登录流程。',
@@ -194,14 +194,14 @@ export const tasks: Task[] = [
         id: 4101,
         type: 'run_started',
         title: '开始会话检测',
-        summary: '对 TikTok Shop 美国旗舰店发起登录态检测。',
+        summary: '对 拼多多旗舰店发起登录态检测。',
         at: now.subtract(1, 'hour').toISOString()
       },
       {
         id: 4102,
         type: 'step_completed',
         title: '会话状态正常',
-        summary: 'TikTok Shop 店铺登录态有效，无需重新登录。',
+        summary: '拼多多 店铺登录态有效，无需重新登录。',
         at: now.subtract(30, 'minute').toISOString()
       }
     ]
@@ -211,7 +211,7 @@ export const tasks: Task[] = [
     title: '竞品被动监控',
     storeId: 1001,
     agentType: 'competitor_intel',
-    goal: '监控 TikTok Shop 同类蓝牙耳机竞品价格和 SEO 关键词变化。',
+    goal: '监控 拼多多 同类蓝牙耳机竞品价格和 SEO 关键词变化。',
     status: 'succeeded',
     riskLevel: 'low',
     createdAt: now.subtract(3, 'hour').toISOString(),
@@ -289,7 +289,7 @@ export const tasks: Task[] = [
         id: 4109,
         type: 'run_succeeded',
         title: '调研完成',
-        summary: '市场容量约 2.3 亿美元/年，竞品定价区间 $25-$80，推荐定价 $45-$55。',
+        summary: '市场容量约 2.3 亿美元/年，竞品定价区间 ¥25-¥80，推荐定价 ¥45-¥55。',
         at: now.subtract(23, 'hour').toISOString()
       }
     ]
@@ -299,7 +299,7 @@ export const tasks: Task[] = [
     title: '竞品被动监控',
     storeId: 1002,
     agentType: 'competitor_intel',
-    goal: '监控 Amazon 户外用品竞品促销活动。',
+    goal: '监控 淘宝 户外用品竞品促销活动。',
     status: 'failed',
     riskLevel: 'low',
     createdAt: now.subtract(4, 'hour').toISOString(),
@@ -309,7 +309,7 @@ export const tasks: Task[] = [
         id: 4110,
         type: 'run_started',
         title: '竞品促销监控开始',
-        summary: '对 Amazon 户外用品类目 Top 10 竞品发起促销监控。',
+        summary: '对 淘宝 户外用品类目 Top 10 竞品发起促销监控。',
         at: now.subtract(4, 'hour').toISOString()
       },
       {
@@ -326,7 +326,7 @@ export const tasks: Task[] = [
     title: '65W GaN 氮化镓快充充电器 — 待审核草稿',
     storeId: 1001,
     agentType: 'product_launch',
-    goal: '上架商品「65W GaN 氮化镓快充充电器」到 TikTok Shop 美国旗舰店',
+    goal: '上架商品「65W GaN 氮化镓快充充电器」到 拼多多旗舰店',
     status: 'waiting_approval',
     riskLevel: 'medium',
     createdAt: now.subtract(20, 'minute').toISOString(),
@@ -353,7 +353,7 @@ export const tasks: Task[] = [
     title: '夏季运动T恤 — 图片识别中',
     storeId: 1002,
     agentType: 'product_launch',
-    goal: '上架商品「夏季速干运动T恤」到 Amazon 户外用品店',
+    goal: '上架商品「夏季速干运动T恤」到 淘宝户外用品店',
     status: 'running',
     riskLevel: 'low',
     createdAt: now.subtract(10, 'minute').toISOString(),
@@ -380,7 +380,7 @@ export const tasks: Task[] = [
     title: '蓝牙耳机 Pro 第二代 — 排队中',
     storeId: 1001,
     agentType: 'product_launch',
-    goal: '上架商品「蓝牙耳机 Pro 第二代」到 TikTok Shop 美国旗舰店',
+    goal: '上架商品「蓝牙耳机 Pro 第二代」到 拼多多旗舰店',
     status: 'queued',
     riskLevel: 'low',
     createdAt: now.subtract(5, 'minute').toISOString(),
@@ -517,8 +517,8 @@ export const tasks: Task[] = [
     updatedAt: now.subtract(5, 'hour').toISOString(),
     timeline: [
       { id: 5001, type: 'run_started', title: '价格扫描启动', summary: '拉取 5 个竞品的实时价格数据。', at: now.subtract(6, 'hour').toISOString() },
-      { id: 5002, type: 'step_completed', title: '竞品价格分析完成', summary: '2 个竞品降价 5%-8%，1 个竞品涨价 3%。建议下调 $1.00。', at: now.subtract(5.5, 'hour').toISOString() },
-      { id: 5003, type: 'run_succeeded', title: '定价调整完成', summary: '蓝牙耳机 Pro 价格从 $32.99 调整为 $31.99，毛利率维持 42%。', at: now.subtract(5, 'hour').toISOString() }
+      { id: 5002, type: 'step_completed', title: '竞品价格分析完成', summary: '2 个竞品降价 5%-8%，1 个竞品涨价 3%。建议下调 ¥1.00。', at: now.subtract(5.5, 'hour').toISOString() },
+      { id: 5003, type: 'run_succeeded', title: '定价调整完成', summary: '蓝牙耳机 Pro 价格从 ¥32.99 调整为 ¥31.99，毛利率维持 42%。', at: now.subtract(5, 'hour').toISOString() }
     ]
   },
   {
@@ -533,7 +533,7 @@ export const tasks: Task[] = [
     updatedAt: now.subtract(5, 'minute').toISOString(),
     timeline: [
       { id: 5004, type: 'run_started', title: '动态定价启动', summary: '检测到竞品 PowerDeal Shop 降价 12%，触发自动定价流程。', at: now.subtract(20, 'minute').toISOString() },
-      { id: 5005, type: 'step_started', title: '毛利率计算中', summary: '当前成本 $18.50，竞品价格 $22.49，计算最优定价方案...', at: now.subtract(5, 'minute').toISOString() }
+      { id: 5005, type: 'step_started', title: '毛利率计算中', summary: '当前成本 ¥18.50，竞品价格 ¥22.49，计算最优定价方案...', at: now.subtract(5, 'minute').toISOString() }
     ]
   },
   {
@@ -547,7 +547,7 @@ export const tasks: Task[] = [
     createdAt: now.subtract(8, 'hour').toISOString(),
     updatedAt: now.subtract(7, 'hour').toISOString(),
     timeline: [
-      { id: 5006, type: 'run_started', title: '底价保护检查启动', summary: '检查运动T恤当前价格 $12.99 是否低于底价 $14.00。', at: now.subtract(8, 'hour').toISOString() },
+      { id: 5006, type: 'run_started', title: '底价保护检查启动', summary: '检查运动T恤当前价格 ¥12.99 是否低于底价 ¥14.00。', at: now.subtract(8, 'hour').toISOString() },
       { id: 5007, type: 'run_failed', title: '底价保护触发', summary: '当前价格低于底价保护线，已自动冻结价格调整并通知运营。', at: now.subtract(7, 'hour').toISOString() }
     ]
   },
@@ -579,8 +579,8 @@ export const tasks: Task[] = [
     createdAt: now.subtract(2, 'hour').toISOString(),
     updatedAt: now.subtract(30, 'minute').toISOString(),
     timeline: [
-      { id: 5104, type: 'run_started', title: '挽留券发放启动', summary: '向 620 名流失风险客户发放 15% 折扣券，预算上限 $1,200。', at: now.subtract(2, 'hour').toISOString() },
-      { id: 5105, type: 'step_started', title: '批量发放中', summary: '已发放 420/620，当前消耗 $820。', at: now.subtract(30, 'minute').toISOString() }
+      { id: 5104, type: 'run_started', title: '挽留券发放启动', summary: '向 620 名流失风险客户发放 15% 折扣券，预算上限 ¥1,200。', at: now.subtract(2, 'hour').toISOString() },
+      { id: 5105, type: 'step_started', title: '批量发放中', summary: '已发放 420/620，当前消耗 ¥820。', at: now.subtract(30, 'minute').toISOString() }
     ]
   },
   {
@@ -720,7 +720,7 @@ export const tasks: Task[] = [
     createdAt: now.subtract(30, 'minute').toISOString(),
     updatedAt: now.subtract(10, 'minute').toISOString(),
     timeline: [
-      { id: 5404, type: 'run_started', title: '退款处理启动', summary: '1 笔退款申请，金额 $39.99，低于自动退款上限 $50。', at: now.subtract(30, 'minute').toISOString() },
+      { id: 5404, type: 'run_started', title: '退款处理启动', summary: '1 笔退款申请，金额 ¥39.99，低于自动退款上限 ¥50。', at: now.subtract(30, 'minute').toISOString() },
       { id: 5405, type: 'step_started', title: '退款审核中', summary: '验证订单状态和退款条件...', at: now.subtract(10, 'minute').toISOString() }
     ]
   },
@@ -752,8 +752,8 @@ export const tasks: Task[] = [
     updatedAt: now.subtract(7, 'hour').toISOString(),
     timeline: [
       { id: 5501, type: 'run_started', title: '促销规则触发', summary: 'LED 灯带滞销 62 天，触发自动促销规则（折扣 35%）。', at: now.subtract(8, 'hour').toISOString() },
-      { id: 5502, type: 'step_completed', title: '促销活动创建', summary: '已创建限时闪购活动，原价 $12.49 → 促销价 $8.12，预算 $200。', at: now.subtract(7.5, 'hour').toISOString() },
-      { id: 5503, type: 'run_succeeded', title: '促销已上线', summary: '活动已在 TikTok Shop 上线，预计持续 7 天。', at: now.subtract(7, 'hour').toISOString() }
+      { id: 5502, type: 'step_completed', title: '促销活动创建', summary: '已创建限时闪购活动，原价 ¥12.49 → 促销价 ¥8.12，预算 ¥200。', at: now.subtract(7.5, 'hour').toISOString() },
+      { id: 5503, type: 'run_succeeded', title: '促销已上线', summary: '活动已在 拼多多 上线，预计持续 7 天。', at: now.subtract(7, 'hour').toISOString() }
     ]
   },
   {
@@ -782,8 +782,8 @@ export const tasks: Task[] = [
     createdAt: now.subtract(30, 'hour').toISOString(),
     updatedAt: now.subtract(29, 'hour').toISOString(),
     timeline: [
-      { id: 5506, type: 'run_started', title: '优惠券活动创建', summary: '创建 618 满减券：满 $50 减 $8，预算 $2,000。', at: now.subtract(30, 'hour').toISOString() },
-      { id: 5507, type: 'run_failed', title: '预算超限', summary: '活动预算 $2,000 超过月度促销预算上限 $1,500。需运营调整预算。', at: now.subtract(29, 'hour').toISOString() }
+      { id: 5506, type: 'run_started', title: '优惠券活动创建', summary: '创建 618 满减券：满 ¥50 减 ¥8，预算 ¥2,000。', at: now.subtract(30, 'hour').toISOString() },
+      { id: 5507, type: 'run_failed', title: '预算超限', summary: '活动预算 ¥2,000 超过月度促销预算上限 ¥1,500。需运营调整预算。', at: now.subtract(29, 'hour').toISOString() }
     ]
   },
   // ===== inventory_alert =====
@@ -800,7 +800,7 @@ export const tasks: Task[] = [
     timeline: [
       { id: 5601, type: 'run_started', title: '库存巡检启动', summary: '扫描 47 个 SKU 的库存数据。', at: now.subtract(3, 'hour').toISOString() },
       { id: 5602, type: 'step_completed', title: '巡检完成', summary: '发现 3 个 SKU 低于安全库存阈值（50 件），2 个 SKU 滞销超 30 天。', at: now.subtract(2.5, 'hour').toISOString() },
-      { id: 5603, type: 'run_succeeded', title: '补货建议生成', summary: '已生成 3 条自动补货建议，总金额 $850（低于 $500/单自动审批额度）。', at: now.subtract(2, 'hour').toISOString() }
+      { id: 5603, type: 'run_succeeded', title: '补货建议生成', summary: '已生成 3 条自动补货建议，总金额 ¥850（低于 ¥500/单自动审批额度）。', at: now.subtract(2, 'hour').toISOString() }
     ]
   },
   {
@@ -815,7 +815,7 @@ export const tasks: Task[] = [
     updatedAt: now.subtract(15, 'minute').toISOString(),
     timeline: [
       { id: 5604, type: 'run_started', title: '补货流程启动', summary: '蓝牙耳机库存 32 件 < 阈值 50 件，触发自动补货。', at: now.subtract(40, 'minute').toISOString() },
-      { id: 5605, type: 'step_started', title: '补货订单生成中', summary: '计算补货数量：建议补货 200 件，预计成本 $3,400...', at: now.subtract(15, 'minute').toISOString() }
+      { id: 5605, type: 'step_started', title: '补货订单生成中', summary: '计算补货数量：建议补货 200 件，预计成本 ¥3,400...', at: now.subtract(15, 'minute').toISOString() }
     ]
   },
   {
@@ -876,40 +876,40 @@ export const tasks: Task[] = [
     createdAt: now.subtract(12, 'hour').toISOString(),
     updatedAt: now.subtract(11, 'hour').toISOString(),
     timeline: [
-      { id: 5706, type: 'run_started', title: '熔断器检查启动', summary: '定价 Agent 尝试将运动T恤价格设为 $12.99（底价 $14.00）。', at: now.subtract(12, 'hour').toISOString() },
+      { id: 5706, type: 'run_started', title: '熔断器检查启动', summary: '定价 Agent 尝试将运动T恤价格设为 ¥12.99（底价 ¥14.00）。', at: now.subtract(12, 'hour').toISOString() },
       { id: 5707, type: 'run_failed', title: '熔断器触发', summary: '价格偏离度 30% 超过阈值，已冻结定价操作并通知运营。', at: now.subtract(11, 'hour').toISOString() }
     ]
   },
   // ===== finance_audit =====
   {
     id: 3039,
-    title: '6月对账 — TikTok Shop',
+    title: '6月对账 — 拼多多',
     storeId: 1001,
     agentType: 'finance_audit',
-    goal: '6 月 TikTok Shop 账单自动对账',
+    goal: '6 月 拼多多 账单自动对账',
     status: 'succeeded',
     riskLevel: 'low',
     createdAt: now.subtract(2, 'day').toISOString(),
     updatedAt: now.subtract(1, 'day').toISOString(),
     timeline: [
-      { id: 5801, type: 'run_started', title: '对账启动', summary: '拉取 6 月 TikTok Shop 账单和银行流水。', at: now.subtract(2, 'day').toISOString() },
-      { id: 5802, type: 'step_completed', title: '账单匹配完成', summary: '平台账单 $48,230 vs 银行到账 $47,890，差异 $340。', at: now.subtract(1.5, 'day').toISOString() },
-      { id: 5803, type: 'run_succeeded', title: '对账完成', summary: '差异 $340 低于预警阈值 $500，已自动标记为汇率波动并归档。', at: now.subtract(1, 'day').toISOString() }
+      { id: 5801, type: 'run_started', title: '对账启动', summary: '拉取 6 月 拼多多 账单和银行流水。', at: now.subtract(2, 'day').toISOString() },
+      { id: 5802, type: 'step_completed', title: '账单匹配完成', summary: '平台账单 ¥48,230 vs 银行到账 ¥47,890，差异 ¥340。', at: now.subtract(1.5, 'day').toISOString() },
+      { id: 5803, type: 'run_succeeded', title: '对账完成', summary: '差异 ¥340 低于预警阈值 ¥500，已自动标记为汇率波动并归档。', at: now.subtract(1, 'day').toISOString() }
     ]
   },
   {
     id: 3040,
-    title: '差异标记 — Amazon 5月',
+    title: '差异标记 — 淘宝 5月',
     storeId: 1002,
     agentType: 'finance_audit',
-    goal: 'Amazon 5 月账单差异标记',
+    goal: '淘宝 5 月账单差异标记',
     status: 'running',
     riskLevel: 'medium',
     createdAt: now.subtract(3, 'hour').toISOString(),
     updatedAt: now.subtract(1, 'hour').toISOString(),
     timeline: [
-      { id: 5804, type: 'run_started', title: '差异分析启动', summary: 'Amazon 5 月账单 $32,100 vs 银行到账 $31,200，差异 $900。', at: now.subtract(3, 'hour').toISOString() },
-      { id: 5805, type: 'step_started', title: '差异分类中', summary: '差异 $900 超过阈值 $500，正在分类原因（平台手续费/退款/汇率）...', at: now.subtract(1, 'hour').toISOString() }
+      { id: 5804, type: 'run_started', title: '差异分析启动', summary: '淘宝 5 月账单 ¥32,100 vs 银行到账 ¥31,200，差异 ¥900。', at: now.subtract(3, 'hour').toISOString() },
+      { id: 5805, type: 'step_started', title: '差异分类中', summary: '差异 ¥900 超过阈值 ¥500，正在分类原因（平台手续费/退款/汇率）...', at: now.subtract(1, 'hour').toISOString() }
     ]
   },
   {
@@ -924,7 +924,7 @@ export const tasks: Task[] = [
     updatedAt: now.subtract(4, 'day').toISOString(),
     timeline: [
       { id: 5806, type: 'run_started', title: '报告生成启动', summary: '汇总 Q2（4-6月）所有店铺的财务数据。', at: now.subtract(5, 'day').toISOString() },
-      { id: 5807, type: 'run_failed', title: '数据不完整', summary: 'Amazon 5 月账单未完成对账，无法生成完整 Q2 报告。', at: now.subtract(4, 'day').toISOString() }
+      { id: 5807, type: 'run_failed', title: '数据不完整', summary: '淘宝 5 月账单未完成对账，无法生成完整 Q2 报告。', at: now.subtract(4, 'day').toISOString() }
     ]
   },
   // ===== live_stream_ops =====
@@ -941,7 +941,7 @@ export const tasks: Task[] = [
     timeline: [
       { id: 5901, type: 'run_started', title: '直播监控启动', summary: '开始监控 618 大促专场直播，在线观众 1,240 人。', at: now.subtract(5, 'hour').toISOString() },
       { id: 5902, type: 'step_completed', title: '自动置顶 3 个商品', summary: '根据观众互动热度，自动置顶充电器、耳机、运动T恤。', at: now.subtract(4.5, 'hour').toISOString() },
-      { id: 5903, type: 'run_succeeded', title: '直播监控完成', summary: '直播结束，峰值观众 2,830 人，成交 156 单，GMV $6,230。', at: now.subtract(4, 'hour').toISOString() }
+      { id: 5903, type: 'run_succeeded', title: '直播监控完成', summary: '直播结束，峰值观众 2,830 人，成交 156 单，GMV ¥6,230。', at: now.subtract(4, 'hour').toISOString() }
     ]
   },
   {
@@ -961,17 +961,17 @@ export const tasks: Task[] = [
   },
   {
     id: 3044,
-    title: '直播数据同步 — Amazon直播',
+    title: '直播数据同步 — 淘宝直播',
     storeId: 1002,
     agentType: 'live_stream_ops',
-    goal: '同步 Amazon 直播间的实时数据',
+    goal: '同步 淘宝 直播间的实时数据',
     status: 'failed',
     riskLevel: 'low',
     createdAt: now.subtract(15, 'hour').toISOString(),
     updatedAt: now.subtract(14, 'hour').toISOString(),
     timeline: [
-      { id: 5906, type: 'run_started', title: '数据同步启动', summary: '同步 Amazon 直播间实时观看数据和商品点击。', at: now.subtract(15, 'hour').toISOString() },
-      { id: 5907, type: 'run_failed', title: 'API 未授权', summary: 'Amazon Live API 返回 401 未授权，需重新刷新 API Token。', at: now.subtract(14, 'hour').toISOString() }
+      { id: 5906, type: 'run_started', title: '数据同步启动', summary: '同步 淘宝 直播间实时观看数据和商品点击。', at: now.subtract(15, 'hour').toISOString() },
+      { id: 5907, type: 'run_failed', title: 'API 未授权', summary: '淘宝 Live API 返回 401 未授权，需重新刷新 API Token。', at: now.subtract(14, 'hour').toISOString() }
     ]
   }
 ];
@@ -981,9 +981,9 @@ export const approvals: Approval[] = [
     id: 5001,
     taskId: 3001,
     storeId: 1001,
-    storeName: 'TikTok Shop 美国旗舰店',
+    storeName: '拼多多旗舰店',
     agentType: 'ads_optimizer',
-    title: '暂停低 ROI TikTok 广告计划',
+    title: '暂停低 ROI 拼多多 广告计划',
     reason: '广告计划 C-102 已消耗 612 美元，ROI 低于目标值 42%。',
     proposedAction: '暂停广告计划 C-102，并将 15% 预算转移到广告计划 C-088。',
     beforeValue: '广告计划 C-102 日预算：420 美元',
@@ -996,7 +996,7 @@ export const approvals: Approval[] = [
     id: 5002,
     taskId: 3002,
     storeId: 1001,
-    storeName: 'TikTok Shop 美国旗舰店',
+    storeName: '拼多多旗舰店',
     agentType: 'product_launch',
     title: '审核新品卖点文案',
     reason: 'Agent 为新品详情页生成了卖点描述。',
@@ -1012,13 +1012,13 @@ export const approvals: Approval[] = [
     id: 5003,
     taskId: 3003,
     storeId: 1002,
-    storeName: 'Amazon 户外用品店',
+    storeName: '淘宝户外用品店',
     agentType: 'pricing_strategy',
     title: '蓝牙耳机 Pro 调价审批',
     reason: '竞品均价下跌 8%，建议同步调价以保持竞争力。',
-    proposedAction: '将 SKU BT-E01 售价从 $32.99 调整为 $29.99（降幅 9.1%）。',
-    beforeValue: '售价 $32.99，毛利率 42%',
-    afterValue: '售价 $29.99，毛利率 37%',
+    proposedAction: '将 SKU BT-E01 售价从 ¥32.99 调整为 ¥29.99（降幅 9.1%）。',
+    beforeValue: '售价 ¥32.99，毛利率 42%',
+    afterValue: '售价 ¥29.99，毛利率 37%',
     riskLevel: 'medium',
     status: 'pending',
     requestedAt: now.subtract(1, 'hour').toISOString()
@@ -1027,13 +1027,13 @@ export const approvals: Approval[] = [
     id: 5004,
     taskId: 3004,
     storeId: 1001,
-    storeName: 'TikTok Shop 美国旗舰店',
+    storeName: '拼多多旗舰店',
     agentType: 'promotion_campaign',
     title: '滞销 SKU 闪购活动审批',
     reason: '3 个 SKU 库存周转超过 60 天，建议创建 30% 闪购活动清理库存。',
-    proposedAction: '为 3 个滞销 SKU 创建 30% OFF 闪购活动，预算 $500，持续 7 天。',
+    proposedAction: '为 3 个滞销 SKU 创建 30% OFF 闪购活动，预算 ¥500，持续 7 天。',
     beforeValue: '无促销活动',
-    afterValue: '闪购 30% OFF，预算 $500/7天',
+    afterValue: '闪购 30% OFF，预算 ¥500/7天',
     riskLevel: 'high',
     status: 'pending',
     requestedAt: now.subtract(2, 'hour').toISOString()
@@ -1042,13 +1042,13 @@ export const approvals: Approval[] = [
     id: 5005,
     taskId: 3005,
     storeId: 1001,
-    storeName: 'TikTok Shop 美国旗舰店',
+    storeName: '拼多多旗舰店',
     agentType: 'ads_optimizer',
     title: '高 ROI 广告追加预算',
-    reason: '广告计划 A-201 ROI=3.2，建议追加 $50/日预算扩大收益。',
-    proposedAction: '将广告计划 A-201 日预算从 $100 增加到 $150。',
-    beforeValue: '日预算 $100',
-    afterValue: '日预算 $150',
+    reason: '广告计划 A-201 ROI=3.2，建议追加 ¥50/日预算扩大收益。',
+    proposedAction: '将广告计划 A-201 日预算从 ¥100 增加到 ¥150。',
+    beforeValue: '日预算 ¥100',
+    afterValue: '日预算 ¥150',
     riskLevel: 'low',
     status: 'pending',
     requestedAt: now.subtract(12, 'minute').toISOString()
@@ -1066,25 +1066,25 @@ export const auditLogs: AuditLog[] = [
   {
     id: 6002,
     actor: '李鹏', action: '审批通过', entity: '审批', entityId: 5003,
-    summary: '批准 TikTok Shop 蓝牙耳机 Pro 价格下调 8%。',
+    summary: '批准 拼多多 蓝牙耳机 Pro 价格下调 8%。',
     at: now.subtract(1, 'hour').toISOString(), category: 'approval', linkTo: '/approvals/5003'
   },
   {
     id: 6003,
     actor: '风控审批人', action: '审批通过', entity: '审批', entityId: 5002,
-    summary: '双人审批：批准 Amazon 户外店广告预算上调 15%。',
+    summary: '双人审批：批准 淘宝 户外店广告预算上调 15%。',
     at: now.subtract(3, 'hour').toISOString(), category: 'approval', linkTo: '/approvals/5002'
   },
   {
     id: 6004,
     actor: 'AllMall 系统', action: '超时自动拒绝', entity: '审批', entityId: 5005,
-    summary: 'Shopify 独立站满减促销审批超时 24 小时，自动拒绝。',
+    summary: '京东自营店满减促销审批超时 24 小时，自动拒绝。',
     at: now.subtract(1, 'day').toISOString(), category: 'approval'
   },
   {
     id: 6005,
     actor: '李鹏', action: '审批拒绝', entity: '审批', entityId: 5001,
-    summary: '拒绝 TikTok Shop 广告预算增加 200%，认为 ROI 不支撑。',
+    summary: '拒绝 拼多多 广告预算增加 200%，认为 ROI 不支撑。',
     at: now.subtract(2, 'day').toISOString(), category: 'approval', linkTo: '/approvals/5001'
   },
   // ===== Agent 自动操作 =====
@@ -1097,13 +1097,13 @@ export const auditLogs: AuditLog[] = [
   {
     id: 6007,
     actor: '定价策略 Agent', action: '动态调价', entity: '商品', entityId: 'prod_001',
-    summary: 'SKU BT-E01 蓝牙耳机 Pro 竞品均价下跌 8%，自动调价 $39.99 → $36.99。',
+    summary: 'SKU BT-E01 蓝牙耳机 Pro 竞品均价下跌 8%，自动调价 ¥39.99 → ¥36.99。',
     at: now.subtract(7, 'hour').toISOString(), category: 'agent_action', linkTo: '/agents/pricing_strategy'
   },
   {
     id: 6008,
     actor: 'CRM 复购 Agent', action: '发放优惠券', entity: '客户群', entityId: 'segment_lapsed',
-    summary: '向沉默客户群发放 15% OFF 优惠券 167 张，预算 $250。',
+    summary: '向沉默客户群发放 15% OFF 优惠券 167 张，预算 ¥250。',
     at: now.subtract(6, 'hour').toISOString(), category: 'agent_action', linkTo: '/agents/crm_retention'
   },
   {
@@ -1127,14 +1127,14 @@ export const auditLogs: AuditLog[] = [
   {
     id: 6012,
     actor: '财务对账 Agent', action: '账单比对', entity: '对账', entityId: 'bill_202606',
-    summary: 'TikTok Shop 6 月账单与内部记录差异 $0.00，完全匹配。',
+    summary: '拼多多 6 月账单与内部记录差异 ¥0.00，完全匹配。',
     at: now.subtract(5, 'hour').toISOString(), category: 'agent_action', linkTo: '/agents/finance_audit'
   },
   // ===== 人工操作 =====
   {
     id: 6013,
     actor: '李鹏', action: '店铺已连接', entity: '店铺', entityId: 1001,
-    summary: 'TikTok Shop 美国旗舰店通过 connectToken 完成会话绑定。',
+    summary: '拼多多旗舰店通过 connectToken 完成会话绑定。',
     at: now.subtract(5, 'day').toISOString(), category: 'human_ops', linkTo: '/stores/1001'
   },
   {
@@ -1146,13 +1146,13 @@ export const auditLogs: AuditLog[] = [
   {
     id: 6015,
     actor: '运营负责人', action: '添加成本项', entity: '成本', entityId: 'cost_009',
-    summary: '添加 TikTok Shop 美国旗舰店 7 月广告预算 $5000。',
+    summary: '添加 拼多多旗舰店 7 月广告预算 ¥5000。',
     at: now.subtract(2, 'day').toISOString(), category: 'human_ops', linkTo: '/operations'
   },
   {
     id: 6016,
     actor: '李鹏', action: '通过商品草稿', entity: '商品', entityId: 'prod_008',
-    summary: '批准 便携式野营炉 上架草稿，自动发布到 Amazon。',
+    summary: '批准 便携式野营炉 上架草稿，自动发布到 淘宝。',
     at: now.subtract(1, 'day').toISOString(), category: 'human_ops', linkTo: '/operations'
   },
   {
@@ -1171,13 +1171,13 @@ export const auditLogs: AuditLog[] = [
   {
     id: 6019,
     actor: 'AllMall 系统', action: '需要重新登录', entity: '店铺', entityId: 1002,
-    summary: 'Amazon 户外用品店登录会话已失效，保活 Agent 正在尝试重新认证。',
+    summary: '淘宝户外用品店登录会话已失效，保活 Agent 正在尝试重新认证。',
     at: now.subtract(5, 'hour').toISOString(), category: 'store_session', linkTo: '/stores/1002'
   },
   {
     id: 6020,
     actor: 'AllMall 系统', action: '会话刷新成功', entity: '店铺', entityId: 1003,
-    summary: 'Shopify 独立站登录会话过期，保活 Agent 自动重新登录成功。',
+    summary: '京东自营店登录会话过期，保活 Agent 自动重新登录成功。',
     at: now.subtract(1, 'day').toISOString(), category: 'store_session', linkTo: '/stores/1003'
   },
   {
@@ -1201,7 +1201,7 @@ export const auditLogs: AuditLog[] = [
   {
     id: 6024,
     actor: 'AllMall 系统', action: '熔断触发', entity: '广告计划', entityId: 'campaign_d021',
-    summary: 'Amazon 户外店广告计划 D-021 花费超预算 130%，自动熔断暂停。',
+    summary: '淘宝 户外店广告计划 D-021 花费超预算 130%，自动熔断暂停。',
     at: now.subtract(3, 'day').toISOString(), category: 'system_event', linkTo: '/agents/risk_control'
   },
 ];

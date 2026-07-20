@@ -60,7 +60,7 @@ export function RecognitionResultCard({
           <Typography.Text type="secondary" style={{ fontSize: 11 }}>{t('agent.generatedPrice')}</Typography.Text>
           <Input
             style={{ marginTop: 4 }}
-            prefix="$"
+            prefix="¥"
             value={result.suggestedPrice}
             onChange={(e) => onResultChange({ ...result, suggestedPrice: Number(e.target.value) || 0 })}
           />

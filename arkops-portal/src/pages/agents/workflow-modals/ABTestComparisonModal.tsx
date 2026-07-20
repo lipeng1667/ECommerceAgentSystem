@@ -183,7 +183,7 @@ function ABTestDetailCard({ test }: { test: ABTestResult }) {
         label={t('agent.abSpend')}
         controlValue={test.controlGroup.spend}
         experimentValue={test.experimentGroup.spend}
-        format={(v) => `$${v.toFixed(0)}`}
+        format={(v) => `¥${v.toFixed(0)}`}
         higherIsBetter={false}
       />
 

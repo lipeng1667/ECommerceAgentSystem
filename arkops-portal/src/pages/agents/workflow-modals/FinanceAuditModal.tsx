@@ -16,8 +16,8 @@ const mockSummary = [
 ];
 
 const mockDiscrepancies = [
-  { id: 1, month: '2026-07', platform: 'Amazon', orders: 820, platformRevenue: 32100, bankReceived: 31900, discrepancy: 200, status: 'investigating' },
-  { id: 2, month: '2026-07', platform: 'TikTok Shop', orders: 425, platformRevenue: 16100, bankReceived: 16050, discrepancy: 50, status: 'unmatched' },
+  { id: 1, month: '2026-07', platform: '淘宝', orders: 820, platformRevenue: 32100, bankReceived: 31900, discrepancy: 200, status: 'investigating' },
+  { id: 2, month: '2026-07', platform: '拼多多', orders: 425, platformRevenue: 16100, bankReceived: 16050, discrepancy: 50, status: 'unmatched' },
 ];
 
 export function FinanceAuditModal({ open, onClose }: FinanceAuditModalProps) {
@@ -43,11 +43,11 @@ export function FinanceAuditModal({ open, onClose }: FinanceAuditModalProps) {
   const summaryColumns = [
     { title: t('finAudit.month'), dataIndex: 'month', width: 100, render: (v: string) => <Typography.Text strong style={{ fontSize: 13 }}>{v}</Typography.Text> },
     { title: t('finAudit.orders'), dataIndex: 'orders', width: 80, render: (v: number) => v.toLocaleString() },
-    { title: t('finAudit.platformRevenue'), dataIndex: 'platformRevenue', width: 120, render: (v: number) => `$${v.toLocaleString()}` },
-    { title: t('finAudit.bankReceived'), dataIndex: 'bankReceived', width: 120, render: (v: number) => `$${v.toLocaleString()}` },
+    { title: t('finAudit.platformRevenue'), dataIndex: 'platformRevenue', width: 120, render: (v: number) => `¥${v.toLocaleString()}` },
+    { title: t('finAudit.bankReceived'), dataIndex: 'bankReceived', width: 120, render: (v: number) => `¥${v.toLocaleString()}` },
     {
       title: t('finAudit.discrepancy'), dataIndex: 'discrepancy', width: 90,
-      render: (v: number) => v === 0 ? <Tag color="green" style={{ fontSize: 11 }}>$0</Tag> : <Tag color="red" style={{ fontSize: 11 }}>-${v}</Tag>,
+      render: (v: number) => v === 0 ? <Tag color="green" style={{ fontSize: 11 }}>¥0</Tag> : <Tag color="red" style={{ fontSize: 11 }}>-¥{v}</Tag>,
     },
     {
       title: t('finAudit.statusCol'), dataIndex: 'status', width: 100,
@@ -59,11 +59,11 @@ export function FinanceAuditModal({ open, onClose }: FinanceAuditModalProps) {
     { title: t('finAudit.month'), dataIndex: 'month', width: 100, render: (v: string) => <Typography.Text strong style={{ fontSize: 13 }}>{v}</Typography.Text> },
     { title: t('finAudit.platform'), dataIndex: 'platform', width: 110, render: (v: string) => <Tag style={{ fontSize: 11 }}>{v}</Tag> },
     { title: t('finAudit.orders'), dataIndex: 'orders', width: 70 },
-    { title: t('finAudit.platformRevenue'), dataIndex: 'platformRevenue', width: 120, render: (v: number) => `$${v.toLocaleString()}` },
-    { title: t('finAudit.bankReceived'), dataIndex: 'bankReceived', width: 120, render: (v: number) => `$${v.toLocaleString()}` },
+    { title: t('finAudit.platformRevenue'), dataIndex: 'platformRevenue', width: 120, render: (v: number) => `¥${v.toLocaleString()}` },
+    { title: t('finAudit.bankReceived'), dataIndex: 'bankReceived', width: 120, render: (v: number) => `¥${v.toLocaleString()}` },
     {
       title: t('finAudit.discrepancy'), dataIndex: 'discrepancy', width: 90,
-      render: (v: number) => <Tag color="red" style={{ fontSize: 11 }}>-${v}</Tag>,
+      render: (v: number) => <Tag color="red" style={{ fontSize: 11 }}>-¥{v}</Tag>,
     },
     {
       title: t('finAudit.statusCol'), dataIndex: 'status', width: 100,
@@ -85,8 +85,8 @@ export function FinanceAuditModal({ open, onClose }: FinanceAuditModalProps) {
       width={900}
       preContent={
         <Row gutter={16} style={{ marginBottom: 16 }}>
-          <Col span={8}><Card size="small"><Statistic title={t('finAudit.totalRevenue')} value={totalRevenue} prefix="$" /></Card></Col>
-          <Col span={8}><Card size="small"><Statistic title={t('finAudit.totalDiscrepancy')} value={totalDiscrepancy} prefix="$" valueStyle={{ color: '#dc2626' }} /></Card></Col>
+          <Col span={8}><Card size="small"><Statistic title={t('finAudit.totalRevenue')} value={totalRevenue} prefix="¥" /></Card></Col>
+          <Col span={8}><Card size="small"><Statistic title={t('finAudit.totalDiscrepancy')} value={totalDiscrepancy} prefix="¥" valueStyle={{ color: '#dc2626' }} /></Card></Col>
           <Col span={8}><Card size="small"><div style={{ fontSize: 14, color: '#64748b', marginBottom: 8 }}>{t('finAudit.matchRate')}</div><Progress percent={matchRate} size="small" strokeColor="#16a34a" format={(p) => <span style={{ fontSize: 12 }}>{p}%</span>} /></Card></Col>
         </Row>
       }

@@ -25,7 +25,7 @@ export function BasicStrategySections({ agent }: BasicStrategySectionsProps) {
                   <InputNumber
                     min={0} step={50}
                     style={{ width: 120 }}
-                    prefix="$"
+                    prefix="¥"
                     value={agent.strategyConfig.adSpendBudget.dailyCap}
                     onChange={(v) => {
                       const newVal = v ?? 0;
@@ -40,7 +40,7 @@ export function BasicStrategySections({ agent }: BasicStrategySectionsProps) {
                   <InputNumber
                     min={0} step={500}
                     style={{ width: 120 }}
-                    prefix="$"
+                    prefix="¥"
                     value={agent.strategyConfig.adSpendBudget.monthlyCap}
                     onChange={(v) => {
                       const newVal = v ?? 0;
@@ -175,7 +175,7 @@ export function BasicStrategySections({ agent }: BasicStrategySectionsProps) {
                   <InputNumber
                     min={0} step={5}
                     style={{ width: 100 }}
-                    prefix="$"
+                    prefix="¥"
                     value={agent.strategyConfig.afterSalesConfig.autoRefundCap}
                     onChange={(v) => {
                       updateConfigSection(queryClient, agent, 'afterSalesConfig', (s) => ({
@@ -298,12 +298,7 @@ export function BasicStrategySections({ agent }: BasicStrategySectionsProps) {
                       }));
                     }}
                     options={[
-                      { value: 'US', label: 'US' },
-                      { value: 'EU', label: 'EU' },
-                      { value: 'UK', label: 'UK' },
-                      { value: 'JP', label: 'JP' },
-                      { value: 'SEA', label: 'SEA' },
-                      { value: 'Global', label: 'Global' }
+                      { value: 'CN', label: '中国大陆' }
                     ]}
                   />
                 </Space>

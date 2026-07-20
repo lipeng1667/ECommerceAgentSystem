@@ -89,7 +89,7 @@ export function PlansSection() {
           );
         }
         if (record.key === 'price') {
-          return <Typography.Text strong style={{ color: colorMap[tier], fontSize: 16 }}>${val}<Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('subscription.perMonth')}</Typography.Text></Typography.Text>;
+          return <Typography.Text strong style={{ color: colorMap[tier], fontSize: 16 }}>¥{val}<Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('subscription.perMonth')}</Typography.Text></Typography.Text>;
         }
         if (typeof val === 'boolean') {
           return val

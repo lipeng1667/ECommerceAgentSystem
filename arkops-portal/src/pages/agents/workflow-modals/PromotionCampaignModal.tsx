@@ -10,14 +10,14 @@ interface PromotionCampaignModalProps {
 }
 
 const mockActive = [
-  { id: 1, name: 'Summer Flash Sale', type: 'flash_sale', discount: '30% OFF', budget: 5000, spent: 2340, sales: 8900, roi: 3.8, period: 'Jul 1 - Jul 15', status: 'running' },
-  { id: 2, name: 'Bundle: Earbuds + Case', type: 'bundle', discount: 'Save $8', budget: 2000, spent: 580, sales: 2100, roi: 3.6, period: 'Jul 5 - Jul 20', status: 'running' },
-  { id: 3, name: 'New Customer Coupon', type: 'coupon', discount: '$5 off', budget: 3000, spent: 890, sales: 3200, roi: 3.6, period: 'Jul 1 - Jul 31', status: 'running' },
+  { id: 1, name: '夏日限时秒杀', type: 'flash_sale', discount: '7 折', budget: 5000, spent: 2340, sales: 8900, roi: 3.8, period: '7月1日 - 7月15日', status: 'running' },
+  { id: 2, name: '耳机 + 保护壳组合购', type: 'bundle', discount: '立省 ¥8', budget: 2000, spent: 580, sales: 2100, roi: 3.6, period: '7月5日 - 7月20日', status: 'running' },
+  { id: 3, name: '新客专享券', type: 'coupon', discount: '满减 ¥5', budget: 3000, spent: 890, sales: 3200, roi: 3.6, period: '7月1日 - 7月31日', status: 'running' },
 ];
 
 const mockHistory = [
-  { id: 4, name: 'Spring Mega Sale', type: 'flash_sale', discount: '25% OFF', budget: 8000, spent: 7900, sales: 22000, roi: 2.8, period: 'Mar 15 - Mar 30', status: 'ended' },
-  { id: 5, name: 'Easter Bundle', type: 'bundle', discount: 'Save $5', budget: 1500, spent: 1200, sales: 3800, roi: 3.2, period: 'Mar 25 - Apr 5', status: 'ended' },
+  { id: 4, name: '春季焕新大促', type: 'flash_sale', discount: '75 折', budget: 8000, spent: 7900, sales: 22000, roi: 2.8, period: '3月15日 - 3月30日', status: 'ended' },
+  { id: 5, name: '清明踏青组合购', type: 'bundle', discount: '立省 ¥5', budget: 1500, spent: 1200, sales: 3800, roi: 3.2, period: '3月25日 - 4月5日', status: 'ended' },
 ];
 
 const typeConfig: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
@@ -52,9 +52,9 @@ export function PromotionCampaignModal({ open, onClose }: PromotionCampaignModal
     { title: t('promo.discount'), dataIndex: 'discount', width: 90 },
     {
       title: t('promo.spent') + '/' + t('promo.budget'), width: 110,
-      render: (_: unknown, r: typeof mockActive[0]) => <Typography.Text style={{ fontSize: 12 }}>${r.spent} / ${r.budget}</Typography.Text>,
+      render: (_: unknown, r: typeof mockActive[0]) => <Typography.Text style={{ fontSize: 12 }}>¥{r.spent} / ¥{r.budget}</Typography.Text>,
     },
-    { title: t('promo.sales'), dataIndex: 'sales', width: 80, render: (v: number) => <Typography.Text style={{ color: '#16a34a', fontSize: 12 }}>${v.toLocaleString()}</Typography.Text> },
+    { title: t('promo.sales'), dataIndex: 'sales', width: 80, render: (v: number) => <Typography.Text style={{ color: '#16a34a', fontSize: 12 }}>¥{v.toLocaleString()}</Typography.Text> },
     { title: t('promo.roi'), dataIndex: 'roi', width: 60, render: (v: number) => <Tag color={v >= 3 ? 'green' : 'orange'} style={{ fontSize: 11 }}>{v.toFixed(1)}x</Tag> },
     { title: t('promo.period'), dataIndex: 'period', width: 130, render: (v: string) => <Typography.Text type="secondary" style={{ fontSize: 11 }}>{v}</Typography.Text> },
     {

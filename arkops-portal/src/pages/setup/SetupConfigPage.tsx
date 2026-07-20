@@ -360,7 +360,7 @@ export function SetupConfigPage() {
                     <Row gutter={[32, 16]}>
                       <Col span={12}>
                         <Typography.Text type="secondary">日预算上限</Typography.Text>
-                        <InputNumber min={0} step={50} value={currentConfig.adBudget} onChange={v => setCurrentConfig({ adBudget: v ?? 500 })} prefix="$" style={{ width: '100%' }} />
+                        <InputNumber min={0} step={50} value={currentConfig.adBudget} onChange={v => setCurrentConfig({ adBudget: v ?? 500 })} prefix="¥" style={{ width: '100%' }} />
                       </Col>
                     </Row>
                   )
@@ -376,7 +376,7 @@ export function SetupConfigPage() {
                       </Col>
                       <Col span={12}>
                         <Typography.Text type="secondary">自动退款上限</Typography.Text>
-                        <InputNumber min={0} value={currentConfig.autoRefund} onChange={v => setCurrentConfig({ autoRefund: v ?? 20 })} prefix="$" style={{ width: '100%' }} />
+                        <InputNumber min={0} value={currentConfig.autoRefund} onChange={v => setCurrentConfig({ autoRefund: v ?? 20 })} prefix="¥" style={{ width: '100%' }} />
                       </Col>
                     </Row>
                   )

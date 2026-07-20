@@ -95,8 +95,8 @@ function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
         source: 'MuleRun Runtime',
         title: zh ? '正在加载店铺浏览器会话' : 'Loading store browser session',
         summary: zh
-          ? 'MuleRun 正在加载已绑定的 TikTok Shop browser profile。'
-          : 'MuleRun is loading the bound TikTok Shop browser profile.'
+          ? 'MuleRun 正在加载已绑定的 拼多多 browser profile。'
+          : 'MuleRun is loading the bound 拼多多 browser profile.'
       },
       {
         id: `${task.id}-live-004`,
@@ -197,8 +197,8 @@ function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
         source: 'Session Monitor',
         title: zh ? '检测到平台要求重新验证' : 'Platform re-authentication detected',
         summary: zh
-          ? 'Amazon 卖家中心要求用户完成新的人机校验。'
-          : 'Amazon Seller Central requires the user to complete a new human verification.'
+          ? '淘宝 卖家中心要求用户完成新的人机校验。'
+          : '淘宝 Seller Central requires the user to complete a new human verification.'
       },
       {
         id: `${task.id}-live-004`,
@@ -216,7 +216,7 @@ function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
   if (task.agentType === 'competitor_intel') {
     return [
       ...commonStart,
-      { id: `${task.id}-live-003`, at: at(10), level: 'info', source: 'Crawler Engine', title: zh ? '正在抓取竞品页面' : 'Crawling competitor pages', summary: zh ? '正在采集 Amazon 和 TikTok Shop 前 20 名竞品定价数据。' : 'Scraping top 20 competitor pricing data from Amazon and TikTok Shop.' },
+      { id: `${task.id}-live-003`, at: at(10), level: 'info', source: 'Crawler Engine', title: zh ? '正在抓取竞品页面' : 'Crawling competitor pages', summary: zh ? '正在采集 淘宝 和 拼多多 前 20 名竞品定价数据。' : 'Scraping top 20 competitor pricing data from 淘宝 and 拼多多.' },
       { id: `${task.id}-live-004`, at: at(28), level: 'success', source: 'Data Parser', title: zh ? '竞品数据解析完成' : 'Competitor data parsed', summary: zh ? '已提取 18 个 SKU 的价格、销量和评分信息。' : 'Extracted price, sales volume, and rating for 18 SKUs.' },
       { id: `${task.id}-live-005`, at: at(42), level: 'info', source: 'Analysis Engine', title: zh ? '正在生成市场情报报告' : 'Generating market intelligence report', summary: zh ? 'Agent 正在计算市场容量、均价区间和机会评分。' : 'Agent is calculating market capacity, price range, and opportunity scores.' },
       { id: `${task.id}-live-006`, at: at(58), level: 'success', source: 'Intel Service', title: zh ? '情报已推送至下游 Agent' : 'Intel pushed to downstream agents', summary: zh ? '定价策略、商品上架和广告投放 Agent 已收到最新竞品数据。' : 'Pricing, listing, and ads agents received updated competitor data.' },
@@ -238,7 +238,7 @@ function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
       ...commonStart,
       { id: `${task.id}-live-003`, at: at(12), level: 'info', source: 'CRM Engine', title: zh ? '正在刷新客户分层' : 'Refreshing customer segments', summary: zh ? '基于近 90 天购买行为重新计算新客/活跃/沉睡/流失分层。' : 'Recomputing new/active/dormant/churned segments from 90-day behavior.' },
       { id: `${task.id}-live-004`, at: at(30), level: 'warning', source: 'Churn Predictor', title: zh ? '识别到 23 个高流失风险客户' : '23 customers at high churn risk', summary: zh ? '预测模型显示这些客户 7 天内流失概率 > 70%。' : 'Predicted churn probability > 70% within 7 days for these customers.' },
-      { id: `${task.id}-live-005`, at: at(44), level: 'info', source: 'Campaign Engine', title: zh ? '正在生成挽留券方案' : 'Generating retention coupon plan', summary: zh ? '为高流失风险客户匹配 15% 折扣券，预算控制在 $200 以内。' : 'Matching 15% discount coupons for at-risk customers within $200 budget.' },
+      { id: `${task.id}-live-005`, at: at(44), level: 'info', source: 'Campaign Engine', title: zh ? '正在生成挽留券方案' : 'Generating retention coupon plan', summary: zh ? '为高流失风险客户匹配 15% 折扣券，预算控制在 ¥200 以内。' : 'Matching 15% discount coupons for at-risk customers within ¥200 budget.' },
       { id: `${task.id}-live-006`, at: at(60), level: 'success', source: 'Notification Service', title: zh ? '挽留券已自动发放' : 'Retention coupons auto-dispatched', summary: zh ? '已向 23 位客户发送个性化挽留券，预计挽回 8 单。' : 'Personalized coupons sent to 23 customers, est. 8 orders recovered.' },
     ];
   }
@@ -246,7 +246,7 @@ function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
   if (task.agentType === 'review_manager') {
     return [
       ...commonStart,
-      { id: `${task.id}-live-003`, at: at(8), level: 'info', source: 'Review Scanner', title: zh ? '正在扫描新增评价' : 'Scanning new reviews', summary: zh ? '已拉取 Amazon 和 TikTok Shop 近 2 小时新增的 12 条评价。' : 'Fetched 12 new reviews from Amazon and TikTok Shop in the last 2h.' },
+      { id: `${task.id}-live-003`, at: at(8), level: 'info', source: 'Review Scanner', title: zh ? '正在扫描新增评价' : 'Scanning new reviews', summary: zh ? '已拉取 淘宝 和 拼多多 近 2 小时新增的 12 条评价。' : 'Fetched 12 new reviews from 淘宝 and 拼多多 in the last 2h.' },
       { id: `${task.id}-live-004`, at: at(18), level: 'warning', source: 'NLP Engine', title: zh ? '检测到 2 条差评（1-2 星）' : '2 negative reviews detected (1-2 stars)', summary: zh ? '差评内容涉及产品质量和物流速度，已标记为优先处理。' : 'Negative sentiment on product quality and shipping speed flagged.' },
       { id: `${task.id}-live-005`, at: at(32), level: 'info', source: 'AI Reply Generator', title: zh ? '正在生成差评回复' : 'Generating review replies', summary: zh ? 'Agent 正在按"专业友好"语气生成个性化回复模板。' : 'Agent is generating personalized reply templates in professional-friendly tone.' },
       { id: `${task.id}-live-006`, at: at(46), level: 'success', source: 'Reply Service', title: zh ? '差评回复已自动发送' : 'Replies auto-sent', summary: zh ? '2 条差评已回复，同时向 5 位好评客户发送了感谢消息。' : 'Replied to 2 negative reviews; sent thank-you to 5 positive reviewers.' },
@@ -266,8 +266,8 @@ function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
   if (task.agentType === 'after_sales') {
     return [
       ...commonStart,
-      { id: `${task.id}-live-003`, at: at(10), level: 'info', source: 'Event Listener', title: zh ? '检测到退货申请' : 'Return request detected', summary: zh ? '订单 AMZ-10245 申请退货，原因：商品缺陷，金额 $32.99。' : 'Order AMZ-10245 return request: defective product, $32.99.' },
-      { id: `${task.id}-live-004`, at: at(20), level: 'info', source: 'Policy Engine', title: zh ? '正在评估自动处理条件' : 'Evaluating auto-process conditions', summary: zh ? '金额 $32.99 超过自动退款上限 $20，需 Operator 审批。' : 'Amount $32.99 exceeds auto-refund limit $20, requires Operator approval.' },
+      { id: `${task.id}-live-003`, at: at(10), level: 'info', source: 'Event Listener', title: zh ? '检测到退货申请' : 'Return request detected', summary: zh ? '订单 TB-10245 申请退货，原因：商品缺陷，金额 ¥32.99。' : 'Order TB-10245 return request: defective product, CNY 32.99.' },
+      { id: `${task.id}-live-004`, at: at(20), level: 'info', source: 'Policy Engine', title: zh ? '正在评估自动处理条件' : 'Evaluating auto-process conditions', summary: zh ? '金额 ¥32.99 超过自动退款上限 ¥20，需 Operator 审批。' : 'Amount ¥32.99 exceeds auto-refund limit ¥20, requires Operator approval.' },
       { id: `${task.id}-live-005`, at: at(34), level: 'warning', source: 'Approval Service', title: zh ? '退货申请已转人工审批' : 'Return request sent for manual approval', summary: zh ? '已创建审批工单并通知 Operator，同时暂停自动处理流程。' : 'Approval ticket created, Operator notified, auto-processing paused.' },
       { id: `${task.id}-live-006`, at: at(48), level: 'info', source: 'Logistics Tracker', title: zh ? '已关联退货运单追踪' : 'Return shipment tracking linked', summary: zh ? '退货地址已发送给买家，系统将自动跟踪物流状态。' : 'Return address sent to buyer; system will auto-track return shipment.' },
     ];
@@ -277,8 +277,8 @@ function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
     return [
       ...commonStart,
       { id: `${task.id}-live-003`, at: at(12), level: 'info', source: 'Trigger Engine', title: zh ? '自动触发促销规则命中' : 'Auto-trigger rule matched', summary: zh ? '3 个 SKU 滞销超过 60 天，触发自动闪购规则（35% OFF）。' : '3 SKUs dead-stocked > 60 days, triggering auto flash sale (35% OFF).' },
-      { id: `${task.id}-live-004`, at: at(24), level: 'info', source: 'Budget Planner', title: zh ? '正在计算活动预算' : 'Calculating campaign budget', summary: zh ? '预估活动预算 $450，低于 $500 自动审批额度。' : 'Estimated budget $450, within $500 auto-approval threshold.' },
-      { id: `${task.id}-live-005`, at: at(38), level: 'success', source: 'Campaign Service', title: zh ? '闪购活动已自动创建' : 'Flash sale auto-created', summary: zh ? '已在 Amazon 和 TikTok Shop 同步上线，周期 7 天。' : 'Live on Amazon and TikTok Shop, 7-day duration.' },
+      { id: `${task.id}-live-004`, at: at(24), level: 'info', source: 'Budget Planner', title: zh ? '正在计算活动预算' : 'Calculating campaign budget', summary: zh ? '预估活动预算 ¥450，低于 ¥500 自动审批额度。' : 'Estimated budget ¥450, within ¥500 auto-approval threshold.' },
+      { id: `${task.id}-live-005`, at: at(38), level: 'success', source: 'Campaign Service', title: zh ? '闪购活动已自动创建' : 'Flash sale auto-created', summary: zh ? '已在 淘宝 和 拼多多 同步上线，周期 7 天。' : 'Live on 淘宝 and 拼多多, 7-day duration.' },
       { id: `${task.id}-live-006`, at: at(52), level: 'info', source: 'Monitor', title: zh ? '活动效果监控已启动' : 'Campaign performance monitoring started', summary: zh ? '将每 4 小时检查一次 ROI，低于 1.5 时自动告警。' : 'ROI checked every 4h; alert if below 1.5.' },
     ];
   }
@@ -289,7 +289,7 @@ function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
       { id: `${task.id}-live-003`, at: at(8), level: 'info', source: 'Inventory Scanner', title: zh ? '正在扫描库存快照' : 'Scanning inventory snapshot', summary: zh ? '已拉取 4 个店铺共 156 个 SKU 的实时库存数据。' : 'Fetched real-time inventory for 156 SKUs across 4 stores.' },
       { id: `${task.id}-live-004`, at: at(18), level: 'warning', source: 'Threshold Checker', title: zh ? '发现 4 个低库存 SKU' : '4 low-stock SKUs detected', summary: zh ? 'Wireless Earbuds Pro 2 仅剩 8 件，低于阈值 20。' : 'Wireless Earbuds Pro 2 down to 8 units, below threshold of 20.' },
       { id: `${task.id}-live-005`, at: at(30), level: 'info', source: 'Replenish Planner', title: zh ? '正在生成补货建议' : 'Generating replenishment suggestions', summary: zh ? '根据日均销量和到货周期计算建议补货量 200 件。' : 'Calculated suggested replenishment qty of 200 units based on daily sales and lead time.' },
-      { id: `${task.id}-live-006`, at: at(44), level: 'success', source: 'Auto Replenish', title: zh ? '补货订单已自动创建' : 'Replenishment order auto-created', summary: zh ? '采购金额 $2,900 低于 $500 自动审批额度限制，已提交供应商。' : 'Order value within auto-approval limit, submitted to supplier.' },
+      { id: `${task.id}-live-006`, at: at(44), level: 'success', source: 'Auto Replenish', title: zh ? '补货订单已自动创建' : 'Replenishment order auto-created', summary: zh ? '采购金额 ¥2,900 低于 ¥500 自动审批额度限制，已提交供应商。' : 'Order value within auto-approval limit, submitted to supplier.' },
     ];
   }
 
@@ -316,9 +316,9 @@ function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
   if (task.agentType === 'finance_audit') {
     return [
       ...commonStart,
-      { id: `${task.id}-live-003`, at: at(14), level: 'info', source: 'Reconciliation Engine', title: zh ? '正在拉取平台账单' : 'Fetching platform statements', summary: zh ? '从 Amazon 和 TikTok Shop API 拉取本月订单和结算数据。' : 'Fetching monthly orders and settlement data from Amazon and TikTok Shop APIs.' },
+      { id: `${task.id}-live-003`, at: at(14), level: 'info', source: 'Reconciliation Engine', title: zh ? '正在拉取平台账单' : 'Fetching platform statements', summary: zh ? '从 淘宝 和 拼多多 API 拉取本月订单和结算数据。' : 'Fetching monthly orders and settlement data from 淘宝 and 拼多多 APIs.' },
       { id: `${task.id}-live-004`, at: at(30), level: 'info', source: 'Bank Matcher', title: zh ? '正在匹配银行到账记录' : 'Matching bank deposits', summary: zh ? '已匹配 1,245 笔订单收款，匹配率 98.2%。' : 'Matched 1,245 order payments, match rate 98.2%.' },
-      { id: `${task.id}-live-005`, at: at(46), level: 'warning', source: 'Discrepancy Detector', title: zh ? '发现 $250 账面差异' : '$250 discrepancy detected', summary: zh ? 'Amazon 平台收入 $32,100，银行到账 $31,850，差异已标记调查。' : 'Amazon revenue $32,100 vs bank received $31,850, discrepancy flagged.' },
+      { id: `${task.id}-live-005`, at: at(46), level: 'warning', source: 'Discrepancy Detector', title: zh ? '发现 ¥250 账面差异' : '¥250 discrepancy detected', summary: zh ? '淘宝 平台收入 ¥32,100，银行到账 ¥31,850，差异已标记调查。' : '淘宝 revenue ¥32,100 vs bank received ¥31,850, discrepancy flagged.' },
       { id: `${task.id}-live-006`, at: at(60), level: 'success', source: 'Report Generator', title: zh ? '对账报告已自动生成' : 'Reconciliation report auto-generated', summary: zh ? '月度对账报告已归档，差异项已通知财务负责人。' : 'Monthly report archived; discrepancy items notified to finance lead.' },
     ];
   }
@@ -326,10 +326,10 @@ function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
   if (task.agentType === 'live_stream_ops') {
     return [
       ...commonStart,
-      { id: `${task.id}-live-003`, at: at(8), level: 'info', source: 'Stream Monitor', title: zh ? '直播已开始，进入监控' : 'Live stream started, monitoring engaged', summary: zh ? 'TikTok Shop 直播间已上线，当前观看 1,250 人。' : 'TikTok Shop live stream online, 1,250 current viewers.' },
+      { id: `${task.id}-live-003`, at: at(8), level: 'info', source: 'Stream Monitor', title: zh ? '直播已开始，进入监控' : 'Live stream started, monitoring engaged', summary: zh ? '拼多多 直播间已上线，当前观看 1,250 人。' : '拼多多 live stream online, 1,250 current viewers.' },
       { id: `${task.id}-live-004`, at: at(20), level: 'info', source: 'Product Pinner', title: zh ? '已自动置顶热销商品' : 'Auto-pinned top-selling product', summary: zh ? 'Wireless Earbuds Pro 2 已置顶，点击率提升 15%。' : 'Wireless Earbuds Pro 2 pinned, CTR up 15%.' },
       { id: `${task.id}-live-005`, at: at(34), level: 'success', source: 'AI Reply', title: zh ? 'AI 已回复 8 条评论' : 'AI replied to 8 comments', summary: zh ? '自动回复商品价格和库存问题，转化率 3.2%。' : 'Auto-replied to price/stock questions, 3.2% conversion rate.' },
-      { id: `${task.id}-live-006`, at: at(48), level: 'info', source: 'Metrics Dashboard', title: zh ? '实时数据已同步' : 'Real-time metrics synced', summary: zh ? 'GMV $1,240，点赞 3,200，评论 45，转化率 3.2%。' : 'GMV $1,240, 3,200 likes, 45 comments, 3.2% conversion.' },
+      { id: `${task.id}-live-006`, at: at(48), level: 'info', source: 'Metrics Dashboard', title: zh ? '实时数据已同步' : 'Real-time metrics synced', summary: zh ? 'GMV ¥1,240，点赞 3,200，评论 45，转化率 3.2%。' : 'GMV ¥1,240, 3,200 likes, 45 comments, 3.2% conversion.' },
     ];
   }
 

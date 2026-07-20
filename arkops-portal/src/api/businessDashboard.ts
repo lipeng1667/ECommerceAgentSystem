@@ -24,9 +24,9 @@ export const businessDashboardApi = {
         { date: recentDay(0), gmv: 28640, orders: 412 }
       ],
       storeGmvRank: [
-        { storeName: 'TikTok Shop 美国旗舰店', gmv: 15620, platform: 'TikTok Shop' },
-        { storeName: 'Amazon 户外用品店', gmv: 8740, platform: 'Amazon' },
-        { storeName: 'Shopify 独立站', gmv: 4280, platform: 'Shopify' }
+        { storeName: '拼多多旗舰店', gmv: 15620, platform: '拼多多' },
+        { storeName: '淘宝户外用品店', gmv: 8740, platform: '淘宝' },
+        { storeName: '京东自营店', gmv: 4280, platform: '京东' }
       ],
       adMetrics: {
         todaySpend: 3840,

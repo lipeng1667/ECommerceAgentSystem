@@ -109,7 +109,7 @@ export function ProductLaunchDraftCard({
               title: t('agent.draftPrice'), width: 100,
               render: (_: unknown, record: Task) => {
                 const draft = productDrafts[record.id];
-                return draft ? <Typography.Text style={{ fontSize: 13 }}>${draft.sellingPrice}</Typography.Text> : '-';
+                return draft ? <Typography.Text style={{ fontSize: 13 }}>¥{draft.sellingPrice}</Typography.Text> : '-';
               },
             },
             {

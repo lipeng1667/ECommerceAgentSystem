@@ -65,7 +65,7 @@ export function LiveOpsModal(props: LiveOpsModalProps) {
                   </Col>
                   <Col xs={12} sm={4}>
                     <Card size="small" style={{ background: '#f0fdf4', textAlign: 'center' }}>
-                      <Statistic title="GMV" value={mockLiveMetrics.gmv} prefix="$" valueStyle={{ fontSize: 20, color: '#16a34a' }} />
+                      <Statistic title="GMV" value={mockLiveMetrics.gmv} prefix="¥" valueStyle={{ fontSize: 20, color: '#16a34a' }} />
                     </Card>
                   </Col>
                   <Col xs={12} sm={4}>
@@ -87,7 +87,7 @@ export function LiveOpsModal(props: LiveOpsModalProps) {
                           {pinnedIds.includes(p.id) && <PushpinOutlined style={{ color: '#ea580c', marginRight: 4, fontSize: 11 }} />}
                           {p.name}
                         </Typography.Text>
-                        <Typography.Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>${p.price}</Typography.Text>
+                        <Typography.Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>¥{p.price}</Typography.Text>
                       </div>
                       <Space size={8}>
                         <Typography.Text type="secondary" style={{ fontSize: 10 }}>{t('live.clicks')} {p.clicks} · {t('live.orders')} {p.orders}</Typography.Text>

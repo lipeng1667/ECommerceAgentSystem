@@ -6,7 +6,7 @@ import { useI18n } from '../../../app/i18n';
 
 const mockPromotions = [
   { id: 1, name: 'LED灯带清仓闪购', type: 'flash_sale', discount: '35% OFF', originalPrice: 12.49, promoPrice: 8.12, budget: 200, spent: 45, status: 'active', startDate: '2024-06-18', endDate: '2024-06-25' },
-  { id: 2, name: '618满减券', type: 'coupon', discount: '满$50减$8', originalPrice: 0, promoPrice: 0, budget: 2000, spent: 0, status: 'pending', startDate: '2024-06-18', endDate: '2024-06-20' },
+  { id: 2, name: '618满减券', type: 'coupon', discount: '满¥50减¥8', originalPrice: 0, promoPrice: 0, budget: 2000, spent: 0, status: 'pending', startDate: '2024-06-18', endDate: '2024-06-20' },
   { id: 3, name: '充电器+耳机套餐', type: 'bundle', discount: '套装9折', originalPrice: 72.98, promoPrice: 65.68, budget: 500, spent: 120, status: 'active', startDate: '2024-06-15', endDate: '2024-06-30' },
   { id: 4, name: '运动T恤买二送一', type: 'bundle', discount: '买2送1', originalPrice: 25.98, promoPrice: 17.32, budget: 300, spent: 280, status: 'ended', startDate: '2024-06-01', endDate: '2024-06-14' },
 ];
@@ -97,7 +97,7 @@ export function PromotionManagerCard() {
       width: 130,
       render: (_: unknown, r: typeof promotions[0]) => (
         <Space direction="vertical" size={0}>
-          <Typography.Text style={{ fontSize: 13 }}>${r.spent} / ${r.budget}</Typography.Text>
+          <Typography.Text style={{ fontSize: 13 }}>¥{r.spent} / ¥{r.budget}</Typography.Text>
           <Typography.Text type="secondary" style={{ fontSize: 11 }}>
             {((r.spent / r.budget) * 100).toFixed(0)}%
           </Typography.Text>
@@ -180,10 +180,10 @@ export function PromotionManagerCard() {
             ]} />
           </Form.Item>
           <Form.Item label={t('promo.discountValue')} name="discount" rules={[{ required: true }]}>
-            <Input placeholder="35% OFF / 满$50减$8" />
+            <Input placeholder="35% OFF / 满¥50减¥8" />
           </Form.Item>
           <Form.Item label={t('promo.budget')} name="budget" rules={[{ required: true }]}>
-            <InputNumber min={0} style={{ width: '100%' }} prefix="$" />
+            <InputNumber min={0} style={{ width: '100%' }} prefix="¥" />
           </Form.Item>
           <Form.Item label={t('promo.startDate')} name="startDate" rules={[{ required: true }]}>
             <DatePicker style={{ width: '100%' }} />

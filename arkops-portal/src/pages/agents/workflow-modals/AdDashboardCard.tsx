@@ -61,7 +61,7 @@ export function AdDashboardCard() {
       title: t('ads.spend'),
       dataIndex: 'spend',
       width: 100,
-      render: (v: number) => <Typography.Text style={{ fontSize: 13 }}>${v.toFixed(2)}</Typography.Text>,
+      render: (v: number) => <Typography.Text style={{ fontSize: 13 }}>¥{v.toFixed(2)}</Typography.Text>,
     },
     {
       title: t('ads.roi'),

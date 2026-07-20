@@ -50,7 +50,7 @@ export function LiveMonitorCard() {
       title: t('live.price'),
       dataIndex: 'price',
       width: 100,
-      render: (v: number) => <Typography.Text style={{ fontSize: 13 }}>${v.toFixed(2)}</Typography.Text>,
+      render: (v: number) => <Typography.Text style={{ fontSize: 13 }}>¥{v.toFixed(2)}</Typography.Text>,
     },
     {
       title: t('live.clicks'),
@@ -116,7 +116,7 @@ export function LiveMonitorCard() {
         </Col>
         <Col xs={12} sm={6}>
           <Card size="small" style={{ textAlign: 'center' }}>
-            <Statistic title="GMV" value={mockLiveMetrics.gmv} prefix="$" valueStyle={{ fontSize: 22, color: '#16a34a' }} />
+            <Statistic title="GMV" value={mockLiveMetrics.gmv} prefix="¥" valueStyle={{ fontSize: 22, color: '#16a34a' }} />
           </Card>
         </Col>
         <Col xs={12} sm={6}>

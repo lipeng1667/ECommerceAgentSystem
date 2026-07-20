@@ -1,4 +1,4 @@
-import { CloudSyncOutlined, DollarOutlined, PlusOutlined, ShoppingCartOutlined, WifiOutlined } from '@ant-design/icons';
+import { CloudSyncOutlined, PayCircleOutlined, PlusOutlined, ShoppingCartOutlined, WifiOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Space, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -13,15 +13,15 @@ import type { Store } from '../../types/domain';
 import { SERVICE_ICONS, getSessionHealthColor, renderSessionTag } from '../../utils/storeDisplay';
 
 const gmvByStoreName: Record<string, number> = {
-  'TikTok Shop 美国旗舰店': 12450,
-  'Amazon 户外用品店': 8920,
-  'Shopify 独立站': 3210
+  '拼多多旗舰店': 12450,
+  '淘宝户外用品店': 8920,
+  '京东自营店': 3210
 };
 
 const ordersByStoreName: Record<string, number> = {
-  'TikTok Shop 美国旗舰店': 186,
-  'Amazon 户外用品店': 134,
-  'Shopify 独立站': 92
+  '拼多多旗舰店': 186,
+  '淘宝户外用品店': 134,
+  '京东自营店': 92
 };
 
 export function StoreListPage() {
@@ -39,7 +39,7 @@ export function StoreListPage() {
     }},
     { title: t('stores.todayGmv'), dataIndex: 'name', render: (name: string) => {
       const gmv = gmvByStoreName[name];
-      return <span><DollarOutlined style={{ marginRight: 4, color: '#16a34a' }} />${gmv != null ? gmv.toLocaleString() : '-'}</span>;
+      return <span><PayCircleOutlined style={{ marginRight: 4, color: '#16a34a' }} />¥{gmv != null ? gmv.toLocaleString() : '-'}</span>;
     }},
     { title: t('stores.todayOrders'), dataIndex: 'name', width: 80, render: (name: string) => {
       const orders = ordersByStoreName[name];

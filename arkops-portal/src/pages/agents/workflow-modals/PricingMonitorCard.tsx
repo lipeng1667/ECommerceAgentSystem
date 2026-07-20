@@ -1,4 +1,4 @@
-import { DollarOutlined, ReloadOutlined, ToolOutlined } from '@ant-design/icons';
+import { PayCircleOutlined, ReloadOutlined, ToolOutlined } from '@ant-design/icons';
 import { Badge, Button, Card, Space, Table, Tag, Typography, message } from 'antd';
 import { useState } from 'react';
 import { useI18n } from '../../../app/i18n';
@@ -51,13 +51,13 @@ export function PricingMonitorCard() {
       title: t('pricing.competitorPrice'),
       dataIndex: 'theirPrice',
       width: 120,
-      render: (v: number) => <Typography.Text style={{ fontSize: 13 }}>${v.toFixed(2)}</Typography.Text>,
+      render: (v: number) => <Typography.Text style={{ fontSize: 13 }}>¥{v.toFixed(2)}</Typography.Text>,
     },
     {
       title: t('pricing.ourPrice'),
       dataIndex: 'ourPrice',
       width: 120,
-      render: (v: number) => <Typography.Text style={{ fontSize: 13 }}>${v.toFixed(2)}</Typography.Text>,
+      render: (v: number) => <Typography.Text style={{ fontSize: 13 }}>¥{v.toFixed(2)}</Typography.Text>,
     },
     {
       title: t('pricing.priceDiff'),
@@ -65,8 +65,8 @@ export function PricingMonitorCard() {
       render: (_: unknown, r: typeof prices[0]) => {
         const diff = r.ourPrice - r.theirPrice;
         if (Math.abs(diff) < 0.01) return <Tag style={{ fontSize: 11 }}>{t('pricing.priceParity')}</Tag>;
-        if (diff > 0) return <Tag color="red" style={{ fontSize: 11 }}>+${diff.toFixed(2)}</Tag>;
-        return <Tag color="green" style={{ fontSize: 11 }}>-${Math.abs(diff).toFixed(2)}</Tag>;
+        if (diff > 0) return <Tag color="red" style={{ fontSize: 11 }}>+¥{diff.toFixed(2)}</Tag>;
+        return <Tag color="green" style={{ fontSize: 11 }}>-¥{Math.abs(diff).toFixed(2)}</Tag>;
       },
     },
     {
@@ -97,7 +97,7 @@ export function PricingMonitorCard() {
       style={{ marginBottom: 16, borderTop: '3px solid #16a34a' }}
       title={
         <Space>
-          <DollarOutlined style={{ color: '#16a34a' }} />
+          <PayCircleOutlined style={{ color: '#16a34a' }} />
           {t('pricing.monitorTitle')}
           <Badge status="processing" />
           <Tag color="green" style={{ fontSize: 11 }}>{t('pricing.lastScan')}: {lastScan}</Tag>

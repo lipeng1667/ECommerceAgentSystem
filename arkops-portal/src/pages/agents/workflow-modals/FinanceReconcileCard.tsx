@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { useI18n } from '../../../app/i18n';
 
 const mockReconciliation = [
-  { id: 1, platform: 'TikTok Shop', month: '2024-06', platformBill: 48230, bankReceived: 47890, diff: 340, status: 'matched', diffReason: '汇率波动' },
-  { id: 2, platform: 'Amazon', month: '2024-05', platformBill: 32100, bankReceived: 31200, diff: 900, status: 'investigating', diffReason: '' },
-  { id: 3, platform: 'TikTok Shop', month: '2024-05', platformBill: 38500, bankReceived: 38500, diff: 0, status: 'matched', diffReason: '' },
-  { id: 4, platform: 'Amazon', month: '2024-04', platformBill: 28900, bankReceived: 28200, diff: 700, status: 'resolved', diffReason: '平台手续费调整' },
+  { id: 1, platform: '拼多多', month: '2024-06', platformBill: 48230, bankReceived: 47890, diff: 340, status: 'matched', diffReason: '汇率波动' },
+  { id: 2, platform: '淘宝', month: '2024-05', platformBill: 32100, bankReceived: 31200, diff: 900, status: 'investigating', diffReason: '' },
+  { id: 3, platform: '拼多多', month: '2024-05', platformBill: 38500, bankReceived: 38500, diff: 0, status: 'matched', diffReason: '' },
+  { id: 4, platform: '淘宝', month: '2024-04', platformBill: 28900, bankReceived: 28200, diff: 700, status: 'resolved', diffReason: '平台手续费调整' },
 ];
 
 export function FinanceReconcileCard() {
@@ -57,13 +57,13 @@ export function FinanceReconcileCard() {
       title: t('finance.platformBill'),
       dataIndex: 'platformBill',
       width: 120,
-      render: (v: number) => <Typography.Text style={{ fontSize: 13 }}>${v.toLocaleString()}</Typography.Text>,
+      render: (v: number) => <Typography.Text style={{ fontSize: 13 }}>¥{v.toLocaleString()}</Typography.Text>,
     },
     {
       title: t('finance.bankReceived'),
       dataIndex: 'bankReceived',
       width: 120,
-      render: (v: number) => <Typography.Text style={{ fontSize: 13 }}>${v.toLocaleString()}</Typography.Text>,
+      render: (v: number) => <Typography.Text style={{ fontSize: 13 }}>¥{v.toLocaleString()}</Typography.Text>,
     },
     {
       title: t('finance.diff'),
@@ -71,7 +71,7 @@ export function FinanceReconcileCard() {
       width: 100,
       render: (v: number) => {
         const color = v === 0 ? '#16a34a' : '#dc2626';
-        return <Typography.Text style={{ fontSize: 13, color, fontWeight: 600 }}>${v.toFixed(2)}</Typography.Text>;
+        return <Typography.Text style={{ fontSize: 13, color, fontWeight: 600 }}>¥{v.toFixed(2)}</Typography.Text>;
       },
     },
     {

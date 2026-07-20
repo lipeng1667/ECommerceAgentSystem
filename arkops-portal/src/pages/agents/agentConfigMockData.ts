@@ -39,15 +39,15 @@ export const mockSegments = {
 
 export const mockCoupons = [
   { id: 1, name: '新客首单85折', target: 'new', type: '折扣券', value: '15% off', minOrder: 0, expiryDays: 14, estimatedCost: 1240 },
-  { id: 2, name: '活跃会员满$50减$8', target: 'active', type: '满减券', value: '$8 off $50+', minOrder: 50, expiryDays: 30, estimatedCost: 3200 },
-  { id: 3, name: '沉睡唤醒 $5 无门槛', target: 'dormant', type: '现金券', value: '$5', minOrder: 0, expiryDays: 7, estimatedCost: 3900 },
+  { id: 2, name: '活跃会员满¥50减¥8', target: 'active', type: '满减券', value: '¥8 off ¥50+', minOrder: 50, expiryDays: 30, estimatedCost: 3200 },
+  { id: 3, name: '沉睡唤醒 ¥5 无门槛', target: 'dormant', type: '现金券', value: '¥5', minOrder: 0, expiryDays: 7, estimatedCost: 3900 },
   { id: 4, name: '流失挽回 20% off', target: 'churned', type: '折扣券', value: '20% off', minOrder: 0, expiryDays: 5, estimatedCost: 2600 },
 ];
 
 export const mockChurnRisks = [
   { id: 1, name: 'Emily W.', segment: 'dormant', lastPurchase: '2024-04-12', totalSpent: 284.5, orders: 8, risk: 78, reason: '距上次购买已 79 天，浏览但未加购' },
   { id: 2, name: 'David L.', segment: 'active', lastPurchase: '2024-05-28', totalSpent: 142.0, orders: 3, risk: 62, reason: '最近3次浏览未下单，客单价下降40%' },
-  { id: 3, name: 'Anna P.', segment: 'dormant', lastPurchase: '2024-03-20', totalSpent: 520.0, orders: 15, risk: 85, reason: '高价值客户已 100+ 天未购买，历史客单价$35' },
+  { id: 3, name: 'Anna P.', segment: 'dormant', lastPurchase: '2024-03-20', totalSpent: 520.0, orders: 15, risk: 85, reason: '高价值客户已 100+ 天未购买，历史客单价¥35' },
   { id: 4, name: 'Mike R.', segment: 'new', lastPurchase: '2024-05-15', totalSpent: 49.99, orders: 1, risk: 55, reason: '首单后未再次访问，典型一次性买家特征' },
   { id: 5, name: 'Lisa K.', segment: 'active', lastPurchase: '2024-06-10', totalSpent: 186.3, orders: 6, risk: 38, reason: '购买频率从月均2次降至月均1次' },
 ];
@@ -61,18 +61,18 @@ export const mockCreatives = [
 export const mockRiskScans = [
   { id: 1, product: '65W GaN 充电器', issue: '使用"最""极"等极限词', severity: 'high' as const, rule: '广告法第9条', suggestion: '修改为"高功率快充"替代"最强快充"', status: 'pending' as const },
   { id: 2, product: '夏季运动T恤', issue: '防晒宣称缺乏检测报告', severity: 'medium' as const, rule: '平台规则 4.2', suggestion: '补充 UPF 50+ 检测报告或移除防晒相关描述', status: 'pending' as const },
-  { id: 3, product: '蓝牙耳机 Pro', issue: '价格异常 - 低于同类均值30%', severity: 'high' as const, rule: '定价保护策略', suggestion: '确认成本核算无误，建议底价设为 $36.00', status: 'pending' as const },
+  { id: 3, product: '蓝牙耳机 Pro', issue: '价格异常 - 低于同类均值30%', severity: 'high' as const, rule: '定价保护策略', suggestion: '确认成本核算无误，建议底价设为 ¥36.00', status: 'pending' as const },
   { id: 4, product: '可折叠露营椅', issue: '图片中疑似出现竞品Logo', severity: 'low' as const, rule: '图片合规检查', suggestion: '重新拍摄或裁剪主图中带有竞品标识的区域', status: 'pending' as const },
 ];
 
 export const mockBreakerLogs = [
-  { id: 1, time: '2024-06-18 14:23', agent: '广告投放 Agent', reason: '单次操作预算调整超过上限 $200（实际 $350）', action: '暂停广告计划 CA-006，通知运营审核', recovered: true, recoveredAt: '2024-06-18 15:02' },
+  { id: 1, time: '2024-06-18 14:23', agent: '广告投放 Agent', reason: '单次操作预算调整超过上限 ¥200（实际 ¥350）', action: '暂停广告计划 CA-006，通知运营审核', recovered: true, recoveredAt: '2024-06-18 15:02' },
   { id: 2, time: '2024-06-15 09:47', agent: '商品上架 Agent', reason: '1分钟内尝试上架 15 个商品（超过频率限制 10次/分）', action: '冻结上架操作 5 分钟，自动解冻', recovered: true, recoveredAt: '2024-06-15 09:52' },
 ];
 
 export const mockLiveMetrics = {
   title: '618大促专场 - 充电器/耳机/服饰',
-  platform: 'TikTok Shop',
+  platform: '拼多多',
   viewers: 2340,
   peakViewers: 4520,
   likes: 12800,
@@ -128,31 +128,31 @@ export const recognitionVariants: ProductRecognitionResult[] = [
 
 export const mockReviews = [
   {
-    id: 1, rating: 1, buyer: 'John D.', product: '65W GaN 氮化镓充电器',
-    date: '2024-06-20', platform: 'Amazon', orderId: '#114-7382910-4657832',
-    content: 'Used for 3 days and it completely stopped working. No LED, no output. Tried different cables and outlets — nothing. Very disappointed. I want a full refund.',
-    aiReply: 'Hi John, thank you for letting us know. We\'re really sorry the charger failed so quickly — that is absolutely not the quality we stand for. We have issued a full refund to your original payment method (should appear in 3-5 business days). You do not need to return the defective unit. We\'re also shipping you a replacement from our latest QC batch at no cost — tracking: TRK#US-928341. If there is anything else, please reply here and I will personally follow up.',
+    id: 1, rating: 1, buyer: '李先生', product: '65W GaN 氮化镓充电器',
+    date: '2024-06-20', platform: '淘宝', orderId: '#114-7382910-4657832',
+    content: '用了 3 天就完全不能充电了，换了线和插座也不行，希望尽快退款。',
+    aiReply: '李先生您好，非常抱歉给您带来不便。我们已为您发起原路全额退款，并免费补发一件新品，顺丰单号：SF928341。退款预计 1—3 个工作日到账，如有其他问题请随时联系我们。',
     severity: 'high'
   },
   {
-    id: 2, rating: 2, buyer: 'Sarah M.', product: '夏季速干运动T恤 男女同款',
-    date: '2024-06-19', platform: 'TikTok Shop', orderId: '#TS-20240619-0842',
-    content: 'Ordered size L but it fits like an M. The fabric feels nice and breathable though — just wish the sizing was accurate. I don\'t want to return it if I can exchange for XL.',
-    aiReply: 'Hi Sarah, thank you for the kind words about the fabric! We are sorry about the sizing — we have heard similar feedback and updated our size chart. We have created exchange order #EX-2406-088 for XL at no extra charge. The replacement will ship today via USPS Priority (2-3 days). You are welcome to keep or donate the size L — no need to return it. Have a great day!',
+    id: 2, rating: 2, buyer: '王女士', product: '夏季速干运动T恤 男女同款',
+    date: '2024-06-19', platform: '拼多多', orderId: '#PDD-20240619-0842',
+    content: 'L 码穿起来像 M 码，面料挺舒服透气，但尺码不太准，希望换成 XL。',
+    aiReply: '王女士您好，感谢您的反馈。我们已创建 XL 换货单 #EX-2406-088，新商品今天由中通快递发出，预计 2—3 天送达。尺码表也已根据反馈更新。',
     severity: 'medium'
   },
   {
-    id: 3, rating: 1, buyer: 'Mike R.', product: 'SoundFlow 蓝牙耳机 Pro',
-    date: '2024-06-18', platform: 'TikTok Shop', orderId: '#TS-20240618-1530',
-    content: 'Left earbud won\'t charge at all. Right one works fine. I tried cleaning the contacts and resetting the case 5 times. For $49.99 I expected better quality control. Really frustrated.',
-    aiReply: 'Hi Mike, I completely understand your frustration — a dead earbud out of the box is unacceptable. We\'ve identified a charging pin alignment issue in a small batch (0.3%) and yours appears to be from it. A replacement pair is already on the way via FedEx 2Day — tracking: TRK#US-482917. Keep the current pair as a spare (the right earbud and case still work). We\'ve also added a $10 store credit to your account. Sincere apologies.',
+    id: 3, rating: 1, buyer: '张先生', product: 'SoundFlow 蓝牙耳机 Pro',
+    date: '2024-06-18', platform: '拼多多', orderId: '#PDD-20240618-1530',
+    content: '左耳完全充不进电，清洁触点并重置多次还是不行，对这个品控很失望。',
+    aiReply: '张先生您好，非常抱歉。经核查可能是小批次充电触点问题，我们已通过京东物流补发一副新品，单号：JD482917，并向您的账户补发 ¥10 店铺优惠券。',
     severity: 'high'
   },
   {
-    id: 4, rating: 2, buyer: 'Lisa K.', product: 'OutdoorPro 可折叠露营椅',
-    date: '2024-06-17', platform: 'Amazon', orderId: '#112-8491023-2219467',
-    content: 'The chair itself is actually great — super comfortable and easy to fold. But the included carrying bag tore at the seam the first time I used it. Not a dealbreaker since the chair is good, but disappointing for the price.',
-    aiReply: 'Hi Lisa, thank you for the honest and fair review! We are happy you love the chair, and sorry about the carrying bag. We have been upgrading the bag stitching in our latest production run based on feedback like yours. A reinforced carrying bag is on its way to you at no cost — ETA June 25. We really appreciate you taking the time to share both the good and the bad. Happy camping!',
+    id: 4, rating: 2, buyer: '赵女士', product: 'OutdoorPro 可折叠露营椅',
+    date: '2024-06-17', platform: '淘宝', orderId: '#112-8491023-2219467',
+    content: '椅子舒服也好收纳，但配套收纳袋第一次使用就开线了，希望能改进。',
+    aiReply: '赵女士您好，感谢您的客观反馈。我们已经升级收纳袋缝线工艺，并为您免费补发一个加固版收纳袋，预计 6 月 25 日前送达。',
     severity: 'low'
   },
 ];
@@ -183,8 +183,8 @@ export const mockChats: Record<number, { from: 'buyer' | 'ai' | 'agent'; text: s
 };
 
 export const mockCampaigns = [
-  { id: 'CA-001', name: 'GaN Charger - US', budget: 500, spend: 487, roi: 2.1, impressions: 45200, clicks: 1280, status: 'active' as const },
-  { id: 'CA-002', name: 'Sports Tee - US', budget: 300, spend: 294, roi: 0.8, impressions: 28100, clicks: 940, status: 'active' as const },
+  { id: 'CA-001', name: '氮化镓充电器 - 全国推广', budget: 500, spend: 487, roi: 2.1, impressions: 45200, clicks: 1280, status: 'active' as const },
+  { id: 'CA-002', name: '运动T恤 - 全国推广', budget: 300, spend: 294, roi: 0.8, impressions: 28100, clicks: 940, status: 'active' as const },
   { id: 'CA-003', name: 'Earbuds Pro - UK', budget: 400, spend: 310, roi: 1.55, impressions: 33400, clicks: 1120, status: 'active' as const },
 ];
 
@@ -296,7 +296,7 @@ export const mockABTests: ABTestResult[] = [
       spend: 155
     },
     experimentGroup: {
-      creativeDesc: '「$49.99 ANC降噪耳机 | 40h续航 | IPX5防水」',
+      creativeDesc: '「¥49.99 ANC降噪耳机 | 40h续航 | IPX5防水」',
       impressions: 16700,
       clicks: 622,
       ctr: 3.72,
@@ -339,14 +339,14 @@ export const mockABTests: ABTestResult[] = [
     },
     winner: undefined,
     confidenceLevel: 65.0,
-    recommendation: '实验组 ROI 仍低于 1.0 目标，但 CTR 和转化率有明显提升。建议继续观察 2 天，同时考虑调整商品定价（当前 $24.99 或偏高）。'
+    recommendation: '实验组 ROI 仍低于 1.0 目标，但 CTR 和转化率有明显提升。建议继续观察 2 天，同时考虑调整商品定价（当前 ¥24.99 或偏高）。'
   }
 ];
 
 export const productDrafts: Record<string, ProductDraft> = {
   3009: {
     productName: '65W GaN 氮化镓快充充电器',
-    category: '消费电子 > 充电器 > GaN 快速充电器', platform: 'TikTok Shop',
+    category: '消费电子 > 充电器 > GaN 快速充电器', platform: '拼多多',
     skus: [
       { spec: '黑色/USB-C ×2+USB-A', price: 39.99, stock: 520, skuCode: 'GN65-BK-001' },
       { spec: '白色/USB-C ×2+USB-A', price: 39.99, stock: 380, skuCode: 'GN65-WH-001' },
@@ -369,7 +369,7 @@ export const productDrafts: Record<string, ProductDraft> = {
   },
   3010: {
     productName: '夏季速干运动T恤 男女同款',
-    category: '运动户外 > 运动服饰 > 运动T恤', platform: 'Amazon',
+    category: '运动户外 > 运动服饰 > 运动T恤', platform: '淘宝',
     skus: [
       { spec: '黑色/S', price: 24.99, stock: 200, skuCode: 'SDT-BK-S' },
       { spec: '黑色/M', price: 24.99, stock: 350, skuCode: 'SDT-BK-M' },
@@ -377,7 +377,7 @@ export const productDrafts: Record<string, ProductDraft> = {
       { spec: '白色/M', price: 24.99, stock: 280, skuCode: 'SDT-WH-M' },
     ],
     costPrice: 8.20, sellingPrice: 24.99,
-    totalStock: 1130, weight: '180g/件', dimensions: '包装：30×22×2 cm', shippingFrom: '广州仓（CN）→ Amazon FBA US',
+    totalStock: 1130, weight: '180g/件', dimensions: '包装：30×22×2 cm', shippingFrom: '广州仓 → 菜鸟华东仓',
     genericAttrs: [
       { label: '材质', value: '88%涤纶 + 12%氨纶' }, { label: '版型', value: '修身' },
       { label: '领型', value: '圆领' }, { label: '袖长', value: '短袖' },
@@ -394,7 +394,7 @@ export const productDrafts: Record<string, ProductDraft> = {
   },
   3011: {
     productName: '蓝牙耳机 Pro 第二代',
-    category: '消费电子 > 音频 > 真无线耳机', platform: 'TikTok Shop',
+    category: '消费电子 > 音频 > 真无线耳机', platform: '拼多多',
     skus: [
       { spec: '曜石黑', price: 49.99, stock: 600, skuCode: 'BTP2-BK' },
       { spec: '珍珠白', price: 49.99, stock: 450, skuCode: 'BTP2-WH' },

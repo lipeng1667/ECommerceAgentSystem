@@ -72,7 +72,7 @@ export function CrmSegmentCard() {
       title: t('crm.avgOrderValue'),
       dataIndex: 'avgOrderValue',
       width: 120,
-      render: (v: number) => <Typography.Text style={{ fontSize: 13 }}>${v.toFixed(2)}</Typography.Text>,
+      render: (v: number) => <Typography.Text style={{ fontSize: 13 }}>¥{v.toFixed(2)}</Typography.Text>,
     },
     {
       title: t('common.actions'),
