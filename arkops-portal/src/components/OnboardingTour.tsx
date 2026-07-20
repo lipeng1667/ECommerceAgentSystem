@@ -45,7 +45,7 @@ export function OnboardingTour() {
       icon: stepIcons[0],
       title: t('onboarding.step1Title'),
       desc: t('onboarding.step1Desc'),
-      action: () => navigate('/setup'),
+      action: () => navigate('/stores/onboarding'),
     },
     {
       icon: stepIcons[1],

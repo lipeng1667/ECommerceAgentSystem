@@ -22,6 +22,7 @@ const OrderAutomationPage = lazy(() => import('../pages/orders/OrderAutomationPa
 const ProductManagementPage = lazy(() => import('../pages/products/ProductManagementPage').then((module) => ({ default: module.ProductManagementPage })));
 const StoreDetailPage = lazy(() => import('../pages/stores/StoreDetailPage').then((module) => ({ default: module.StoreDetailPage })));
 const StoreListPage = lazy(() => import('../pages/stores/StoreListPage').then((module) => ({ default: module.StoreListPage })));
+const StoreOnboardingPage = lazy(() => import('../pages/stores/StoreOnboardingPage').then((module) => ({ default: module.StoreOnboardingPage })));
 const SetupConfigPage = lazy(() => import('../pages/setup/SetupConfigPage').then((module) => ({ default: module.SetupConfigPage })));
 const UsageGuideSettingsPage = lazy(() => import('../pages/guide/UsageGuideSettingsPage').then((module) => ({ default: module.UsageGuideSettingsPage })));
 
@@ -79,6 +80,7 @@ const router = createBrowserRouter(
 
         // 店铺管理
         { path: 'stores', element: guarded('/stores', <StoreListPage />) },
+        { path: 'stores/onboarding', element: guarded('/stores', <StoreOnboardingPage />) },
         { path: 'stores/new', element: guarded('/stores', <StoreDetailPage mode="new" />) },
         { path: 'stores/:storeId', element: guarded('/stores', <StoreDetailPage />) },
 

@@ -1,4 +1,4 @@
-import { DollarOutlined, PlusOutlined, ShoppingCartOutlined, WifiOutlined } from '@ant-design/icons';
+import { CloudSyncOutlined, DollarOutlined, PlusOutlined, ShoppingCartOutlined, WifiOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Space, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -76,9 +76,14 @@ export function StoreListPage() {
         title={t('stores.title')}
         description={t('stores.description')}
         actions={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/stores/new')}>
-            {t('stores.add')}
-          </Button>
+          <Space>
+            <Button icon={<PlusOutlined />} onClick={() => navigate('/stores/new')}>
+              {t('stores.add')}
+            </Button>
+            <Button type="primary" icon={<CloudSyncOutlined />} onClick={() => navigate('/stores/onboarding')}>
+              智能导入与迁移
+            </Button>
+          </Space>
         }
       />
       <DataTableCard<Store>

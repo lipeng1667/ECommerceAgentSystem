@@ -46,6 +46,8 @@ function getSelectedMenuKey(pathname: string) {
   if (pathname === '/') return '/dashboard';
   // settings sub-items match their exact path
   if (pathname.startsWith('/settings/')) return pathname;
+  // store workflow pages belong to the Store Management settings item
+  if (pathname === '/stores' || pathname.startsWith('/stores/')) return '/settings/stores';
   // agents sub-items
   if (pathname === '/agents/exceptions') return '/agents/exceptions';
   if (pathname === '/agents/approvals') return '/agents/approvals';
