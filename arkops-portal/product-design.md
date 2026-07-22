@@ -43,9 +43,9 @@ AllMall 是一个电商店铺自动化运营平台，通过 AI Agent 代替运�
 店铺管理 (Stores) — 新用户未连接时显示“连接店铺”
 商品管理 (Products)
 订单管理 (Orders) — 订单异常数角标
-待办中心 (Action Center) — 异常与审批总数角标
-  ├─ 异常处理 (Exceptions)
-  └─ 审批任务 (Approvals)
+行动收件箱 (Action Inbox, `/inbox`) — 审批 + 异常 + 重新登录统一队列，按紧急度/到期时间排序，总数角标
+  ├─ 异常处理 (Exceptions) — 收件箱的过滤视图
+  └─ 审批任务 (Approvals) — 收件箱的过滤视图
 Agent 中心 (Agents)
   ├─ Agent 管理
   └─ 自动化配置 (Setup)
@@ -790,3 +790,37 @@ Agent 中心 (Agents)
 - 多语言完整支持
 - 移动端响应式适配
 - API 开放平台（供第三方集成）
+
+---
+
+## 五、UX 改进决策记录（Phase 0，2026-07-22）
+
+依据 `UX-REVIEW.md` / `UX-IMPROVEMENT-PLAN.md`，以下产品决策已确认，作为各工作流（WS-A…WS-F）的实现依据：
+
+### D1 — 场景优先配置模型（已确认）
+
+场景（scenario）成为激活与配置的主界面；逐 Agent 配置降级为"高级"层。配置层级：场景默认值 → 按店铺覆盖 → 逐 Agent 高级配置。5 个场景包与 15 个 Agent 的映射：
+
+| 场景包 | 包含 Agent |
+|------|------|
+| 智能定价与促销 | pricing_strategy、promotion_campaign、ads_optimizer、competitor_intel |
+| 客服与售后 | customer_service、after_sales、review_manager、crm_retention |
+| 库存与补货 | inventory_alert |
+| 订单履约与风控 | risk_control、finance_audit、login_bootstrap |
+| 商品上架与内容 | product_launch、creative_factory、live_stream_ops |
+
+### D2 — 行动收件箱（已确认）
+
+新增 `/inbox` 路由作为统一"需要我处理"队列：审批 + 异常 + 重新登录项，按紧急度/到期时间排序，支持类型筛选与行内快捷操作。原 `/agents/approvals`、`/agents/exceptions` 保留为收件箱的过滤视图。顶栏铃铛链接到收件箱并显示计数角标。
+
+### D3 — 店铺范围过滤（已确认）
+
+工作区为全局视角，外加一个持久的 Shell 级店铺范围过滤器（通过 context 暴露），Dashboard 等页面消费该过滤器；店铺过滤不再由单页自行维护。
+
+### D4 — 多语言冻结（已确认，见 README）
+
+语言切换隐藏于 `LANGUAGE_SWITCHER_ENABLED`（false），UI 固定中文；i18n 基础设施保留，完整多语言在核心改进完成后的最终阶段实施。
+
+### D5 — 自主等级（已确认）
+
+每个场景一个三档自主度拨盘：L1 全部需审批 / L2 仅高风险需审批 / L3 仅通知。附"信任累积"提示（连续 N 次审批通过后建议放宽），周报摘要视图为占位。
