@@ -69,6 +69,63 @@ body {
   background: var(--ark-bg);
 }
 
+/* Header identity trigger + dropdown panel (E3) */
+.header-identity {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.header-identity:hover {
+  background: var(--ark-panel-soft);
+}
+
+.identity-menu {
+  width: 232px;
+  padding: 14px;
+  border: 1px solid var(--ark-border);
+  border-radius: 10px;
+  background: var(--ark-panel);
+  box-shadow: var(--ark-card-shadow);
+}
+
+.identity-menu-user {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.identity-menu-role {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.identity-menu-viewas {
+  display: grid;
+  gap: 6px;
+}
+
+.identity-menu-hint {
+  color: var(--ark-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 560px) {
+  .header-identity-copy {
+    display: none;
+  }
+}
+
 .page-stack {
   display: grid;
   gap: 18px;

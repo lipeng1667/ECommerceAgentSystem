@@ -37,7 +37,7 @@ import {
   ThunderboltOutlined,
   QuestionCircleOutlined,
 } from '@ant-design/icons';
-import { Avatar, Badge, Button, Drawer, Layout, Menu, Segmented, Select, Space, Tag, Typography } from 'antd';
+import { Avatar, Badge, Button, Divider, Drawer, Dropdown, Layout, Menu, Segmented, Select, Space, Tag, Tooltip, Typography } from 'antd';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDemoMode } from '../demoMode';
 import { LANGUAGE_SWITCHER_ENABLED, useI18n } from '../i18n';
@@ -262,6 +262,58 @@ export function AppShell() {
     { key: '/settings/guide', icon: <QuestionCircleOutlined />, label: t('nav.helpCenter') },
   ];
 
+  const experienceLabel =
+    user?.experience === 'onboarding' ? t('shell.newMerchant') : t('shell.establishedMerchant');
+
+  // Identity panel (E3): user summary + demo "view as" role switcher + logout in one place.
+  const identityPanel = (
+    <div className="identity-menu">
+      <div className="identity-menu-user">
+        <Avatar
+          size={40}
+          style={{ background: user?.experience === 'onboarding' ? 'var(--ark-blue)' : 'var(--ark-green)' }}
+        >
+          {user?.name.slice(-2) ?? 'AM'}
+        </Avatar>
+        <div>
+          <Typography.Text strong style={{ display: 'block' }}>{user?.name}</Typography.Text>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>{experienceLabel}</Typography.Text>
+        </div>
+      </div>
+      <div className="identity-menu-role">
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('shell.currentRole')}</Typography.Text>
+        <Tag style={{ margin: 0 }}>{role ?? 'Owner'}</Tag>
+      </div>
+      <Divider style={{ margin: '10px 0' }} />
+      <div className="identity-menu-viewas">
+        <Space size={6}>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('shell.viewAs')}</Typography.Text>
+          <Tooltip title={t('shell.viewAsHint')}>
+            <QuestionCircleOutlined className="identity-menu-hint" />
+          </Tooltip>
+        </Space>
+        <Select
+          size="small"
+          value={role ?? 'Owner'}
+          onChange={(v) => setRole(v as Role)}
+          style={{ width: '100%' }}
+          options={[
+            { label: 'Owner', value: 'Owner' },
+            { label: 'Admin', value: 'Admin' },
+            { label: 'Operator', value: 'Operator' },
+            { label: 'Approver', value: 'Approver' },
+            { label: 'Finance', value: 'Finance' },
+            { label: 'Viewer', value: 'Viewer' },
+          ]}
+        />
+      </div>
+      <Divider style={{ margin: '10px 0' }} />
+      <Button block icon={<LogoutOutlined />} onClick={handleLogout}>
+        {t('shell.logout')}
+      </Button>
+    </div>
+  );
+
   const navContent = (
     <>
       <div className="brand">
@@ -356,32 +408,19 @@ export function AppShell() {
               />
             )}
             <Button icon={<BellOutlined />}>{t('app.alerts')}</Button>
-            <Select
-              size="small"
-              value={role ?? 'Owner'}
-              onChange={(v) => setRole(v as Role)}
-              style={{ width: 110 }}
-              options={[
-                { label: 'Owner', value: 'Owner' },
-                { label: 'Admin', value: 'Admin' },
-                { label: 'Operator', value: 'Operator' },
-                { label: 'Approver', value: 'Approver' },
-                { label: 'Finance', value: 'Finance' },
-                { label: 'Viewer', value: 'Viewer' },
-              ]}
-            />
-            <Space size={8} className="header-user-summary">
-              <Avatar style={{ background: user?.experience === 'onboarding' ? '#2563eb' : '#16a34a' }}>
-                {user?.name.slice(-2) ?? 'AM'}
-              </Avatar>
-              <div>
-                <Typography.Text strong style={{ display: 'block', fontSize: 12 }}>{user?.name}</Typography.Text>
-                <Typography.Text type="secondary" style={{ display: 'block', fontSize: 10 }}>
-                  {user?.experience === 'onboarding' ? '新用户' : '成熟商家'}
-                </Typography.Text>
-              </div>
-            </Space>
-            <Button type="text" icon={<LogoutOutlined />} onClick={handleLogout} title="退出登录" />
+            <Dropdown trigger={['click']} placement="bottomRight" dropdownRender={() => identityPanel}>
+              <button type="button" className="header-identity" aria-label={t('shell.currentRole')}>
+                <Avatar style={{ background: user?.experience === 'onboarding' ? 'var(--ark-blue)' : 'var(--ark-green)' }}>
+                  {user?.name.slice(-2) ?? 'AM'}
+                </Avatar>
+                <span className="header-identity-copy">
+                  <Typography.Text strong style={{ display: 'block', fontSize: 12 }}>{user?.name}</Typography.Text>
+                  <Typography.Text type="secondary" style={{ display: 'block', fontSize: 10 }}>
+                    {experienceLabel}
+                  </Typography.Text>
+                </span>
+              </button>
+            </Dropdown>
           </Space>
         </Header>
         <Content className="app-content">
