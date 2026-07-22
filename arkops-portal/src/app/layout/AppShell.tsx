@@ -161,8 +161,10 @@ export function AppShell() {
     setNavDrawerOpen(false);
   }, [location.pathname]);
 
+  // E4: auto-open the active group additively — never force-close groups the user opened.
   useEffect(() => {
-    setOpenMenuKeys(activeMenuGroup ? [activeMenuGroup] : []);
+    if (!activeMenuGroup) return;
+    setOpenMenuKeys((prev) => (prev.includes(activeMenuGroup) ? prev : [...prev, activeMenuGroup]));
   }, [activeMenuGroup]);
 
   const menuItems = [
@@ -329,10 +331,7 @@ export function AppShell() {
         mode="inline"
         selectedKeys={[selectedMenuKey]}
         openKeys={openMenuKeys}
-        onOpenChange={(keys) => {
-          const latestKey = keys.find(key => !openMenuKeys.includes(key));
-          setOpenMenuKeys(latestKey ? [latestKey] : []);
-        }}
+        onOpenChange={(keys) => setOpenMenuKeys(keys as string[])}
         items={filterMenuByRole(menuItems)}
         onClick={({ key }) => {
           navigate(key);
