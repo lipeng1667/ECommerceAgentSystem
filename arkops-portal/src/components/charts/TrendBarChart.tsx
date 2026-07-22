@@ -11,12 +11,15 @@
  *
  * Major updates:
  * - 2026-07-03: Added ownership and function documentation for AI-assisted collaboration.
+ * - 2026-07-22 (WS-C): `max` is now optional and derived per series from the data so bars never
+ *   clip; added always-visible per-point value labels (touch friendly) and aria labels per bar.
  */
 import { Typography } from 'antd';
 
 export interface TrendBarItem {
   value: number;
-  max: number;
+  /** Scale ceiling for this bar. When omitted, the series maximum (per bar index) is used. */
+  max?: number;
   title: string;
   className?: string;
   color?: string;
@@ -28,6 +31,8 @@ export interface TrendPoint {
   key: string;
   label: string;
   bars: TrendBarItem[];
+  /** Optional compact value label rendered above the bars (visible without hover). */
+  valueLabel?: string;
 }
 
 interface TrendBarChartProps {
@@ -61,27 +66,47 @@ export function TrendBarChart({
   maxBarHeight = 140,
   labelMaxWidth
 }: TrendBarChartProps) {
+  // Data-derived scale ceiling per bar index (series), used when a bar does not specify `max`.
+  const seriesMax: number[] = [];
+  for (const point of points) {
+    point.bars.forEach((bar, index) => {
+      seriesMax[index] = Math.max(seriesMax[index] ?? 0, bar.value);
+    });
+  }
+
   return (
-    <div className={['trend-chart', className].filter(Boolean).join(' ')} aria-label={ariaLabel}>
+    <div className={['trend-chart', className].filter(Boolean).join(' ')} role="img" aria-label={ariaLabel}>
       {points.map((point) => (
         <div className="trend-column" key={point.key}>
+          {point.valueLabel !== undefined && (
+            <Typography.Text
+              type="secondary"
+              style={{ fontSize: 12, textAlign: 'center', lineHeight: 1.2, whiteSpace: 'nowrap' }}
+            >
+              {point.valueLabel}
+            </Typography.Text>
+          )}
           <div className="trend-bars" style={barAreaHeight ? { height: barAreaHeight } : undefined}>
-            {point.bars.map((bar, index) => (
-              <span
-                className={['trend-bar', bar.className].filter(Boolean).join(' ')}
-                key={`${point.key}-${index}`}
-                style={{
-                  height: `${Math.max(bar.minHeight ?? 8, (bar.value / Math.max(bar.max, 1)) * maxBarHeight)}px`,
-                  width: bar.width,
-                  background: bar.color
-                }}
-                title={bar.title}
-              />
-            ))}
+            {point.bars.map((bar, index) => {
+              const scale = Math.max(bar.max ?? seriesMax[index] ?? 1, 1);
+              return (
+                <span
+                  className={['trend-bar', bar.className].filter(Boolean).join(' ')}
+                  key={`${point.key}-${index}`}
+                  style={{
+                    height: `${Math.max(bar.minHeight ?? 8, Math.min(bar.value / scale, 1) * maxBarHeight)}px`,
+                    width: bar.width,
+                    background: bar.color
+                  }}
+                  title={bar.title}
+                  aria-label={bar.title}
+                />
+              );
+            })}
           </div>
           <Typography.Text
             type="secondary"
-            style={labelMaxWidth ? { fontSize: 11, textAlign: 'center', maxWidth: labelMaxWidth, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } : undefined}
+            style={labelMaxWidth ? { fontSize: 12, textAlign: 'center', maxWidth: labelMaxWidth, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } : undefined}
           >
             {point.label}
           </Typography.Text>
