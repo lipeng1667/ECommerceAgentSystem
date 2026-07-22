@@ -1,4 +1,4 @@
-import { CloudSyncOutlined, PayCircleOutlined, PlusOutlined, ShoppingCartOutlined, WifiOutlined } from '@ant-design/icons';
+import { CloudSyncOutlined, PayCircleOutlined, ShoppingCartOutlined, WifiOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Space, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -80,11 +80,13 @@ export function StoreListPage() {
         description={t('stores.description')}
         actions={
           <Space>
-            <Button icon={<PlusOutlined />} onClick={() => navigate('/stores/new')}>
-              {t('stores.add')}
+            {/* A3: the guided wizard is the single add-store entry; the legacy
+                API form is demoted to an "advanced" branch. */}
+            <Button type="text" onClick={() => navigate('/stores/new')}>
+              {t('storewizard.advancedEntry')}
             </Button>
-            <Button type="primary" icon={<CloudSyncOutlined />} onClick={() => navigate('/stores/onboarding')}>
-              智能导入与迁移
+            <Button type="primary" icon={<CloudSyncOutlined />} onClick={() => navigate('/stores/onboarding?journey=import')}>
+              {t('storewizard.connectStoreCta')}
             </Button>
           </Space>
         }

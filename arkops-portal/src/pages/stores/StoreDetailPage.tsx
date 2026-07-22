@@ -1,6 +1,5 @@
 import {
   ApiOutlined,
-  ArrowLeftOutlined,
   CustomerServiceOutlined,
   LinkOutlined,
   PlusOutlined,
@@ -12,11 +11,11 @@ import {
   WalletOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Breadcrumb, Button, Card, Checkbox, Col, Form, Input, Modal, Popconfirm, Row, Select, Space, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Checkbox, Col, Form, Input, Modal, Row, Select, Space, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { storesApi } from '../../api/stores';
 import { useI18n } from '../../app/i18n';
 import { DescriptionPanel } from '../../components/detail/DescriptionPanel';
@@ -50,8 +49,19 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
     onSuccess: () => {
       message.success(t('common.operationSuccess'));
       queryClient.invalidateQueries({ queryKey: ['store', parsedStoreId] });
+      queryClient.invalidateQueries({ queryKey: ['stores'] });
     }
   });
+  // A8: re-authorize path out of the revoked state.
+  const reauthorizeMutation = useMutation({
+    mutationFn: () => storesApi.updateStatus(parsedStoreId!, 'connected'),
+    onSuccess: () => {
+      message.success(t('storewizard.reauthorized'));
+      queryClient.invalidateQueries({ queryKey: ['store', parsedStoreId] });
+      queryClient.invalidateQueries({ queryKey: ['stores'] });
+    }
+  });
+  const [revokeModalOpen, setRevokeModalOpen] = useState(false);
   const [connectionModalOpen, setConnectionModalOpen] = useState(false);
   const [connectionForm] = Form.useForm();
   const addConnectionMutation = useMutation({
@@ -114,20 +124,27 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
 
     return (
       <div className="page-stack">
-        <Breadcrumb
-          items={[
-            { title: <Link to="/setup">{t('nav.stores')}</Link> },
-            { title: t('stores.addTitle') }
-          ]}
-        />
+        {/* A2: breadcrumb/back both lead to /stores (was /setup); A3: this legacy
+            form is now the "advanced" branch behind the guided wizard. */}
         <PageHeader
-          title={t('stores.addTitle')}
-          description={t('stores.addDescription')}
-          actions={
-            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/setup')}>
-              {t('stores.backToList')}
+          title={t('storewizard.advancedTitle')}
+          description={t('storewizard.advancedDescription')}
+          breadcrumb={[
+            { title: t('stores.title'), href: '/stores' },
+            { title: t('storewizard.advancedTitle') }
+          ]}
+          onBack={() => navigate('/stores')}
+        />
+        <Alert
+          type="info"
+          showIcon
+          message={t('storewizard.advancedBanner')}
+          action={
+            <Button size="small" type="primary" onClick={() => navigate('/stores/onboarding?journey=import')}>
+              {t('storewizard.backToWizard')}
             </Button>
           }
+          style={{ marginBottom: 16 }}
         />
         {/* 步骤1：店铺信息 */}
         <Card title={t('stores.stepPlatform')} style={{ marginBottom: 16 }}>
@@ -190,12 +207,13 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
 
               {authMethod === 'credentials' && (
                 <>
+                  {/* A3: no raw password collection — login is authorized via the
+                      platform's official QR flow after the record is created. */}
                   <div style={{ padding: 16, background: '#f0f5ff', borderRadius: 8, marginBottom: 16 }}>
-                    <Typography.Text>{t('stores.credentialsNote')}</Typography.Text>
+                    <Typography.Text>{t('storewizard.credentialsSafeNote')}</Typography.Text>
                   </div>
                   <Row gutter={16}>
                     <Col xs={24} sm={12}><Form.Item label={t('stores.account')} name="account" rules={[{ required: true }]}><Input placeholder="seller@example.com" /></Form.Item></Col>
-                    <Col xs={24} sm={12}><Form.Item label={t('stores.password')} name="password"><Input.Password placeholder={t('stores.passwordPlaceholder')} /></Form.Item></Col>
                     <Col xs={24} sm={12}>
                       <Form.Item label={t('stores.region')} name="region" initialValue={platformDefaults[platform]?.region}>
                         <Input disabled />
@@ -214,7 +232,7 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
 
               {authMethod === 'api_key' && (
                 <Row gutter={16}>
-                  <Col xs={24} sm={12}><Form.Item label={t('stores.apiKeyLabel')} name="apiKey" rules={[{ required: true }]}><Input placeholder="shpat_xxxxxxxxxxxx" /></Form.Item></Col>
+                  <Col xs={24} sm={12}><Form.Item label={t('stores.apiKeyLabel')} name="apiKey" rules={[{ required: true }]}><Input placeholder={t('storewizard.apiKeyPlaceholder')} /></Form.Item></Col>
                   <Col xs={24} sm={12}><Form.Item label={t('stores.apiSecretLabel')} name="apiSecret" rules={[{ required: true }]}><Input.Password placeholder={t('stores.apiSecretPlaceholder')} /></Form.Item></Col>
                   <Col xs={24} sm={12}>
                     <Form.Item label={t('stores.region')} name="region" initialValue={platformDefaults[platform]?.region}>
@@ -281,7 +299,7 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
 
             {/* 提交按钮 */}
             <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-              <Button onClick={() => navigate('/setup')}>
+              <Button onClick={() => navigate('/stores')}>
                 {t('common.cancel')}
               </Button>
               <Button type="primary" htmlType="submit" loading={createStore.isPending} size="large">
@@ -407,7 +425,7 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
             ]} />
           </Form.Item>
           <Form.Item label={t('stores.account')} name="account"><Input placeholder="seller@example.com" /></Form.Item>
-          <Form.Item label="API Key" name="apiKey"><Input placeholder="shpat_xxxxxxxxxxxx" /></Form.Item>
+          <Form.Item label="API Key" name="apiKey"><Input placeholder={t('storewizard.apiKeyPlaceholder')} /></Form.Item>
         </Form>
       </Modal>
     </>
@@ -418,14 +436,51 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
       <PageHeader
         title={store?.name ?? t('stores.detailTitle')}
         description={t('stores.detailDescription')}
+        breadcrumb={[
+          { title: t('stores.title'), href: '/stores' },
+          { title: store?.name ?? t('stores.detailTitle') }
+        ]}
+        onBack={() => navigate('/stores')}
         actions={
-          <Popconfirm title={t('common.confirmDelete')} onConfirm={() => revokeMutation.mutate()} okText={t('common.confirm')} cancelText={t('common.cancel')} okButtonProps={{ danger: true }} disabled={store?.status === 'revoked'}>
-            <Button danger icon={<StopOutlined />} disabled={store?.status === 'revoked'}>
-              {t('stores.revoke')}
-            </Button>
-          </Popconfirm>
+          <Button danger icon={<StopOutlined />} disabled={store?.status === 'revoked'} onClick={() => setRevokeModalOpen(true)}>
+            {t('stores.revoke')}
+          </Button>
         }
       />
+      {/* A8: dedicated revoke confirmation spelling out the consequences (2.12). */}
+      <Modal
+        title={t('storewizard.revokeTitle')}
+        open={revokeModalOpen}
+        okText={t('storewizard.revokeConfirm')}
+        okButtonProps={{ danger: true, loading: revokeMutation.isPending }}
+        cancelText={t('common.cancel')}
+        onOk={() => {
+          revokeMutation.mutate(undefined, { onSuccess: () => setRevokeModalOpen(false) });
+        }}
+        onCancel={() => setRevokeModalOpen(false)}
+      >
+        <Typography.Paragraph>{t('storewizard.revokeIntro')}</Typography.Paragraph>
+        <ul style={{ paddingLeft: 20, marginBottom: 0 }}>
+          <li><Typography.Text>{t('storewizard.revokeItem1')}</Typography.Text></li>
+          <li><Typography.Text>{t('storewizard.revokeItem2')}</Typography.Text></li>
+          <li><Typography.Text>{t('storewizard.revokeItem3')}</Typography.Text></li>
+        </ul>
+      </Modal>
+      {/* A8: revoked state offers an explicit way back (re-authorize CTA). */}
+      {store?.status === 'revoked' && (
+        <Alert
+          type="warning"
+          showIcon
+          message={t('storewizard.revokedAlertTitle')}
+          description={t('storewizard.revokedAlertDesc')}
+          action={
+            <Button type="primary" loading={reauthorizeMutation.isPending} onClick={() => reauthorizeMutation.mutate()}>
+              {t('storewizard.reauthorize')}
+            </Button>
+          }
+          style={{ marginBottom: 16 }}
+        />
+      )}
       {settingsTab}
     </div>
   );
