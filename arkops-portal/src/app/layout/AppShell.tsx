@@ -7,6 +7,8 @@ import {
   CloseOutlined,
   DashboardOutlined,
   DesktopOutlined,
+  InboxOutlined, // WS-B
+
   PayCircleOutlined,
   ExperimentOutlined as LabOutlined,
   ExperimentOutlined,
@@ -61,6 +63,7 @@ function getSelectedMenuKey(pathname: string) {
 }
 
 function getActiveMenuGroup(selectedKey: string): string | null {
+  if (selectedKey === '/inbox') return 'todo-group'; // WS-B
   if (selectedKey === '/agents/exceptions' || selectedKey === '/agents/approvals') return 'todo-group';
   if (selectedKey === '/agents' || selectedKey === '/setup') return 'agents-group';
   if (selectedKey.startsWith('/settings/') && selectedKey !== '/settings/billing' && selectedKey !== '/settings/guide') return 'settings-group';
@@ -109,6 +112,9 @@ export function AppShell() {
   const pendingApprovals = hasBusinessData ? dashboard?.pendingApprovals ?? 0 : 0;
   const exceptionPending = hasBusinessData ? dashboard?.exceptionCenterPending ?? 0 : 0;
   const orderExceptions = hasBusinessData ? dashboard?.orderExceptions ?? 0 : 0;
+  // WS-B (B2): unified Action Inbox count = approvals + exceptions + re-login stores
+  const loginRequiredStores = hasBusinessData ? dashboard?.loginRequiredStores ?? 0 : 0;
+  const inboxCount = pendingApprovals + exceptionPending + loginRequiredStores;
   const selectedMenuKey = getSelectedMenuKey(location.pathname);
   const activeMenuGroup = getActiveMenuGroup(selectedMenuKey);
   const [openMenuKeys, setOpenMenuKeys] = useState<string[]>(() => activeMenuGroup ? [activeMenuGroup] : []);
@@ -152,12 +158,26 @@ export function AppShell() {
       label: (
         <span>
           {t('nav.todoCenter')}
-          {exceptionPending + pendingApprovals > 0 && (
-            <Badge count={exceptionPending + pendingApprovals} size="small" offset={[8, -2]} style={{ marginLeft: 8 }} />
+          {/* WS-B (B2): group badge mirrors the Action Inbox count */}
+          {inboxCount > 0 && (
+            <Badge count={inboxCount} size="small" offset={[8, -2]} style={{ marginLeft: 8 }} />
           )}
         </span>
       ),
       children: [
+        // WS-B (B2, D2): unified Action Inbox entry; exception/approval pages are its filtered views
+        {
+          key: '/inbox',
+          icon: <InboxOutlined />,
+          label: (
+            <span>
+              {t('inbox.title')}
+              {inboxCount > 0 && (
+                <Badge count={inboxCount} size="small" offset={[8, -2]} style={{ marginLeft: 8 }} />
+              )}
+            </span>
+          )
+        },
         {
           key: '/agents/exceptions',
           icon: <AlertOutlined />,
@@ -268,7 +288,10 @@ export function AppShell() {
                 ]}
               />
             )}
-            <Button icon={<BellOutlined />}>{t('app.alerts')}</Button>
+            {/* WS-B (B2): bell links to the Action Inbox with a live count badge */}
+            <Badge count={inboxCount} size="small" offset={[-4, 4]}>
+              <Button icon={<BellOutlined />} onClick={() => navigate('/inbox')}>{t('app.alerts')}</Button>
+            </Badge>
             <Select
               size="small"
               value={role ?? 'Owner'}

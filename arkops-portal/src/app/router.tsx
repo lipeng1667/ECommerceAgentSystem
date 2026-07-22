@@ -15,6 +15,7 @@ const AuditLogsPage = lazy(() => import('../pages/audit/AuditLogsPage').then((mo
 const BillingSettingsPage = lazy(() => import('../pages/billing/BillingSettingsPage').then((module) => ({ default: module.BillingSettingsPage })));
 const DashboardPage = lazy(() => import('../pages/dashboard/DashboardPage').then((module) => ({ default: module.DashboardPage })));
 const ExceptionCenterPage = lazy(() => import('../pages/operations/ExceptionCenterPage').then((module) => ({ default: module.ExceptionCenterPage })));
+const InboxPage = lazy(() => import('../pages/inbox/InboxPage').then((module) => ({ default: module.InboxPage }))); // WS-B
 const LoginPage = lazy(() => import('../pages/auth/LoginPage').then((module) => ({ default: module.LoginPage })));
 const MembersSettingsPage = lazy(() => import('../pages/settings/MembersSettingsPage').then((module) => ({ default: module.MembersSettingsPage })));
 const ModelListPage = lazy(() => import('../pages/models/ModelListPage').then((module) => ({ default: module.ModelListPage })));
@@ -78,6 +79,9 @@ const router = createBrowserRouter(
         { path: 'dashboard', element: guarded('/dashboard', <DashboardPage />, dashboardFallback) },
         // 旧路由重定向
         { path: 'operations', element: <Navigate to="/dashboard" replace /> },
+
+        // 行动收件箱（WS-B, D2）— 审批 + 异常 + 重新登录统一队列
+        { path: 'inbox', element: guarded('/inbox', <InboxPage />, tableFallback) },
 
         // 订单管理
         { path: 'orders', element: guarded('/orders', <OrderAutomationPage />, tableFallback) },

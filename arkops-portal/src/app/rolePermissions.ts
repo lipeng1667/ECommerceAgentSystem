@@ -36,6 +36,7 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, boolean>> = {
   Owner: {
     '/dashboard': true, '/orders': true, '/products': true,
     '/agents': true, '/agents/exceptions': true, '/agents/approvals': true,
+    '/inbox': true, // WS-B: Action Inbox
     '/stores': true, '/settings/stores': true, '/settings/members': true,
     '/settings/models': true, '/settings/billing': true,
     '/settings/audit-logs': true, '/settings/notifications': true,
@@ -44,6 +45,7 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, boolean>> = {
   Admin: {
     '/dashboard': true, '/orders': true, '/products': true,
     '/agents': true, '/agents/exceptions': true, '/agents/approvals': true,
+    '/inbox': true, // WS-B: Action Inbox
     '/stores': true, '/settings/stores': true, '/settings/members': true,
     '/settings/models': true, '/settings/billing': true,
     '/settings/audit-logs': true, '/settings/notifications': true,
@@ -52,6 +54,7 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, boolean>> = {
   Operator: {
     '/dashboard': true, '/orders': true, '/products': true,
     '/agents': true, '/agents/exceptions': true, '/agents/approvals': true,
+    '/inbox': true, // WS-B: Action Inbox
     '/stores': true, '/settings/stores': true, '/settings/members': false,
     '/settings/models': true, '/settings/billing': true,
     '/settings/audit-logs': true, '/settings/notifications': true,
@@ -60,6 +63,7 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, boolean>> = {
   Approver: {
     '/dashboard': true, '/orders': true, '/products': true,
     '/agents': true, '/agents/exceptions': true, '/agents/approvals': true,
+    '/inbox': true, // WS-B: Action Inbox
     '/stores': true, '/settings/stores': true, '/settings/members': false,
     '/settings/models': false, '/settings/billing': true,
     '/settings/audit-logs': false, '/settings/notifications': false,
@@ -68,6 +72,7 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, boolean>> = {
   Finance: {
     '/dashboard': true, '/orders': false, '/products': false,
     '/agents': false, '/agents/exceptions': false, '/agents/approvals': false,
+    '/inbox': false, // WS-B: Action Inbox
     '/stores': false, '/settings/stores': false, '/settings/members': false,
     '/settings/models': false, '/settings/billing': true,
     '/settings/audit-logs': false, '/settings/notifications': false,
@@ -76,6 +81,7 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, boolean>> = {
   Viewer: {
     '/dashboard': true, '/orders': true, '/products': true,
     '/agents': true, '/agents/exceptions': true, '/agents/approvals': true,
+    '/inbox': true, // WS-B: Action Inbox
     '/stores': true, '/settings/stores': true, '/settings/members': false,
     '/settings/models': true, '/settings/billing': true,
     '/settings/audit-logs': true, '/settings/notifications': false,
@@ -183,21 +189,21 @@ const ROLE_MENU_VISIBILITY: Record<Role, Set<string>> = {
   Admin: new Set('*'),
   Operator: new Set([
     '/dashboard', '/orders', '/products',
-    '/agents', '/agents/exceptions', '/agents/approvals',
+    '/agents', '/agents/exceptions', '/agents/approvals', '/inbox', // WS-B
     '/stores', '/settings/stores', '/settings/models',
     '/settings/billing', '/settings/audit-logs', '/settings/notifications',
     '/settings/guide', '/setup',
   ]),
   Approver: new Set([
     '/dashboard', '/orders', '/products',
-    '/agents', '/agents/exceptions', '/agents/approvals',
+    '/agents', '/agents/exceptions', '/agents/approvals', '/inbox', // WS-B
     '/stores', '/settings/stores', '/settings/billing',
     '/settings/guide',
   ]),
   Finance: new Set(['/dashboard', '/settings/billing']),
   Viewer: new Set([
     '/dashboard', '/orders', '/products',
-    '/agents', '/agents/exceptions', '/agents/approvals',
+    '/agents', '/agents/exceptions', '/agents/approvals', '/inbox', // WS-B
     '/stores', '/settings/stores', '/settings/models',
     '/settings/billing', '/settings/audit-logs', '/settings/guide',
   ]),
