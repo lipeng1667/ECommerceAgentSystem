@@ -2050,7 +2050,18 @@ const dictionaries = {
     'ordersv2.timelineCancelled': 'Cancelled & refunded by operator',
     'ordersv2.timelineRefundStarted': 'Refund initiated',
     'ordersv2.timelineReleased': 'Manually reviewed & released',
-    'ordersv2.timelineToShipping': 'Entering shipping flow'
+    'ordersv2.timelineToShipping': 'Entering shipping flow',
+    'productsv2.inventoryAlert': 'Stock Alerts',
+    'productsv2.inventoryAlertMeta': '{low} low · {out} out of stock',
+    'productsv2.stockAll': 'All stock levels',
+    'productsv2.stockHealthy': 'Healthy stock',
+    'productsv2.stockLow': 'Low stock',
+    'productsv2.stockOut': 'Out of stock',
+    'productsv2.submitReview': 'Submit for Review',
+    'productsv2.approveModalTitle': 'Confirm Listing',
+    'productsv2.approveModalDesc': 'Confirm the selling price and initial stock; the product will go live as active once approved.',
+    'productsv2.initialStock': 'Initial Stock',
+    'productsv2.rejectConfirm': 'Reject this draft?'
   },
   zh: {
     'nav.dashboard': '经营总览',
@@ -4100,7 +4111,18 @@ const dictionaries = {
     'ordersv2.timelineCancelled': '运营取消并退款',
     'ordersv2.timelineRefundStarted': '退款已发起',
     'ordersv2.timelineReleased': '人工审核通过（放行）',
-    'ordersv2.timelineToShipping': '进入发货流程'
+    'ordersv2.timelineToShipping': '进入发货流程',
+    'productsv2.inventoryAlert': '库存预警',
+    'productsv2.inventoryAlertMeta': '{low} 个偏低 · {out} 个断货',
+    'productsv2.stockAll': '全部库存',
+    'productsv2.stockHealthy': '库存充足',
+    'productsv2.stockLow': '库存偏低',
+    'productsv2.stockOut': '已断货',
+    'productsv2.submitReview': '提交审核',
+    'productsv2.approveModalTitle': '上架确认',
+    'productsv2.approveModalDesc': '请确认售价与初始库存，确认后商品将直接上架为在售状态。',
+    'productsv2.initialStock': '初始库存',
+    'productsv2.rejectConfirm': '确认驳回该草稿？'
   }
 } as const satisfies Record<Language, Dictionary>;
 
