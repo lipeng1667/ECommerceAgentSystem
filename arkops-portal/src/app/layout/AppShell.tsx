@@ -8,7 +8,6 @@ import {
   DashboardOutlined,
   DesktopOutlined,
   InboxOutlined, // WS-B
-
   PayCircleOutlined,
   ExperimentOutlined as LabOutlined,
   ExperimentOutlined,
