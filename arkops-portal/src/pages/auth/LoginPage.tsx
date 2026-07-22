@@ -11,7 +11,7 @@ import { Alert, Button, Card, Form, Input, Segmented, Space, Tag, Typography } f
 import { useState } from 'react';
 import { useAuth } from '../../app/auth';
 import { useDemoMode } from '../../app/demoMode';
-import { useI18n } from '../../app/i18n';
+import { LANGUAGE_SWITCHER_ENABLED, useI18n } from '../../app/i18n';
 import { LOCAL_LOGIN_ACCOUNTS } from '../../app/loginAccounts';
 import { completeOnboarding } from '../../components/OnboardingTour';
 
@@ -77,14 +77,16 @@ export function LoginPage() {
       </section>
 
       <section className="login-panel">
-        <div className="login-panel-top">
-          <Segmented
-            size="small"
-            value={language}
-            onChange={(value) => setLanguage(value as 'en' | 'zh')}
-            options={[{ label: 'EN', value: 'en' }, { label: '中文', value: 'zh' }]}
-          />
-        </div>
+        {LANGUAGE_SWITCHER_ENABLED && (
+          <div className="login-panel-top">
+            <Segmented
+              size="small"
+              value={language}
+              onChange={(value) => setLanguage(value as 'en' | 'zh')}
+              options={[{ label: 'EN', value: 'en' }, { label: '中文', value: 'zh' }]}
+            />
+          </div>
+        )}
         <div className="login-form-wrap">
           <Typography.Title level={2}>欢迎使用 AllMall</Typography.Title>
           <Typography.Paragraph type="secondary">选择一个体验账号，我们会带你进入对应的商家阶段。</Typography.Paragraph>

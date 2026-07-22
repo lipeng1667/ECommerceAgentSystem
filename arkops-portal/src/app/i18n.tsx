@@ -3990,6 +3990,15 @@ export type TranslationKey = keyof typeof dictionaries.en;
 
 const LANGUAGE_STORAGE_KEY = 'allmall-portal-language';
 
+/**
+ * Multilingual UI is retained but frozen until the core product stabilizes.
+ * While false: language switchers are hidden and the UI is pinned to Chinese;
+ * dictionaries, TranslationKey typing, and t() stay in place so pages keep
+ * adding keys. Flip to true in the final i18n phase. See README "Multilingual
+ * Status".
+ */
+export const LANGUAGE_SWITCHER_ENABLED = false;
+
 interface I18nContextValue {
   language: Language;
   setLanguage: (language: Language) => void;
@@ -4000,6 +4009,7 @@ const I18nContext = createContext<I18nContextValue | undefined>(undefined);
 
 export function I18nProvider({ children }: PropsWithChildren) {
   const [language, setLanguage] = useState<Language>(() => {
+    if (!LANGUAGE_SWITCHER_ENABLED) return 'zh';
     const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
     return stored === 'en' ? 'en' : 'zh';
   });
