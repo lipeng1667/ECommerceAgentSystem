@@ -1,62 +1,92 @@
 import { Button, Modal, Typography, Space } from 'antd';
 import {
-  ShopOutlined,
+  AuditOutlined,
   RobotOutlined,
   DashboardOutlined,
   CheckCircleOutlined,
 } from '@ant-design/icons';
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useI18n } from '../app/i18n';
 
-const ONBOARDING_KEY = 'allmall-onboarding-completed';
+const TOUR_PENDING_KEY = 'allmall-daily-loop-tour-pending';
 
-/** Check if onboarding has been completed */
-export function shouldShowOnboarding(): boolean {
-  return !localStorage.getItem(ONBOARDING_KEY);
+/**
+ * Queue the daily-loop orientation tour. Called by the store-connection wizard
+ * when the merchant finishes onboarding and heads to the dashboard, so the
+ * tour appears exactly once at the moment the daily workspace opens
+ * (it never pops over the wizard or a deep-linked approval).
+ */
+export function queueDailyLoopTour() {
+  try {
+    localStorage.setItem(TOUR_PENDING_KEY, 'true');
+  } catch {
+    // ignore
+  }
 }
 
-/** Mark onboarding as completed */
-export function completeOnboarding() {
-  localStorage.setItem(ONBOARDING_KEY, 'true');
+function isTourPending(): boolean {
+  try {
+    return localStorage.getItem(TOUR_PENDING_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function clearTourPending() {
+  try {
+    localStorage.removeItem(TOUR_PENDING_KEY);
+  } catch {
+    // ignore
+  }
 }
 
 const stepIcons = [
-  <ShopOutlined style={{ fontSize: 48, color: '#2563eb' }} />,
+  <AuditOutlined style={{ fontSize: 48, color: '#2563eb' }} />,
   <RobotOutlined style={{ fontSize: 48, color: '#7c3aed' }} />,
   <DashboardOutlined style={{ fontSize: 48, color: '#16a34a' }} />,
 ];
 
 /**
- * First-time user onboarding modal.
- * Shows a 3-step introduction on first login.
- * Can be skipped or completed.
+ * Daily-loop orientation tour (repurposed from the legacy first-login modal).
+ * Shows a 3-step introduction to the supervision loop — approvals, agents,
+ * overview — right after the merchant completes store onboarding.
  */
 export function OnboardingTour() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(() => shouldShowOnboarding());
+  const location = useLocation();
+  const [open, setOpen] = useState(() => isTourPending());
   const [step, setStep] = useState(0);
+
+  // The tour is queued while the shell is already mounted, so re-check the
+  // pending flag whenever the route changes (e.g. wizard → dashboard).
+  useEffect(() => {
+    if (!open && isTourPending()) {
+      setOpen(true);
+      setStep(0);
+    }
+  }, [location.pathname, open]);
 
   if (!open) return null;
 
   const steps = [
     {
       icon: stepIcons[0],
-      title: t('onboarding.step1Title'),
-      desc: t('onboarding.step1Desc'),
-      action: () => navigate('/stores/onboarding'),
+      title: t('onboarding.loop1Title'),
+      desc: t('onboarding.loop1Desc'),
+      action: () => navigate('/agents/approvals'),
     },
     {
       icon: stepIcons[1],
-      title: t('onboarding.step2Title'),
-      desc: t('onboarding.step2Desc'),
+      title: t('onboarding.loop2Title'),
+      desc: t('onboarding.loop2Desc'),
       action: () => navigate('/agents'),
     },
     {
       icon: stepIcons[2],
-      title: t('onboarding.step3Title'),
-      desc: t('onboarding.step3Desc'),
+      title: t('onboarding.loop3Title'),
+      desc: t('onboarding.loop3Desc'),
       action: () => navigate('/dashboard'),
     },
   ];
@@ -66,7 +96,7 @@ export function OnboardingTour() {
 
   const handleNext = () => {
     if (isLast) {
-      completeOnboarding();
+      clearTourPending();
       setOpen(false);
       current.action();
     } else {
@@ -75,7 +105,7 @@ export function OnboardingTour() {
   };
 
   const handleSkip = () => {
-    completeOnboarding();
+    clearTourPending();
     setOpen(false);
   };
 

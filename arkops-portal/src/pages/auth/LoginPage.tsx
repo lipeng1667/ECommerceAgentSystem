@@ -13,7 +13,6 @@ import { useAuth } from '../../app/auth';
 import { useDemoMode } from '../../app/demoMode';
 import { LANGUAGE_SWITCHER_ENABLED, useI18n } from '../../app/i18n';
 import { LOCAL_LOGIN_ACCOUNTS } from '../../app/loginAccounts';
-import { completeOnboarding } from '../../components/OnboardingTour';
 
 interface LoginValues {
   email: string;
@@ -41,8 +40,6 @@ export function LoginPage() {
     setError('');
     try {
       const user = await login(values.email.trim(), values.password);
-      // The legacy welcome modal would obscure the new store-sync experience.
-      completeOnboarding();
       if (user.experience === 'onboarding') {
         exitDemo();
         window.location.replace('/stores/onboarding?journey=import');
