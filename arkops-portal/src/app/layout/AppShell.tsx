@@ -24,7 +24,7 @@ import {
 import { Avatar, Badge, Button, Layout, Menu, Segmented, Select, Space, Tag, Typography } from 'antd';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDemoMode } from '../demoMode';
-import { useI18n } from '../i18n';
+import { LANGUAGE_SWITCHER_ENABLED, useI18n } from '../i18n';
 import { useTheme } from '../theme';
 import { dashboardApi } from '../../api/dashboard';
 import { useQuery } from '@tanstack/react-query';
@@ -257,15 +257,17 @@ export function AppShell() {
                 { label: <span title={t('theme.dark')}><MoonOutlined /></span>, value: 'dark' }
               ]}
             />
-            <Segmented
-              size="small"
-              value={language}
-              onChange={(value) => setLanguage(value as 'en' | 'zh')}
-              options={[
-                { label: 'EN', value: 'en' },
-                { label: '中文', value: 'zh' }
-              ]}
-            />
+            {LANGUAGE_SWITCHER_ENABLED && (
+              <Segmented
+                size="small"
+                value={language}
+                onChange={(value) => setLanguage(value as 'en' | 'zh')}
+                options={[
+                  { label: 'EN', value: 'en' },
+                  { label: '中文', value: 'zh' }
+                ]}
+              />
+            )}
             <Button icon={<BellOutlined />}>{t('app.alerts')}</Button>
             <Select
               size="small"

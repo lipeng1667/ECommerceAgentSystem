@@ -21,7 +21,7 @@ Frontend status:
 - Model Center has been redesigned around Agent-to-model assignment.
 - The approval badge in the sidebar reflects pending approvals from mock summary data.
 - Light, dark, and system theme switching are available.
-- Chinese and English language switching is available.
+- Chinese and English language switching is implemented but currently hidden; the UI is pinned to Chinese (see "Multilingual Status").
 - Routes are lazy-loaded so page modules are split into separate Vite chunks.
 - AllMall-owned mock entity IDs now use numeric values in frontend types and data.
 
@@ -33,6 +33,15 @@ Not started yet:
 - Real MuleRun runtime calls
 - Real billing, payment, invoice, and subscription APIs
 - Real model provider API key validation
+
+## Multilingual Status
+
+The multilingual (zh/en) feature is retained in the codebase but frozen and will not receive further updates at this stage. Decision date: 2026-07-22.
+
+- The language switchers in the app header and login page are hidden behind the `LANGUAGE_SWITCHER_ENABLED` flag in `src/app/i18n.tsx` (currently `false`), and the UI is pinned to Chinese regardless of any previously stored language preference.
+- The i18n infrastructure stays in place: the zh/en dictionaries, `TranslationKey` typing, and the `t()` helper are not removed, and new pages should continue to add their user-facing strings as i18n keys (Chinese values required; English values may temporarily mirror the Chinese).
+- Rationale: the English mode is incomplete (hardcoded Chinese across many pages, dictionary drift, Ant Design locale pinned to zh), and finishing it now would compete with core product work.
+- Plan: once the core project is mostly complete, a dedicated final phase will complete and QA the multilingual experience consistently (dictionary parity, full CJK sweep, locale-aware Ant Design and date formatting), then re-enable the switcher. See "Final phase — multilingual completion" in `UX-IMPROVEMENT-PLAN.md`.
 
 ## Product Design Source
 
