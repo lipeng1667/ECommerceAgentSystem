@@ -5,6 +5,24 @@ import type { AgentConfig, AgentStrategyConfig } from '../../../types/domain';
 export type AgentWithStrategyConfig = AgentConfig & { strategyConfig: NonNullable<AgentConfig['strategyConfig']> };
 
 /**
+ * WS-D (D5): lightweight saved-event bus so the strategy config wrapper can show a
+ * visible "已保存 ✓ HH:mm:ss" indicator whenever any field auto-saves — replacing the
+ * previous silent auto-save.
+ */
+type StrategySavedListener = (at: number) => void;
+const savedListeners = new Set<StrategySavedListener>();
+
+export function subscribeStrategySaved(listener: StrategySavedListener): () => void {
+  savedListeners.add(listener);
+  return () => savedListeners.delete(listener);
+}
+
+function notifyStrategySaved() {
+  const now = Date.now();
+  savedListeners.forEach((listener) => listener(now));
+}
+
+/**
  * Shared utility for safely updating a strategyConfig sub-section via React Query cache.
  * Extracted from 4 duplicated definitions across strategy-config components.
  */
@@ -30,5 +48,7 @@ export function updateConfigSection(
   if (current?.strategyConfig) {
     const sectionValue = (current.strategyConfig as Record<string, unknown>)[sectionKey];
     agentsApi.saveStrategyConfig(agent.agentType, { [sectionKey]: sectionValue } as Partial<AgentStrategyConfig>);
+    // WS-D (D5): surface visible save feedback
+    notifyStrategySaved();
   }
 }

@@ -389,6 +389,63 @@ export interface AgentModelBinding {
   boundModelName: string;
 }
 
+// ===== WS-D: Scenario-first configuration & agent trust (S2/S3/S4) =====
+
+/** 5 个托管场景包（product-design.md 五、D1 决策） */
+export type ScenarioKey =
+  | 'pricing_promo'      // 智能定价与促销
+  | 'cs_aftersales'      // 客服与售后
+  | 'inventory'          // 库存与补货
+  | 'fulfillment_risk'   // 订单履约与风控
+  | 'listing_content';   // 商品上架与内容
+
+/** 场景自主等级：L1 全部需审批 / L2 仅高风险需审批 / L3 仅通知（D5 决策） */
+export type AutonomyLevel = 'L1' | 'L2' | 'L3';
+
+/** 场景的按店铺参数覆盖（scenario defaults → per-store overrides → per-agent advanced） */
+export type ScenarioStoreOverride = Record<string, number | string | boolean>;
+
+/** 场景运行时状态（mock 层持久化） */
+export interface ScenarioState {
+  key: ScenarioKey;
+  enabled: boolean;
+  autonomy: AutonomyLevel;
+  /** 连续获批准的执行次数 — 用于"信任累积"建议 */
+  approvedRunsStreak: number;
+  /** 用户已忽略当前放宽建议 */
+  trustSuggestionDismissed: boolean;
+  /** storeId → 参数覆盖 */
+  storeOverrides: Record<string, ScenarioStoreOverride>;
+}
+
+/** 周报摘要占位数据（S3 weekly digest stub） */
+export interface WeeklyDigest {
+  weekLabel: string;
+  autonomousActions: number;
+  approvalsRequested: number;
+  approvalsApproved: number;
+  hoursSaved: number;
+  perScenario: { key: ScenarioKey; actions: number; approvals: number }[];
+}
+
+/** 决策与结果记录（S4 outcomes 数据契约，mock） */
+export interface AgentOutcomeRecord {
+  id: AllMallId;
+  agentType: AgentType;
+  /** 动作描述，如 "上调 SKU A-102 售价 ¥86 → ¥92" */
+  action: string;
+  decidedAt: string;
+  decision: 'auto' | 'approved' | 'rejected';
+  /** 关联指标名，如 "日均销量" */
+  metric: string;
+  before: string;
+  after3d: string;
+  /** 未回收时为空 */
+  after7d?: string;
+  assessment: 'positive' | 'neutral' | 'negative' | 'pending';
+  assessmentNote: string;
+}
+
 // ===== Store Business Detail =====
 
 export interface StoreBusinessDetail {

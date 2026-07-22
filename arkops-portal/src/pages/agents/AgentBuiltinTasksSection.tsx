@@ -36,172 +36,271 @@ import type { AgentType } from '../../types/domain';
 
 interface AgentBuiltinTasksSectionProps {
   agentType: AgentType;
+  /**
+   * WS-D (D6): when provided, built-in task cards become clickable and hand the
+   * selected template (localized title + goal) to the caller — used by
+   * AgentConfigPage to pre-fill the task creation modal.
+   */
+  onTaskSelect?: (template: { title: string; goal: string }) => void;
 }
 
-interface AgentTaskSectionConfig {
-  titleIcon: JSX.Element;
-  mdSpan?: number;
-  smSpan?: number;
-  tasks: AgentTaskDefinition[];
+/**
+ * WS-D: plain-data spec for every agent's built-in tasks (i18n keys, no JSX).
+ * Shared by this section, the pre-enable drawer ("what it will do") and the
+ * new-task goal templates. Icons/spans stay in the component below.
+ */
+export interface BuiltinTaskSpec {
+  titleKey: string;
+  descKey: string;
+  tagKey?: string;
+  tagColor?: string;
 }
+
+export const BUILTIN_TASKS: Partial<Record<AgentType, BuiltinTaskSpec[]>> = {
+  pricing_strategy: [
+    { titleKey: 'priceScan', descKey: 'priceScanDesc', tagKey: 'scheduled', tagColor: 'purple' },
+    { titleKey: 'dynamicPrice', descKey: 'dynamicPriceDesc', tagKey: 'auto', tagColor: 'green' },
+    { titleKey: 'floorProtect', descKey: 'floorProtectDesc', tagKey: 'scheduled', tagColor: 'purple' },
+  ],
+  login_bootstrap: [
+    { titleKey: 'sessionCheckTask', descKey: 'sessionCheckTaskDesc', tagKey: 'auto', tagColor: 'green' },
+    { titleKey: 'sessionFailedTask', descKey: 'sessionFailedTaskDesc', tagKey: 'passive', tagColor: 'blue' },
+    { titleKey: 'bulkPatrol', descKey: 'bulkPatrolDesc', tagKey: 'scheduled', tagColor: 'purple' },
+  ],
+  competitor_intel: [
+    { titleKey: 'passiveCompetitorMonitor', descKey: 'passiveCompetitorMonitorDesc', tagKey: 'scheduled', tagColor: 'purple' },
+    { titleKey: 'productResearch', descKey: 'productResearchDesc', tagKey: 'scheduled', tagColor: 'purple' },
+    { titleKey: 'trendMonitor', descKey: 'trendMonitorDesc', tagKey: 'scheduled', tagColor: 'purple' },
+  ],
+  product_launch: [
+    { titleKey: 'imageRecognition', descKey: 'imageRecognitionDesc', tagKey: 'active', tagColor: 'orange' },
+    { titleKey: 'draftGeneration', descKey: 'draftGenerationDesc', tagKey: 'auto', tagColor: 'green' },
+    { titleKey: 'complianceCheck', descKey: 'complianceCheckDesc', tagKey: 'auto', tagColor: 'green' },
+  ],
+  ads_optimizer: [
+    { titleKey: 'roiPatrol', descKey: 'roiPatrolDesc', tagKey: 'scheduled', tagColor: 'purple' },
+    { titleKey: 'budgetOptimize', descKey: 'budgetOptimizeDesc', tagKey: 'auto', tagColor: 'green' },
+    { titleKey: 'abTest', descKey: 'abTestDesc', tagKey: 'scheduled', tagColor: 'purple' },
+  ],
+  crm_retention: [
+    { titleKey: 'segmentRefresh', descKey: 'segmentRefreshDesc', tagKey: 'scheduled', tagColor: 'purple' },
+    { titleKey: 'couponSend', descKey: 'couponSendDesc', tagKey: 'auto', tagColor: 'green' },
+    { titleKey: 'churnPredict', descKey: 'churnPredictDesc', tagKey: 'scheduled', tagColor: 'purple' },
+    { titleKey: 'vipCare', descKey: 'vipCareDesc', tagKey: 'auto', tagColor: 'green' },
+  ],
+  review_manager: [
+    { titleKey: 'negativeMonitor', descKey: 'negativeMonitorDesc', tagKey: 'scheduled', tagColor: 'purple' },
+    { titleKey: 'autoReply', descKey: 'autoReplyDesc', tagKey: 'auto', tagColor: 'green' },
+    { titleKey: 'reviewInvite', descKey: 'reviewInviteDesc', tagKey: 'scheduled', tagColor: 'purple' },
+  ],
+  customer_service: [
+    { titleKey: 'smartReply', descKey: 'smartReplyDesc', tagKey: 'auto', tagColor: 'green' },
+    { titleKey: 'escalateHuman', descKey: 'escalateHumanDesc', tagKey: 'passive', tagColor: 'blue' },
+    { titleKey: 'faqLearn', descKey: 'faqLearnDesc', tagKey: 'passive', tagColor: 'blue' },
+  ],
+  after_sales: [
+    { titleKey: 'returnAudit', descKey: 'returnAuditDesc', tagKey: 'auto', tagColor: 'green' },
+    { titleKey: 'refundProcess', descKey: 'refundProcessDesc', tagKey: 'auto', tagColor: 'green' },
+    { titleKey: 'logisticsTrack', descKey: 'logisticsTrackDesc', tagKey: 'scheduled', tagColor: 'purple' },
+  ],
+  creative_factory: [
+    { titleKey: 'imageGen', descKey: 'imageGenDesc', tagKey: 'auto', tagColor: 'green' },
+    { titleKey: 'videoGen', descKey: 'videoGenDesc', tagKey: 'auto', tagColor: 'green' },
+    { titleKey: 'copyGen', descKey: 'copyGenDesc', tagKey: 'auto', tagColor: 'green' },
+  ],
+  inventory_alert: [
+    { titleKey: 'lowStockAlert', descKey: 'lowStockAlertDesc', tagKey: 'scheduled', tagColor: 'purple' },
+    { titleKey: 'deadStock', descKey: 'deadStockDesc', tagKey: 'scheduled', tagColor: 'purple' },
+    { titleKey: 'replenish', descKey: 'replenishDesc', tagKey: 'auto', tagColor: 'green' },
+  ],
+  risk_control: [
+    { titleKey: 'complianceScan', descKey: 'complianceScanDesc', tagKey: 'scheduled', tagColor: 'purple' },
+    { titleKey: 'behaviorMonitor', descKey: 'behaviorMonitorDesc', tagKey: 'scheduled', tagColor: 'purple' },
+    { titleKey: 'circuitBreaker', descKey: 'circuitBreakerDesc', tagKey: 'passive', tagColor: 'blue' },
+  ],
+  finance_audit: [
+    { titleKey: 'monthlyReconcile', descKey: 'monthlyReconcileDesc', tagKey: 'scheduled', tagColor: 'purple' },
+    { titleKey: 'discrepancyMark', descKey: 'discrepancyMarkDesc', tagKey: 'auto', tagColor: 'green' },
+    { titleKey: 'reportGen', descKey: 'reportGenDesc', tagKey: 'auto', tagColor: 'green' },
+  ],
+  promotion_campaign: [
+    { titleKey: 'flashSaleSetup', descKey: 'flashSaleSetupDesc', tagKey: 'auto', tagColor: 'green' },
+    { titleKey: 'couponCampaign', descKey: 'couponCampaignDesc', tagKey: 'scheduled', tagColor: 'purple' },
+    { titleKey: 'bundleDeal', descKey: 'bundleDealDesc', tagKey: 'auto', tagColor: 'green' },
+  ],
+  live_stream_ops: [
+    { titleKey: 'liveSchedule', descKey: 'liveScheduleDesc', tagKey: 'scheduled', tagColor: 'purple' },
+    { titleKey: 'productPinning', descKey: 'productPinningDesc', tagKey: 'auto', tagColor: 'green' },
+    { titleKey: 'liveMetrics', descKey: 'liveMetricsDesc', tagKey: 'passive', tagColor: 'blue' },
+  ],
+};
 
 const taskIconStyle = (color: string) => ({ color, marginRight: 6 });
 
+interface AgentTaskLayout {
+  titleIcon: JSX.Element;
+  mdSpan?: number;
+  smSpan?: number;
+  /** Ordered icons matching BUILTIN_TASKS[agentType]. */
+  icons: JSX.Element[];
+}
+
 export function AgentBuiltinTasksSection({
   agentType,
+  onTaskSelect,
 }: AgentBuiltinTasksSectionProps) {
   const { t } = useI18n();
 
-  const task = (
-    icon: JSX.Element,
-    titleKey: string,
-    descriptionKey: string,
-    tagKey?: string,
-    tagColor?: string
-  ): AgentTaskDefinition => ({
-    icon,
-    title: t(`agent.${titleKey}`),
-    description: t(`agent.${descriptionKey}`),
-    tag: tagKey ? t(`agent.${tagKey}`) : undefined,
-    tagColor,
-  });
-
-  const sections: Partial<Record<AgentType, AgentTaskSectionConfig>> = {
+  const layouts: Partial<Record<AgentType, AgentTaskLayout>> = {
     pricing_strategy: {
       titleIcon: <PayCircleOutlined />,
-      tasks: [
-        task(<EyeOutlined style={taskIconStyle('#2563eb')} />, 'priceScan', 'priceScanDesc', 'scheduled', 'purple'),
-        task(<ToolOutlined style={taskIconStyle('#16a34a')} />, 'dynamicPrice', 'dynamicPriceDesc', 'auto', 'green'),
-        task(<WarningOutlined style={taskIconStyle('#ea580c')} />, 'floorProtect', 'floorProtectDesc', 'scheduled', 'purple')
-      ]
+      icons: [
+        <EyeOutlined style={taskIconStyle('#2563eb')} />,
+        <ToolOutlined style={taskIconStyle('#16a34a')} />,
+        <WarningOutlined style={taskIconStyle('#ea580c')} />,
+      ],
     },
     login_bootstrap: {
       titleIcon: <UnorderedListOutlined />,
       smSpan: 12,
-      tasks: [
-        task(<CheckCircleOutlined style={taskIconStyle('#2563eb')} />, 'sessionCheckTask', 'sessionCheckTaskDesc', 'auto', 'green'),
-        task(<BellOutlined style={taskIconStyle('#ea580c')} />, 'sessionFailedTask', 'sessionFailedTaskDesc', 'passive', 'blue'),
-        task(<GlobalOutlined style={taskIconStyle('#7c3aed')} />, 'bulkPatrol', 'bulkPatrolDesc', 'scheduled', 'purple')
-      ]
+      icons: [
+        <CheckCircleOutlined style={taskIconStyle('#2563eb')} />,
+        <BellOutlined style={taskIconStyle('#ea580c')} />,
+        <GlobalOutlined style={taskIconStyle('#7c3aed')} />,
+      ],
     },
     competitor_intel: {
       titleIcon: <RadarChartOutlined />,
-      tasks: [
-        task(<EyeOutlined style={taskIconStyle('#2563eb')} />, 'passiveCompetitorMonitor', 'passiveCompetitorMonitorDesc', 'scheduled', 'purple'),
-        task(<SearchOutlined style={taskIconStyle('#16a34a')} />, 'productResearch', 'productResearchDesc', 'scheduled', 'purple'),
-        task(<GlobalOutlined style={taskIconStyle('#7c3aed')} />, 'trendMonitor', 'trendMonitorDesc', 'scheduled', 'purple')
-      ]
+      icons: [
+        <EyeOutlined style={taskIconStyle('#2563eb')} />,
+        <SearchOutlined style={taskIconStyle('#16a34a')} />,
+        <GlobalOutlined style={taskIconStyle('#7c3aed')} />,
+      ],
     },
     product_launch: {
       titleIcon: <CameraOutlined />,
-      tasks: [
-        task(<CameraOutlined style={taskIconStyle('#2563eb')} />, 'imageRecognition', 'imageRecognitionDesc', 'active', 'orange'),
-        task(<EditOutlined style={taskIconStyle('#16a34a')} />, 'draftGeneration', 'draftGenerationDesc', 'auto', 'green'),
-        task(<SafetyOutlined style={taskIconStyle('#ea580c')} />, 'complianceCheck', 'complianceCheckDesc', 'auto', 'green')
-      ]
+      icons: [
+        <CameraOutlined style={taskIconStyle('#2563eb')} />,
+        <EditOutlined style={taskIconStyle('#16a34a')} />,
+        <SafetyOutlined style={taskIconStyle('#ea580c')} />,
+      ],
     },
     ads_optimizer: {
       titleIcon: <ThunderboltOutlined />,
-      tasks: [
-        task(<LineChartOutlined style={taskIconStyle('#2563eb')} />, 'roiPatrol', 'roiPatrolDesc', 'scheduled', 'purple'),
-        task(<ToolOutlined style={taskIconStyle('#16a34a')} />, 'budgetOptimize', 'budgetOptimizeDesc', 'auto', 'green'),
-        task(<FireOutlined style={taskIconStyle('#ea580c')} />, 'abTest', 'abTestDesc', 'scheduled', 'purple')
-      ]
+      icons: [
+        <LineChartOutlined style={taskIconStyle('#2563eb')} />,
+        <ToolOutlined style={taskIconStyle('#16a34a')} />,
+        <FireOutlined style={taskIconStyle('#ea580c')} />,
+      ],
     },
     crm_retention: {
       titleIcon: <GiftOutlined />,
       mdSpan: 6,
       smSpan: 12,
-      tasks: [
-        task(<SkinOutlined style={taskIconStyle('#2563eb')} />, 'segmentRefresh', 'segmentRefreshDesc', 'scheduled', 'purple'),
-        task(<GiftOutlined style={taskIconStyle('#16a34a')} />, 'couponSend', 'couponSendDesc', 'auto', 'green'),
-        task(<WarningOutlined style={taskIconStyle('#ea580c')} />, 'churnPredict', 'churnPredictDesc', 'scheduled', 'purple'),
-        task(<CrownOutlined style={taskIconStyle('#f59e0b')} />, 'vipCare', 'vipCareDesc', 'auto', 'green')
-      ]
+      icons: [
+        <SkinOutlined style={taskIconStyle('#2563eb')} />,
+        <GiftOutlined style={taskIconStyle('#16a34a')} />,
+        <WarningOutlined style={taskIconStyle('#ea580c')} />,
+        <CrownOutlined style={taskIconStyle('#f59e0b')} />,
+      ],
     },
     review_manager: {
       titleIcon: <StarOutlined />,
-      tasks: [
-        task(<WarningOutlined style={taskIconStyle('#dc2626')} />, 'negativeMonitor', 'negativeMonitorDesc', 'scheduled', 'purple'),
-        task(<EditOutlined style={taskIconStyle('#16a34a')} />, 'autoReply', 'autoReplyDesc', 'auto', 'green'),
-        task(<SmileOutlined style={taskIconStyle('#2563eb')} />, 'reviewInvite', 'reviewInviteDesc', 'scheduled', 'purple')
-      ]
+      icons: [
+        <WarningOutlined style={taskIconStyle('#dc2626')} />,
+        <EditOutlined style={taskIconStyle('#16a34a')} />,
+        <SmileOutlined style={taskIconStyle('#2563eb')} />,
+      ],
     },
     customer_service: {
       titleIcon: <CustomerServiceOutlined />,
-      tasks: [
-        task(<SmileOutlined style={taskIconStyle('#16a34a')} />, 'smartReply', 'smartReplyDesc', 'auto', 'green'),
-        task(<WarningOutlined style={taskIconStyle('#ea580c')} />, 'escalateHuman', 'escalateHumanDesc', 'passive', 'blue'),
-        task(<SearchOutlined style={taskIconStyle('#7c3aed')} />, 'faqLearn', 'faqLearnDesc', 'passive', 'blue')
-      ]
+      icons: [
+        <SmileOutlined style={taskIconStyle('#16a34a')} />,
+        <WarningOutlined style={taskIconStyle('#ea580c')} />,
+        <SearchOutlined style={taskIconStyle('#7c3aed')} />,
+      ],
     },
     after_sales: {
       titleIcon: <ToolOutlined />,
-      tasks: [
-        task(<FileSearchOutlined style={taskIconStyle('#2563eb')} />, 'returnAudit', 'returnAuditDesc', 'auto', 'green'),
-        task(<WalletOutlined style={taskIconStyle('#16a34a')} />, 'refundProcess', 'refundProcessDesc', 'auto', 'green'),
-        task(<ShoppingCartOutlined style={taskIconStyle('#ea580c')} />, 'logisticsTrack', 'logisticsTrackDesc', 'scheduled', 'purple')
-      ]
+      icons: [
+        <FileSearchOutlined style={taskIconStyle('#2563eb')} />,
+        <WalletOutlined style={taskIconStyle('#16a34a')} />,
+        <ShoppingCartOutlined style={taskIconStyle('#ea580c')} />,
+      ],
     },
     creative_factory: {
       titleIcon: <PictureOutlined />,
-      tasks: [
-        task(<PictureOutlined style={taskIconStyle('#2563eb')} />, 'imageGen', 'imageGenDesc', 'auto', 'green'),
-        task(<CameraOutlined style={taskIconStyle('#16a34a')} />, 'videoGen', 'videoGenDesc', 'auto', 'green'),
-        task(<EditOutlined style={taskIconStyle('#ea580c')} />, 'copyGen', 'copyGenDesc', 'auto', 'green')
-      ]
+      icons: [
+        <PictureOutlined style={taskIconStyle('#2563eb')} />,
+        <CameraOutlined style={taskIconStyle('#16a34a')} />,
+        <EditOutlined style={taskIconStyle('#ea580c')} />,
+      ],
     },
     inventory_alert: {
       titleIcon: <ShoppingCartOutlined />,
-      tasks: [
-        task(<WarningOutlined style={taskIconStyle('#dc2626')} />, 'lowStockAlert', 'lowStockAlertDesc', 'scheduled', 'purple'),
-        task(<StopOutlined style={taskIconStyle('#64748b')} />, 'deadStock', 'deadStockDesc', 'scheduled', 'purple'),
-        task(<ShoppingCartOutlined style={taskIconStyle('#16a34a')} />, 'replenish', 'replenishDesc', 'auto', 'green')
-      ]
+      icons: [
+        <WarningOutlined style={taskIconStyle('#dc2626')} />,
+        <StopOutlined style={taskIconStyle('#64748b')} />,
+        <ShoppingCartOutlined style={taskIconStyle('#16a34a')} />,
+      ],
     },
     risk_control: {
       titleIcon: <SafetyOutlined />,
-      tasks: [
-        task(<FileSearchOutlined style={taskIconStyle('#2563eb')} />, 'complianceScan', 'complianceScanDesc', 'scheduled', 'purple'),
-        task(<EyeOutlined style={taskIconStyle('#ea580c')} />, 'behaviorMonitor', 'behaviorMonitorDesc', 'scheduled', 'purple'),
-        task(<StopOutlined style={taskIconStyle('#dc2626')} />, 'circuitBreaker', 'circuitBreakerDesc', 'passive', 'blue')
-      ]
+      icons: [
+        <FileSearchOutlined style={taskIconStyle('#2563eb')} />,
+        <EyeOutlined style={taskIconStyle('#ea580c')} />,
+        <StopOutlined style={taskIconStyle('#dc2626')} />,
+      ],
     },
     finance_audit: {
       titleIcon: <BankOutlined />,
-      tasks: [
-        task(<FileSearchOutlined style={taskIconStyle('#2563eb')} />, 'monthlyReconcile', 'monthlyReconcileDesc', 'scheduled', 'purple'),
-        task(<WarningOutlined style={taskIconStyle('#ea580c')} />, 'discrepancyMark', 'discrepancyMarkDesc', 'auto', 'green'),
-        task(<EditOutlined style={taskIconStyle('#16a34a')} />, 'reportGen', 'reportGenDesc', 'auto', 'green')
-      ]
+      icons: [
+        <FileSearchOutlined style={taskIconStyle('#2563eb')} />,
+        <WarningOutlined style={taskIconStyle('#ea580c')} />,
+        <EditOutlined style={taskIconStyle('#16a34a')} />,
+      ],
     },
     promotion_campaign: {
       titleIcon: <GiftOutlined />,
-      tasks: [
-        task(<ThunderboltOutlined style={taskIconStyle('#dc2626')} />, 'flashSaleSetup', 'flashSaleSetupDesc', 'auto', 'green'),
-        task(<PayCircleOutlined style={taskIconStyle('#2563eb')} />, 'couponCampaign', 'couponCampaignDesc', 'scheduled', 'purple'),
-        task(<ShoppingCartOutlined style={taskIconStyle('#16a34a')} />, 'bundleDeal', 'bundleDealDesc', 'auto', 'green')
-      ]
+      icons: [
+        <ThunderboltOutlined style={taskIconStyle('#dc2626')} />,
+        <PayCircleOutlined style={taskIconStyle('#2563eb')} />,
+        <ShoppingCartOutlined style={taskIconStyle('#16a34a')} />,
+      ],
     },
     live_stream_ops: {
       titleIcon: <CustomerServiceOutlined />,
-      tasks: [
-        task(<UnorderedListOutlined style={taskIconStyle('#2563eb')} />, 'liveSchedule', 'liveScheduleDesc', 'scheduled', 'purple'),
-        task(<PushpinOutlined style={taskIconStyle('#ea580c')} />, 'productPinning', 'productPinningDesc', 'auto', 'green'),
-        task(<LineChartOutlined style={taskIconStyle('#16a34a')} />, 'liveMetrics', 'liveMetricsDesc', 'passive', 'blue')
-      ]
-    }
+      icons: [
+        <UnorderedListOutlined style={taskIconStyle('#2563eb')} />,
+        <PushpinOutlined style={taskIconStyle('#ea580c')} />,
+        <LineChartOutlined style={taskIconStyle('#16a34a')} />,
+      ],
+    },
   };
 
-  const section = sections[agentType];
-  if (!section) return null;
+  const specs = BUILTIN_TASKS[agentType];
+  const layout = layouts[agentType];
+  if (!specs || !layout) return null;
+
+  const tasks: AgentTaskDefinition[] = specs.map((spec, i) => {
+    const title = t(`agent.${spec.titleKey}`);
+    const description = t(`agent.${spec.descKey}`);
+    return {
+      icon: layout.icons[i],
+      title,
+      description,
+      tag: spec.tagKey ? t(`agent.${spec.tagKey}`) : undefined,
+      tagColor: spec.tagColor,
+      onClick: onTaskSelect ? () => onTaskSelect({ title, goal: description }) : undefined,
+    };
+  });
 
   return (
     <AgentTaskGrid
       title={<><AppstoreOutlined /> {t('agent.builtinTasks')}</>}
-      tasks={section.tasks}
-      mdSpan={section.mdSpan}
-      smSpan={section.smSpan}
+      tasks={tasks}
+      mdSpan={layout.mdSpan}
+      smSpan={layout.smSpan}
     />
   );
 }

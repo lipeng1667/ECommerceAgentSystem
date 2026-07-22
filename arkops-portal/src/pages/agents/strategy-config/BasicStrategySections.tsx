@@ -29,6 +29,22 @@ export function BasicStrategySections({ agent }: BasicStrategySectionsProps) {
                     value={agent.strategyConfig.adSpendBudget.dailyCap}
                     onChange={(v) => {
                       const newVal = v ?? 0;
+                      const prev = agent.strategyConfig.adSpendBudget?.dailyCap ?? 0;
+                      const monthly = agent.strategyConfig.adSpendBudget?.monthlyCap ?? 0;
+                      // WS-D (D5): caps must be positive; daily must not exceed monthly.
+                      if (newVal <= 0) {
+                        message.error(t('agenttrust.capMustBePositive'));
+                        return;
+                      }
+                      if (monthly > 0 && newVal > monthly) {
+                        message.error(t('agenttrust.dailyOverMonthly'));
+                        return;
+                      }
+                      if (newVal > prev) {
+                        message.warning(t('agenttrust.guardrailLoosened', {
+                          detail: t('agenttrust.loosenDetailDailyCap', { from: prev, to: newVal }),
+                        }));
+                      }
                       updateConfigSection(queryClient, agent, 'adSpendBudget', (s) => ({
                         ...s, dailyCap: newVal,
                       }));
@@ -44,6 +60,22 @@ export function BasicStrategySections({ agent }: BasicStrategySectionsProps) {
                     value={agent.strategyConfig.adSpendBudget.monthlyCap}
                     onChange={(v) => {
                       const newVal = v ?? 0;
+                      const prev = agent.strategyConfig.adSpendBudget?.monthlyCap ?? 0;
+                      const daily = agent.strategyConfig.adSpendBudget?.dailyCap ?? 0;
+                      // WS-D (D5): caps must be positive; monthly must cover daily.
+                      if (newVal <= 0) {
+                        message.error(t('agenttrust.capMustBePositive'));
+                        return;
+                      }
+                      if (daily > 0 && newVal < daily) {
+                        message.error(t('agenttrust.dailyOverMonthly'));
+                        return;
+                      }
+                      if (newVal > prev) {
+                        message.warning(t('agenttrust.guardrailLoosened', {
+                          detail: t('agenttrust.loosenDetailMonthlyCap', { from: prev, to: newVal }),
+                        }));
+                      }
                       updateConfigSection(queryClient, agent, 'adSpendBudget', (s) => ({
                         ...s, monthlyCap: newVal,
                       }));
@@ -58,6 +90,13 @@ export function BasicStrategySections({ agent }: BasicStrategySectionsProps) {
                     value={agent.strategyConfig.adSpendBudget.targetROI}
                     onChange={(v) => {
                       const newVal = v ?? 2.0;
+                      const prev = agent.strategyConfig.adSpendBudget?.targetROI ?? 2.0;
+                      // WS-D (D5): a lower target ROI tolerates worse spend — loosened guardrail.
+                      if (newVal < prev) {
+                        message.warning(t('agenttrust.guardrailLoosened', {
+                          detail: t('agenttrust.loosenDetailTargetROI', { from: prev, to: newVal }),
+                        }));
+                      }
                       updateConfigSection(queryClient, agent, 'adSpendBudget', (s) => ({
                         ...s, targetROI: newVal,
                       }));
@@ -141,8 +180,16 @@ export function BasicStrategySections({ agent }: BasicStrategySectionsProps) {
                     style={{ width: 80 }}
                     value={agent.strategyConfig.crmConfig.discountCap}
                     onChange={(v) => {
+                      const newVal = v ?? 20;
+                      const prev = agent.strategyConfig.crmConfig?.discountCap ?? 20;
+                      // WS-D (D5): a higher discount cap loosens the guardrail.
+                      if (newVal > prev) {
+                        message.warning(t('agenttrust.guardrailLoosened', {
+                          detail: t('agenttrust.loosenDetailDiscountCap', { from: prev, to: newVal }),
+                        }));
+                      }
                       updateConfigSection(queryClient, agent, 'crmConfig', (s) => ({
-                        ...s, discountCap: v ?? 20,
+                        ...s, discountCap: newVal,
                       }));
                     }}
                     suffix="%"
@@ -178,8 +225,16 @@ export function BasicStrategySections({ agent }: BasicStrategySectionsProps) {
                     prefix="¥"
                     value={agent.strategyConfig.afterSalesConfig.autoRefundCap}
                     onChange={(v) => {
+                      const newVal = v ?? 20;
+                      const prev = agent.strategyConfig.afterSalesConfig?.autoRefundCap ?? 20;
+                      // WS-D (D5): a higher auto-refund cap loosens the guardrail.
+                      if (newVal > prev) {
+                        message.warning(t('agenttrust.guardrailLoosened', {
+                          detail: t('agenttrust.loosenDetailRefundCap', { from: prev, to: newVal }),
+                        }));
+                      }
                       updateConfigSection(queryClient, agent, 'afterSalesConfig', (s) => ({
-                        ...s, autoRefundCap: v ?? 20,
+                        ...s, autoRefundCap: newVal,
                       }));
                     }}
                   />
