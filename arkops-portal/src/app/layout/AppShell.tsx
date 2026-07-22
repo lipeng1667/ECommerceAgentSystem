@@ -29,6 +29,7 @@ import {
   MenuOutlined,
   MoonOutlined,
   RobotOutlined,
+  SearchOutlined,
   SettingOutlined,
   ShoppingCartOutlined,
   ShopOutlined,
@@ -48,6 +49,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../auth';
 import { getAccessiblePaths } from '../rolePermissions';
 import type { Role } from '../rolePermissions';
+import { CommandPalette } from '../../components/CommandPalette';
 import { OnboardingTour } from '../../components/OnboardingTour';
 import { useEffect, useState } from 'react';
 
@@ -157,6 +159,7 @@ export function AppShell() {
   const isMobileNav = useMediaQuery(MOBILE_NAV_MEDIA_QUERY);
   const [siderCollapsed, setSiderCollapsed] = useState(false);
   const [navDrawerOpen, setNavDrawerOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   // Close the mobile nav drawer after any route change.
   useEffect(() => {
@@ -424,6 +427,12 @@ export function AppShell() {
                 ]}
               />
             )}
+            <Button
+              icon={<SearchOutlined />}
+              aria-label={t('shell.searchOpen')}
+              title={t('shell.searchOpen')}
+              onClick={() => setPaletteOpen(true)}
+            />
             <Button icon={<BellOutlined />}>{t('app.alerts')}</Button>
             <Dropdown trigger={['click']} placement="bottomRight" dropdownRender={() => identityPanel}>
               <button type="button" className="header-identity" aria-label={t('shell.currentRole')}>
@@ -459,6 +468,7 @@ export function AppShell() {
         </Content>
       </Layout>
       <OnboardingTour />
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </Layout>
   );
 }

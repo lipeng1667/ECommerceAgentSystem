@@ -1991,7 +1991,15 @@ const dictionaries = {
     'shell.tenantOnboarding': 'Tenant: new merchant workspace',
     'shell.demoScenarioTag': 'Full business scenario demo',
     'shell.allStores': 'All stores',
-    'shell.storeScope': 'Store scope'
+    'shell.storeScope': 'Store scope',
+    'shell.searchOpen': 'Quick search (Cmd+K)',
+    'shell.searchPlaceholder': 'Search stores, orders, agents, approvals…',
+    'shell.searchEmpty': 'No matches found',
+    'shell.searchHint': '↑↓ select · Enter open · Esc close',
+    'shell.searchGroupPages': 'Pages',
+    'shell.searchGroupStores': 'Stores',
+    'shell.searchGroupAgents': 'Agents',
+    'shell.searchGroupApprovals': 'Pending approvals'
   },
   zh: {
     'nav.dashboard': '经营总览',
@@ -3982,7 +3990,15 @@ const dictionaries = {
     'shell.tenantOnboarding': '租户：新用户体验空间',
     'shell.demoScenarioTag': '完整经营场景体验',
     'shell.allStores': '全部店铺',
-    'shell.storeScope': '店铺范围'
+    'shell.storeScope': '店铺范围',
+    'shell.searchOpen': '快捷搜索（⌘K）',
+    'shell.searchPlaceholder': '搜索店铺、订单、Agent、审批…',
+    'shell.searchEmpty': '未找到匹配结果',
+    'shell.searchHint': '↑↓ 选择 · Enter 打开 · Esc 关闭',
+    'shell.searchGroupPages': '页面',
+    'shell.searchGroupStores': '店铺',
+    'shell.searchGroupAgents': 'Agent',
+    'shell.searchGroupApprovals': '待审批'
   }
 } as const satisfies Record<Language, Dictionary>;
 
