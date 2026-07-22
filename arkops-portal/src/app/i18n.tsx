@@ -2027,7 +2027,22 @@ const dictionaries = {
     'billingv2.overageRate': 'Overage rate',
     'billingv2.planLimit': 'Plan limit',
     'billingv2.overLimit': 'Over plan limit',
-    'billingv2.overLimitNote': 'The dashed line marks the plan limit; red bars are months that exceeded it and incurred overage charges.'
+    'billingv2.overLimitNote': 'The dashed line marks the plan limit; red bars are months that exceeded it and incurred overage charges.',
+    'notify.matrixTitle': 'Event × channel matrix',
+    'notify.matrixDesc': 'Toggle an event on a channel to push it there when it fires. Channels must be connected before they can receive events.',
+    'notify.matrixSaved': 'Notification settings saved',
+    'notify.connected': 'Connected',
+    'notify.notConfigured': 'Not configured',
+    'notify.testSend': 'Send test',
+    'notify.testSent': 'Test notification sent to {name}',
+    'notify.testFailed': '{name} is not connected; test send failed',
+    'notify.channelAdded': 'Channel {name} added',
+    'notify.channelType': 'Channel type',
+    'notify.channelName': 'Channel name',
+    'notify.channelNamePlaceholder': 'Defaults to the channel type name',
+    'notify.botWebhookUrl': 'Bot webhook URL',
+    'notify.endpointRequired': 'Enter the push endpoint URL',
+    'notify.addChannelHint': 'Demo environment: the channel counts as connected once added and subscribes to "Approval required" by default.'
   },
   zh: {
     'nav.dashboard': '经营总览',
@@ -4054,7 +4069,22 @@ const dictionaries = {
     'billingv2.overageRate': '超出后费率',
     'billingv2.planLimit': '套餐上限',
     'billingv2.overLimit': '超出套餐上限',
-    'billingv2.overLimitNote': '虚线为套餐上限；红色柱表示超出上限、产生超额费用的月份。'
+    'billingv2.overLimitNote': '虚线为套餐上限；红色柱表示超出上限、产生超额费用的月份。',
+    'notify.matrixTitle': '事件 × 通道矩阵',
+    'notify.matrixDesc': '打开某事件在对应通道上的开关后，事件发生时会推送到该通道。通道需先连接才能接收通知。',
+    'notify.matrixSaved': '通知设置已保存',
+    'notify.connected': '已连接',
+    'notify.notConfigured': '未配置',
+    'notify.testSend': '测试发送',
+    'notify.testSent': '已向 {name} 发送测试通知',
+    'notify.testFailed': '{name} 未连接，测试发送失败',
+    'notify.channelAdded': '通道 {name} 已添加',
+    'notify.channelType': '通道类型',
+    'notify.channelName': '通道名称',
+    'notify.channelNamePlaceholder': '默认使用通道类型名称',
+    'notify.botWebhookUrl': '机器人 Webhook 地址',
+    'notify.endpointRequired': '请填写推送地址',
+    'notify.addChannelHint': '演示环境：添加后即视为连接成功，并默认订阅「需要审批」事件。'
   }
 } as const satisfies Record<Language, Dictionary>;
 

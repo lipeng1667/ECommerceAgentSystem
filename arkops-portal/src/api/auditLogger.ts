@@ -34,7 +34,7 @@ export function recordAuditLog(input: {
   actor: string;
   action: string;
   entity: string;
-  entityId: AllMallId;
+  entityId: AllMallId | string; // WS-F: widened to match AuditLog.entityId
   summary: string;
   category: AuditLog['category'];
   linkTo?: string;
