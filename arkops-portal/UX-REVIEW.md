@@ -7,6 +7,21 @@ Scope: full frontend walkthrough of `arkops-portal/` (mock-data MVP) across four
 
 ---
 
+## Resolution status (updated 2026-07-22, post WS-A…WS-F merge)
+
+All six workstreams from `UX-IMPROVEMENT-PLAN.md` have landed on `main` (branches `ws-a-onboarding` … `ws-f-secondary`), with Phase-0 decisions D1–D5 recorded in `product-design.md` §五.
+
+**Resolved:** Part 1 findings 1.1–1.6, 2.1–2.12, 4.1–4.9, 5.1 (shell), 5.3, 5.4, 6.1–6.13; strategic S1 (`/inbox`), S2 (scenario-first `/setup`), S3 (L1/L2/L3 dial, mock), S5 (shell store-scope filter), S6 (first-agent moment), S7 groundwork (375px detail pages, notification matrix).
+
+**Remaining / deferred:**
+- 3.1–3.5 (multilingual) — deferred to the final phase per D4 (M1–M4 in the plan); orphaned keys flagged for M1: `dashboard.liveFeed*`, `dashboardv2.filterAllStores`.
+- 5.2 (hardcoded hex) — streams cleaned their owned files and real dark-mode breaks; tree-wide `scripts/check-hex.sh` still reports ~418 legacy lines (mostly non-breaking inline colors) — burn down incrementally with the script as the gate.
+- S3 autonomy levels are scenario-level mock state; they do not yet rewrite member agents' `approvalStrategy` (backend wiring).
+- S4 outcomes are a mock data contract (`AgentOutcomeRecord`) pending real metrics.
+- Product sign-offs pending: demote Model Center behind "advanced settings" (F2 flag); rename `/setup` nav label 自动化配置 → 托管场景 (WS-D flag).
+
+---
+
 ## Priority themes
 
 ### Theme 1 — Trust integrity (highest priority)

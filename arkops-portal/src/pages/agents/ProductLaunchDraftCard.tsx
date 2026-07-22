@@ -113,7 +113,7 @@ export function ProductLaunchDraftCard({
               },
             },
             {
-              title: t('stores.status'), dataIndex: 'status', width: 100,
+              title: t('tasks.status'), dataIndex: 'status', width: 100,
               render: (status: TaskStatus) => <StatusBadge value={status} />,
             },
             {

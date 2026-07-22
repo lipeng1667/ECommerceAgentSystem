@@ -12,7 +12,7 @@ import {
   UnorderedListOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Card, Col, Progress, Row, Segmented, Select, Space, Table, Tag, Typography } from 'antd';
+import { Button, Card, Col, Progress, Row, Segmented, Space, Table, Tag, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -21,6 +21,7 @@ import { dashboardApi } from '../../api/dashboard';
 import { storesApi } from '../../api/stores';
 import { useAuth } from '../../app/auth';
 import { useDemoMode } from '../../app/demoMode';
+import { useStoreScope } from '../../app/storeScope';
 import { useI18n } from '../../app/i18n';
 import { TrendBarChart } from '../../components/charts/TrendBarChart';
 import { EmptyState } from '../../components/EmptyState';
@@ -153,11 +154,9 @@ export function DashboardPage() {
   const { user } = useAuth();
   const { isDemo, enterDemo } = useDemoMode();
   const [timeRange, setTimeRange] = useState<DashboardTimeRange>('today');
-  // TODO(integration): consume shell StoreScope context (D3) — replace this local state with the
-  // shell-level persistent store filter once WS-E lands it. Everything below reads only from
-  // `storeScope`, so the swap is a one-line change here.
-  const [storeScope, setStoreScope] = useState<string>('all');
-  const scopedStoreName = storeScope === 'all' ? undefined : storeScope;
+  // 集成（D3）：店铺范围来自 Shell 级持久过滤器（WS-E storeScope context），页面不再自维护。
+  const { scope: storeScope, activeStore } = useStoreScope();
+  const scopedStoreName = activeStore?.name;
 
   const { data: storesData } = useQuery({
     queryKey: ['stores'],
@@ -258,15 +257,6 @@ export function DashboardPage() {
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
               <SyncOutlined /> {t('dashboardv2.updatedAt', { time: dayjs().format('HH:mm') })}
             </Typography.Text>
-            <Select
-              value={storeScope}
-              onChange={setStoreScope}
-              style={{ width: 190 }}
-              options={[
-                { label: t('dashboardv2.filterAllStores'), value: 'all' },
-                ...(storesData ?? []).map((store) => ({ label: store.name, value: store.name })),
-              ]}
-            />
             <Segmented
               value={timeRange}
               onChange={(value) => setTimeRange(value as DashboardTimeRange)}

@@ -108,13 +108,14 @@ Local authentication is frontend-only. A deployment identifier is generated when
 
 ## Implemented Navigation
 
-The sidebar is ordered around merchant tasks: Overview → Stores → Products → Orders → Action Center → Agent Center → Platform Settings, followed by independent Plans & Billing and Help Center entries. Only the active submenu group expands; opening another group collapses the previous one.
+The sidebar is ordered around merchant tasks: Overview → Stores → Products → Orders → Action Inbox → Agent Center → Platform Settings, followed by independent Plans & Billing and Help Center entries. Multiple submenu groups can stay open at once; navigating opens the active group additively. Under 768px the sidebar becomes a drawer opened from the header hamburger. The header also hosts a persistent store-scope filter (D3), a Cmd/Ctrl+K command palette, and an avatar identity dropdown.
 
 | Route | Page | Status | Purpose |
 | --- | --- | --- | --- |
 | `/login` | Login | Implemented | Select a first-time or established local merchant persona. |
 | `/dashboard` | Dashboard | Implemented | Business overview and Agent monitoring; empty until a new merchant connects a store. |
-| `/setup` | Quick Setup | Implemented | Centralized config for pricing, ads, customer, and inventory across all agents. |
+| `/setup` | Scenario Activation | Implemented | Scenario-first activation surface (D1): 5 scenario bundles with autonomy dial (L1/L2/L3), per-store overrides; per-agent config is the advanced layer. |
+| `/inbox` | Action Inbox | Implemented | Unified "needs me" queue (D2): approvals + exceptions + re-login items ordered by urgency/expiry; header bell links here. |
 | `/orders` | Order Automation | Implemented | Order handling, automation progress, and exception workflows. |
 | `/products` | Product Management | Implemented | Imported products, drafts, prices, and inventory. |
 | `/stores` | Store List | Implemented | Store list, authorization status, service tags, add-store entry. |
@@ -123,8 +124,8 @@ The sidebar is ordered around merchant tasks: Overview → Stores → Products �
 | `/stores/:storeId` | Store Detail | Implemented | Store business overview and settings tabs. |
 | `/agents` | Agent Center | Implemented | My Agents and available Agents panels. |
 | `/agents/:agentType` | Agent Detail | Implemented | Agent stats, run instructions, task history, task creation modal. |
-| `/agents/exceptions` | Exception Center | Implemented | High-priority issues that require operator intervention. |
-| `/agents/approvals` | Approval List | Implemented | Pending approval list. |
+| `/agents/exceptions` | Exception Center | Implemented | Filtered view of the Action Inbox: issues requiring operator intervention. |
+| `/agents/approvals` | Approval List | Implemented | Filtered view of the Action Inbox: pending approvals, expiry-ordered. |
 | `/agents/approvals/:approvalId` | Approval Detail | Implemented | Approve or reject high-risk actions. |
 | `/settings/stores` | Store Settings Entry | Implemented | Store management entry within Settings. |
 | `/settings/models` | Model Center | Implemented | Agent model assignment, custom models, monthly usage. |
