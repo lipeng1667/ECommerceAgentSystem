@@ -2051,7 +2051,13 @@ const dictionaries = {
     'auditv2.groupHuman': 'Human',
     'auditv2.groupSystem': 'System',
     'auditv2.subCategory': 'Sub-category',
-    'auditv2.actorFilter': 'Actor'
+    'auditv2.actorFilter': 'Actor',
+    'guidev2.goStores': 'Open Store Management',
+    'guidev2.goAgents': 'Open Agent Center',
+    'guidev2.goApprovals': 'Open Approval Center',
+    'guidev2.goExceptions': 'Open Exception Center',
+    'guidev2.goBilling': 'Open Billing',
+    'guidev2.goDashboard': 'Open Overview'
   },
   zh: {
     'nav.dashboard': '经营总览',
@@ -4102,7 +4108,13 @@ const dictionaries = {
     'auditv2.groupHuman': '人工',
     'auditv2.groupSystem': '系统',
     'auditv2.subCategory': '细分类别',
-    'auditv2.actorFilter': '操作者'
+    'auditv2.actorFilter': '操作者',
+    'guidev2.goStores': '前往店铺管理',
+    'guidev2.goAgents': '前往 Agent 中心',
+    'guidev2.goApprovals': '前往审批中心',
+    'guidev2.goExceptions': '前往异常中心',
+    'guidev2.goBilling': '前往账单页',
+    'guidev2.goDashboard': '前往经营总览'
   }
 } as const satisfies Record<Language, Dictionary>;
 
