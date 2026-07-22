@@ -238,6 +238,58 @@ export function UsageGuideSettingsPage() {
         </Row>
       </Card>
 
+      {/* ===== 标签图例：风险 / 严重度 / 触发方式 ===== */}
+      <Card
+        id="guide-tag-legend"
+        title={<><SafetyOutlined style={{ marginRight: 8 }} />{t('guidev2.legendTitle')}</>}
+        style={{ marginBottom: 24 }}
+      >
+        <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 16 }}>
+          {t('guidev2.legendDesc')}
+        </Typography.Paragraph>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} md={8}>
+            <Card size="small" style={{ background: 'var(--ark-panel-soft)', borderLeft: '3px solid #dc2626', height: '100%' }}>
+              <Space size={4} wrap>
+                <Typography.Text strong>{t('guidev2.legendRisk')}</Typography.Text>
+                <Tag color="green">{t('status.low')}</Tag>
+                <Tag color="gold">{t('status.medium')}</Tag>
+                <Tag color="red">{t('status.high')}</Tag>
+              </Space>
+              <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: 8, marginBottom: 0 }}>
+                {t('guidev2.legendRiskDesc')}
+              </Typography.Paragraph>
+            </Card>
+          </Col>
+          <Col xs={24} md={8}>
+            <Card size="small" style={{ background: 'var(--ark-panel-soft)', borderLeft: '3px solid #ea580c', height: '100%' }}>
+              <Space size={4} wrap>
+                <Typography.Text strong>{t('guidev2.legendSeverity')}</Typography.Text>
+                <Tag color="default">{t('status.low')}</Tag>
+                <Tag color="orange">{t('status.medium')}</Tag>
+                <Tag color="volcano">{t('status.high')}</Tag>
+              </Space>
+              <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: 8, marginBottom: 0 }}>
+                {t('guidev2.legendSeverityDesc')}
+              </Typography.Paragraph>
+            </Card>
+          </Col>
+          <Col xs={24} md={8}>
+            <Card size="small" style={{ background: 'var(--ark-panel-soft)', borderLeft: '3px solid #7c3aed', height: '100%' }}>
+              <Space size={4} wrap>
+                <Typography.Text strong>{t('guidev2.legendTrigger')}</Typography.Text>
+                <Tag color="purple">{t('guide.triggerModeScheduled')}</Tag>
+                <Tag color="green">{t('guide.triggerModeEvent')}</Tag>
+                <Tag color="orange">{t('guide.triggerModeManual')}</Tag>
+              </Space>
+              <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: 8, marginBottom: 0 }}>
+                {t('guidev2.legendTriggerDesc')}
+              </Typography.Paragraph>
+            </Card>
+          </Col>
+        </Row>
+      </Card>
+
       {/* ===== 核心概念 ===== */}
       <Card
         title={<><QuestionCircleOutlined style={{ marginRight: 8 }} />核心概念</>}
