@@ -1,28 +1,18 @@
 import { mockDelay } from './client';
 import { exceptionItems } from '../pages/operations/exceptionCenterMockData';
+import type { ExceptionItem } from '../pages/operations/exceptionCenterMockData';
 import { batchUpdate, replaceItem } from './mockRepository';
 import { recordAuditLog } from './auditLogger';
 
-export interface ExceptionItem {
-  id: string;
-  type: 'review_negative' | 'chat_escalation' | 'ad_low_roi' | 'logistics_stuck' | 'compliance_flag';
-  title: string;
-  storeName: string;
-  agentType: string;
-  level: 'critical' | 'warning' | 'info';
-  summary: string;
-  detail: string;
-  suggestedAction: string;
-  createdAt: string;
-  resolved: boolean;
-  ignored: boolean;
-  assignee?: string;
-  linkTo?: string;
-}
+// WS-B (B6): the ExceptionItem shape lives in exceptionCenterMockData.ts;
+// re-export it so API consumers keep a single source of truth.
+export type { ExceptionItem };
+
+const CURRENT_ACTOR = '当前用户';
 
 function logExceptionAction(id: string, action: string, detail: string): void {
   recordAuditLog({
-    actor: '当前用户',
+    actor: CURRENT_ACTOR,
     action,
     entity: '异常',
     entityId: id as unknown as number,
@@ -31,25 +21,36 @@ function logExceptionAction(id: string, action: string, detail: string): void {
   });
 }
 
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
 export const exceptionsApi = {
   list: (): Promise<ExceptionItem[]> => mockDelay([...exceptionItems]),
 
-  resolve: (id: string) => {
+  // WS-B (B6): resolve/ignore capture an optional note plus actor + timestamp.
+  resolve: (id: string, note?: string) => {
     replaceItem(exceptionItems, (item) => item.id === id, (item) => ({
       ...item,
       resolved: true,
       ignored: false,
+      resolvedBy: CURRENT_ACTOR,
+      resolvedAt: nowIso(),
+      resolutionNote: note,
     }));
-    logExceptionAction(id, '解决异常', `异常已解决`);
+    logExceptionAction(id, '解决异常', `异常已解决${note ? `（备注：${note}）` : ''}`);
     return mockDelay(undefined);
   },
 
-  ignore: (id: string) => {
+  ignore: (id: string, note?: string) => {
     replaceItem(exceptionItems, (item) => item.id === id, (item) => ({
       ...item,
       ignored: true,
+      ignoredBy: CURRENT_ACTOR,
+      ignoredAt: nowIso(),
+      ignoreNote: note,
     }));
-    logExceptionAction(id, '忽略异常', `异常已忽略`);
+    logExceptionAction(id, '忽略异常', `异常已忽略${note ? `（备注：${note}）` : ''}`);
     return mockDelay(undefined);
   },
 
@@ -57,6 +58,9 @@ export const exceptionsApi = {
     replaceItem(exceptionItems, (item) => item.id === id, (item) => ({
       ...item,
       ignored: false,
+      ignoredBy: undefined,
+      ignoredAt: undefined,
+      ignoreNote: undefined,
     }));
     logExceptionAction(id, '取消忽略', `取消忽略异常`);
     return mockDelay(undefined);
@@ -76,9 +80,11 @@ export const exceptionsApi = {
       ...item,
       resolved: true,
       ignored: false,
+      resolvedBy: CURRENT_ACTOR,
+      resolvedAt: nowIso(),
     }));
     recordAuditLog({
-      actor: '当前用户',
+      actor: CURRENT_ACTOR,
       action: '批量解决',
       entity: '异常',
       entityId: 0,
@@ -92,9 +98,11 @@ export const exceptionsApi = {
     batchUpdate(exceptionItems, (item) => ids.includes(item.id), (item) => ({
       ...item,
       ignored: true,
+      ignoredBy: CURRENT_ACTOR,
+      ignoredAt: nowIso(),
     }));
     recordAuditLog({
-      actor: '当前用户',
+      actor: CURRENT_ACTOR,
       action: '批量忽略',
       entity: '异常',
       entityId: 0,

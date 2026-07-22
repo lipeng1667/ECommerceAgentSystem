@@ -1,7 +1,9 @@
 import dayjs from 'dayjs';
-import type { Approval, AuditLog, Member, Store, StoreConnection, Task } from '../types/domain';
+import type { Approval, ApprovalEvidenceField, AuditLog, Member, PriorApprovalRecord, Store, StoreConnection, Task } from '../types/domain'; // WS-B: added ApprovalEvidenceField/PriorApprovalRecord
 
-const now = dayjs('2026-05-30T10:00:00+08:00');
+// WS-B (B4/B5): anchor mock timestamps to the real clock so approval expiry
+// countdowns and "requested X ago" ages stay live instead of permanently stale.
+const now = dayjs();
 
 export const stores: Store[] = [
   {
@@ -1036,7 +1038,8 @@ export const approvals: Approval[] = [
     afterValue: '闪购 30% OFF，预算 ¥500/7天',
     riskLevel: 'high',
     status: 'pending',
-    requestedAt: now.subtract(2, 'hour').toISOString()
+    // WS-B (B4): aged close to the 12h dual-approval timeout to demo expiry escalation
+    requestedAt: now.subtract(10, 'hour').toISOString()
   },
   {
     id: 5005,
@@ -1216,3 +1219,45 @@ export const members: Member[] = [
 // This ensures all API mutation operations generate consistent audit trail entries.
 import { initAuditLogger } from './auditLogger';
 initAuditLogger(auditLogs);
+
+// ===== WS-B (B3/B4): structured approval evidence & dual-approval progress (appended) =====
+// Real before/after fields per approval; deltas are computed from the numeric values
+// by the UI instead of being hardcoded. Keyed by approval id.
+export const approvalEvidence: Record<number, ApprovalEvidenceField[]> = {
+  5001: [
+    { label: 'C-102 日预算', before: '¥420/天', after: '¥0/天（暂停）', beforeNumeric: 420, afterNumeric: 0, unit: '¥' },
+    { label: 'C-088 日预算', before: '¥180/天', after: '¥243/天', beforeNumeric: 180, afterNumeric: 243, unit: '¥' },
+    { label: 'C-102 近 7 天 ROI', before: '1.42', after: '—（停止投放）', beforeNumeric: 1.42 },
+    { label: '广告总日预算', before: '¥600/天', after: '¥243/天', beforeNumeric: 600, afterNumeric: 243, unit: '¥' }
+  ],
+  5002: [
+    { label: '商品状态', before: '草稿', after: '待发布' },
+    { label: '详情页卖点文案', before: '无（未生成）', after: '已生成 6 条卖点，含合规检查通过标记' }
+  ],
+  5003: [
+    { label: 'SKU BT-E01 售价', before: '¥32.99', after: '¥29.99', beforeNumeric: 32.99, afterNumeric: 29.99, unit: '¥' },
+    { label: '毛利率', before: '42%', after: '37%', beforeNumeric: 42, afterNumeric: 37, unit: '%' },
+    { label: '竞品均价', before: '¥31.50', after: '¥31.50', beforeNumeric: 31.5, afterNumeric: 31.5, unit: '¥' }
+  ],
+  5004: [
+    { label: '促销活动', before: '无', after: '闪购 30% OFF（7 天）' },
+    { label: '促销预算', before: '¥0', after: '¥500', beforeNumeric: 0, afterNumeric: 500, unit: '¥' },
+    { label: '涉及 SKU 数', before: '0', after: '3', beforeNumeric: 0, afterNumeric: 3 },
+    { label: '滞销库存周转天数', before: '62 天', after: '预计 ≤ 30 天', beforeNumeric: 62, afterNumeric: 30 }
+  ],
+  5005: [
+    { label: 'A-201 日预算', before: '¥100/天', after: '¥150/天', beforeNumeric: 100, afterNumeric: 150, unit: '¥' },
+    { label: 'A-201 近 7 天 ROI', before: '3.2', after: '预期 ≥ 2.8', beforeNumeric: 3.2, afterNumeric: 2.8 }
+  ]
+};
+
+// WS-B (B4): completed first-round approvals for dual-approval (high risk) items.
+export const approvalPriorApprovals: Record<number, PriorApprovalRecord[]> = {
+  5004: [
+    {
+      approver: '运营负责人',
+      at: now.subtract(6, 'hour').toISOString(),
+      note: '库存积压确认属实，同意清仓；请二审关注预算上限。'
+    }
+  ]
+};

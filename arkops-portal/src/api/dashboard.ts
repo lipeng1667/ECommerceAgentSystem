@@ -1,5 +1,6 @@
 import { mockDelay } from './client';
 import { approvals, stores, tasks } from './mockData';
+import { exceptionItems } from '../pages/operations/exceptionCenterMockData'; // WS-B (B2)
 import { agentConfigs } from './agentMockData';
 
 /**
@@ -24,8 +25,10 @@ export const dashboardApi = {
     const orderExceptions = tasks.filter(
       (task) => task.status === 'failed'
     ).length;
-    const exceptionCenterPending = tasks.filter(
-      (task) => task.status === 'waiting_approval'
+    // WS-B (B2): count real exception-center items (previously counted
+    // waiting_approval tasks, which double-counted approvals in badges).
+    const exceptionCenterPending = exceptionItems.filter(
+      (item) => !item.resolved && !item.ignored
     ).length;
 
     // Dynamic task status breakdown
