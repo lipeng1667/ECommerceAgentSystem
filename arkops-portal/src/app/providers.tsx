@@ -5,6 +5,7 @@ import type { PropsWithChildren } from 'react';
 import { AuthProvider } from './auth';
 import { DemoModeProvider } from './demoMode';
 import { I18nProvider } from './i18n';
+import { StoreScopeProvider } from './storeScope';
 import { ThemeProvider, useTheme } from './theme';
 
 const queryClient = new QueryClient({
@@ -64,7 +65,9 @@ export function AppProviders({ children }: PropsWithChildren) {
         <ThemeProvider>
           <AntDesignThemeProvider>
             <I18nProvider>
-              <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+              <QueryClientProvider client={queryClient}>
+                <StoreScopeProvider>{children}</StoreScopeProvider>
+              </QueryClientProvider>
             </I18nProvider>
           </AntDesignThemeProvider>
         </ThemeProvider>

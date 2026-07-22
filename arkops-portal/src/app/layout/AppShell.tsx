@@ -41,6 +41,7 @@ import { Avatar, Badge, Button, Divider, Drawer, Dropdown, Layout, Menu, Segment
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDemoMode } from '../demoMode';
 import { LANGUAGE_SWITCHER_ENABLED, useI18n } from '../i18n';
+import { useStoreScope } from '../storeScope';
 import { useTheme } from '../theme';
 import { dashboardApi } from '../../api/dashboard';
 import { useQuery } from '@tanstack/react-query';
@@ -114,6 +115,7 @@ export function AppShell() {
   const { mode, setMode } = useTheme();
   const { isDemo, exitDemo } = useDemoMode();
   const { role, setRole, user, logout } = useAuth();
+  const { scope: storeScope, setScope: setStoreScope, stores: scopeStores } = useStoreScope();
   const accessiblePaths = getAccessiblePaths(role ?? 'Owner');
 
   const handleLogout = () => {
@@ -385,6 +387,22 @@ export function AppShell() {
             </Typography.Text>
           </Space>
           <Space>
+            <Select
+              className="header-store-scope"
+              size="small"
+              aria-label={t('shell.storeScope')}
+              title={t('shell.storeScope')}
+              value={storeScope === 'all' ? 'all' : String(storeScope)}
+              onChange={(value) => setStoreScope(value === 'all' ? 'all' : Number(value))}
+              popupMatchSelectWidth={false}
+              options={[
+                { value: 'all', label: <><ShopOutlined /> {t('shell.allStores')}</> },
+                ...scopeStores.map((store) => ({
+                  value: String(store.id),
+                  label: <><ShopOutlined /> {store.name}</>
+                }))
+              ]}
+            />
             <Segmented
               size="small"
               value={mode}

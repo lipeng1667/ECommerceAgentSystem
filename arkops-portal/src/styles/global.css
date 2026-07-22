@@ -69,6 +69,17 @@ body {
   background: var(--ark-bg);
 }
 
+/* Shell-level store-scope filter (E6, decision D3) */
+.header-store-scope {
+  min-width: 132px;
+  max-width: 200px;
+}
+
+.header-store-scope .anticon {
+  margin-right: 4px;
+  color: var(--ark-muted);
+}
+
 /* Header identity trigger + dropdown panel (E3) */
 .header-identity {
   display: flex;
