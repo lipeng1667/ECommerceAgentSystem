@@ -16,8 +16,17 @@ body {
   position: sticky;
   top: 0;
   height: 100vh;
+  overflow: hidden;
   background: var(--ark-panel) !important;
   border-right: 1px solid var(--ark-border);
+}
+
+.app-sider.ant-layout-sider-collapsed {
+  border-right: 0;
+}
+
+.app-nav-drawer .ant-drawer-body {
+  background: var(--ark-panel);
 }
 
 .brand {
@@ -36,7 +45,7 @@ body {
   height: 36px;
   border-radius: 10px;
   background: var(--ark-blue);
-  color: #fff;
+  color: var(--ark-on-accent);
   font-weight: 800;
 }
 
@@ -58,6 +67,178 @@ body {
 .app-content {
   padding: 24px;
   background: var(--ark-bg);
+}
+
+/* Cmd/Ctrl+K command palette (E8) */
+.command-palette .ant-modal-content {
+  padding: 0;
+  overflow: hidden;
+}
+
+.command-palette-input {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--ark-border-soft);
+}
+
+.command-palette-results {
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.command-palette-group {
+  display: block;
+  padding: 8px 10px 2px;
+  font-size: 11px;
+}
+
+.command-palette-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ark-ink);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.command-palette-item.is-active {
+  background: color-mix(in srgb, var(--ark-blue) 9%, var(--ark-panel));
+  color: var(--ark-blue);
+}
+
+.command-palette-item-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-palette-item-meta {
+  flex: 0 0 auto;
+  margin: 0;
+  font-size: 11px;
+}
+
+.command-palette-empty {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  color: var(--ark-muted);
+  font-size: 13px;
+}
+
+.command-palette-footer {
+  padding: 8px 14px;
+  border-top: 1px solid var(--ark-border-soft);
+  background: var(--ark-panel-soft);
+}
+
+/* Demo-mode banner (theme-aware amber strip) */
+.demo-banner {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 24px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--ark-amber) 16%, var(--ark-panel)) 0%,
+    color-mix(in srgb, var(--ark-amber) 26%, var(--ark-panel)) 100%
+  );
+  border-bottom: 1px solid color-mix(in srgb, var(--ark-amber) 55%, var(--ark-panel));
+}
+
+.demo-banner-icon {
+  color: var(--ark-amber);
+  font-size: 14px;
+}
+
+.demo-banner-text {
+  color: color-mix(in srgb, var(--ark-amber) 45%, var(--ark-ink));
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.demo-banner-exit.ant-btn {
+  color: color-mix(in srgb, var(--ark-amber) 45%, var(--ark-ink));
+  font-size: 11px;
+}
+
+/* Shell-level store-scope filter (E6, decision D3) */
+.header-store-scope {
+  min-width: 132px;
+  max-width: 200px;
+}
+
+.header-store-scope .anticon {
+  margin-right: 4px;
+  color: var(--ark-muted);
+}
+
+/* Header identity trigger + dropdown panel (E3) */
+.header-identity {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.header-identity:hover {
+  background: var(--ark-panel-soft);
+}
+
+.identity-menu {
+  width: 232px;
+  padding: 14px;
+  border: 1px solid var(--ark-border);
+  border-radius: 10px;
+  background: var(--ark-panel);
+  box-shadow: var(--ark-card-shadow);
+}
+
+.identity-menu-user {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.identity-menu-role {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.identity-menu-viewas {
+  display: grid;
+  gap: 6px;
+}
+
+.identity-menu-hint {
+  color: var(--ark-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 560px) {
+  .header-identity-copy {
+    display: none;
+  }
 }
 
 .page-stack {
@@ -216,7 +397,7 @@ body {
 }
 
 .subscription-private-card {
-  background: linear-gradient(135deg, #f8fafb 0%, #f0f5ff 100%);
+  background: linear-gradient(135deg, var(--ark-panel-soft) 0%, color-mix(in srgb, var(--ark-blue) 6%, var(--ark-panel)) 100%);
 }
 
 .metric-card-top {
@@ -232,24 +413,24 @@ body {
   width: 34px;
   height: 34px;
   border-radius: 8px;
-  color: #fff;
+  color: var(--ark-on-accent);
   font-size: 18px;
 }
 
 .metric-icon-blue {
-  background: #2563eb;
+  background: var(--ark-blue);
 }
 
 .metric-icon-teal {
-  background: #0f766e;
+  background: var(--ark-teal);
 }
 
 .metric-icon-orange {
-  background: #ea580c;
+  background: var(--ark-orange);
 }
 
 .metric-icon-red {
-  background: #dc2626;
+  background: var(--ark-red);
 }
 
 .mini-spark {
@@ -658,7 +839,7 @@ body {
   margin: 0 auto 18px;
   border-radius: 50%;
   background: var(--ark-green);
-  color: #fff;
+  color: var(--ark-on-accent);
   font-size: 32px;
   box-shadow: 0 0 0 10px color-mix(in srgb, var(--ark-green) 10%, transparent);
 }
@@ -830,20 +1011,20 @@ body {
 }
 
 .trend-bar-runs {
-  background: #2563eb;
+  background: var(--ark-blue);
 }
 
 .trend-bar-approvals {
-  background: #0f766e;
+  background: var(--ark-teal);
 }
 
 .trend-bar-failures {
-  background: #dc2626;
+  background: var(--ark-red);
 }
 
 /* Store business trend overrides */
 .trend-bar-gmv {
-  background: #2563eb;
+  background: var(--ark-blue);
 }
 
 /* Usage chart - compact */
@@ -857,15 +1038,15 @@ body {
 }
 
 .trend-bar-orders {
-  background: #f59e0b;
+  background: var(--ark-amber);
 }
 
 .legend-gmv {
-  background: #2563eb;
+  background: var(--ark-blue);
 }
 
 .legend-orders {
-  background: #f59e0b;
+  background: var(--ark-amber);
 }
 
 /* Stat cards */
@@ -875,19 +1056,19 @@ body {
 }
 
 .stat-card-primary {
-  border-left: 3px solid #2563eb;
+  border-left: 3px solid var(--ark-blue);
 }
 
 .stat-card-success {
-  border-left: 3px solid #0f766e;
+  border-left: 3px solid var(--ark-teal);
 }
 
 .stat-card-purple {
-  border-left: 3px solid #7c3aed;
+  border-left: 3px solid var(--ark-purple);
 }
 
 .stat-card-warning {
-  border-left: 3px solid #ea580c;
+  border-left: 3px solid var(--ark-orange);
 }
 
 .stat-card .stat-card-icon {
@@ -959,15 +1140,15 @@ body {
 }
 
 .legend-runs {
-  background: #2563eb;
+  background: var(--ark-blue);
 }
 
 .legend-approvals {
-  background: #0f766e;
+  background: var(--ark-teal);
 }
 
 .legend-failures {
-  background: #dc2626;
+  background: var(--ark-red);
 }
 
 .status-visual {
@@ -1097,15 +1278,15 @@ body {
 }
 
 .health-dot-healthy {
-  background: #16a34a;
+  background: var(--ark-green);
 }
 
 .health-dot-warning {
-  background: #ea580c;
+  background: var(--ark-orange);
 }
 
 .health-dot-blocked {
-  background: #dc2626;
+  background: var(--ark-red);
 }
 
 .login-page {
@@ -1119,6 +1300,8 @@ body {
   padding: 0;
 }
 
+/* hex-audit-off — login showcase is an intentionally fixed dark hero panel,
+   identical in light and dark themes (finding 5.2 exemption). */
 .login-showcase {
   position: relative;
   display: flex;
@@ -1221,6 +1404,8 @@ body {
   font-size: 11px;
 }
 
+/* hex-audit-on */
+
 .login-panel {
   display: flex;
   min-height: 100vh;
@@ -1302,6 +1487,8 @@ body {
   .login-account-card { min-height: 120px; }
 }
 
+/* hex-audit-off — agent live console is an intentionally fixed dark terminal
+   aesthetic, identical in light and dark themes (finding 5.2 exemption). */
 .agent-live-card {
   overflow: hidden;
   border-color: #1e293b;
@@ -1491,6 +1678,8 @@ body {
   font-weight: 400;
 }
 
+/* hex-audit-on */
+
 .dashboard-live-card.agent-live-card {
   border-color: var(--ark-border);
   background: var(--ark-panel);
@@ -1516,14 +1705,14 @@ body {
 }
 
 .dashboard-live-card .live-pulse {
-  background: #2563eb;
+  background: var(--ark-blue);
   box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.1), 0 0 14px rgba(37, 99, 235, 0.42);
 }
 
 .dashboard-live-card .live-state-tag {
-  border-color: #bfdbfe;
-  background: #eff6ff;
-  color: #1d4ed8;
+  border-color: color-mix(in srgb, var(--ark-blue) 35%, var(--ark-panel));
+  background: color-mix(in srgb, var(--ark-blue) 10%, var(--ark-panel));
+  color: var(--ark-blue);
 }
 
 .dashboard-live-card .agent-live-meta {
@@ -1558,27 +1747,27 @@ body {
 }
 
 .dashboard-live-card .agent-live-icon {
-  background: #eff6ff;
-  color: #2563eb;
+  background: color-mix(in srgb, var(--ark-blue) 11%, var(--ark-panel));
+  color: var(--ark-blue);
 }
 
 .dashboard-live-card .agent-live-line-success .agent-live-icon {
-  background: #ecfdf5;
-  color: #16a34a;
+  background: color-mix(in srgb, var(--ark-green) 11%, var(--ark-panel));
+  color: var(--ark-green);
 }
 
 .dashboard-live-card .agent-live-line-warning .agent-live-icon {
-  background: #fff7ed;
-  color: #ea580c;
+  background: color-mix(in srgb, var(--ark-orange) 11%, var(--ark-panel));
+  color: var(--ark-orange);
 }
 
 .dashboard-live-card .agent-live-line-error .agent-live-icon {
-  background: #fef2f2;
-  color: #dc2626;
+  background: color-mix(in srgb, var(--ark-red) 11%, var(--ark-panel));
+  color: var(--ark-red);
 }
 
 .dashboard-live-card .agent-live-source {
-  color: #0f766e;
+  color: var(--ark-teal);
 }
 
 .dashboard-live-card .agent-live-copy .ant-typography {
@@ -1590,20 +1779,21 @@ body {
 }
 
 .dashboard-live-card .dashboard-live-line a {
-  color: #2563eb;
+  color: var(--ark-blue);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 12px;
   font-weight: 700;
 }
 
 .dashboard-live-card .dashboard-live-empty {
-  color: #64748b;
+  color: var(--ark-muted);
 }
 
 .dashboard-live-card .dashboard-live-empty .anticon {
-  color: #2563eb;
+  color: var(--ark-blue);
 }
 
+/* hex-audit-off — cursor belongs to the fixed dark terminal above. */
 .agent-live-cursor {
   width: 10px;
   height: 18px;
@@ -1612,6 +1802,7 @@ body {
   box-shadow: 0 0 16px rgba(103, 232, 249, 0.65);
   animation: live-cursor-blink 1s steps(2, start) infinite;
 }
+/* hex-audit-on */
 
 @keyframes live-cursor-blink {
   to {
@@ -1633,9 +1824,19 @@ body {
 @media (max-width: 720px) {
   .app-header {
     height: auto;
-    min-height: 64px;
+    min-height: 56px;
     flex-wrap: wrap;
-    padding: 12px 16px;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .app-header > .ant-space {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .app-header-tenant {
+    display: none;
   }
 
   .app-content {
@@ -1744,30 +1945,30 @@ body {
   border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
-  color: #fff;
+  color: var(--ark-on-accent);
   padding: 0 8px;
   text-align: center;
   flex-shrink: 0;
 }
 
 .agent-flow-node--foundation {
-  background: #dc2626;
+  background: var(--ark-red);
 }
 
 .agent-flow-node--traffic {
-  background: #2563eb;
+  background: var(--ark-blue);
 }
 
 .agent-flow-node--growth {
-  background: #16a34a;
+  background: var(--ark-green);
 }
 
 .agent-flow-node--support {
-  background: #7c3aed;
+  background: var(--ark-purple);
 }
 
 .agent-flow-node--standalone {
-  background: #ea580c;
+  background: var(--ark-orange);
 }
 
 .agent-flow-arrow {
@@ -1809,7 +2010,7 @@ body {
 
 .agent-flow-guard {
   padding: 10px 24px;
-  border: 2px dashed #ea580c;
+  border: 2px dashed var(--ark-orange);
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -1862,8 +2063,8 @@ body {
 
 .ai-business-brief {
   height: 100%;
-  background: linear-gradient(145deg, rgba(239, 246, 255, 0.9), rgba(245, 243, 255, 0.75));
-  border-color: #bfdbfe;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--ark-blue) 8%, var(--ark-panel)), color-mix(in srgb, var(--ark-purple) 6%, var(--ark-panel)));
+  border-color: color-mix(in srgb, var(--ark-blue) 30%, var(--ark-border));
 }
 
 .dashboard-priority-list {
@@ -1879,7 +2080,7 @@ body {
   gap: 12px;
   min-height: 42px;
   padding: 8px 12px;
-  color: var(--ark-text);
+  color: var(--ark-ink);
   background: var(--ark-panel-soft);
   border: 1px solid var(--ark-border-soft);
   border-radius: 8px;
@@ -1887,9 +2088,9 @@ body {
 }
 
 .dashboard-priority-list > a:hover {
-  color: #2563eb;
-  border-color: #93c5fd;
-  background: #eff6ff;
+  color: var(--ark-blue);
+  border-color: color-mix(in srgb, var(--ark-blue) 40%, var(--ark-border));
+  background: color-mix(in srgb, var(--ark-blue) 8%, var(--ark-panel));
 }
 
 .dashboard-priority-list > a strong {

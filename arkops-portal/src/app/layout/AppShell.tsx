@@ -1,3 +1,18 @@
+/**
+ * File: AppShell.tsx
+ * Purpose: Authenticated application frame — responsive sidebar/drawer navigation,
+ * header controls (theme, notifications, identity), demo banner, and routed content.
+ *
+ * Author: Michael Lee
+ *
+ * Main exports:
+ * - AppShell: layout wrapper rendered by the router for all authenticated pages.
+ *
+ * Major updates:
+ * - 2026-07-22: WS-E — responsive navigation: Sider collapses via breakpoint="lg"
+ *   with collapsedWidth={0}; under 768px the nav renders in a Drawer opened by a
+ *   header hamburger trigger, keeping the app usable at 375px.
+ */
 import {
   AlertOutlined,
   AppstoreOutlined,
@@ -11,8 +26,10 @@ import {
   ExperimentOutlined as LabOutlined,
   ExperimentOutlined,
   LogoutOutlined,
+  MenuOutlined,
   MoonOutlined,
   RobotOutlined,
+  SearchOutlined,
   SettingOutlined,
   ShoppingCartOutlined,
   ShopOutlined,
@@ -21,20 +38,46 @@ import {
   ThunderboltOutlined,
   QuestionCircleOutlined,
 } from '@ant-design/icons';
-import { Avatar, Badge, Button, Layout, Menu, Segmented, Select, Space, Tag, Typography } from 'antd';
+import { Avatar, Badge, Button, Divider, Drawer, Dropdown, Layout, Menu, Segmented, Select, Space, Tag, Tooltip, Typography } from 'antd';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDemoMode } from '../demoMode';
 import { LANGUAGE_SWITCHER_ENABLED, useI18n } from '../i18n';
+import { useStoreScope } from '../storeScope';
 import { useTheme } from '../theme';
 import { dashboardApi } from '../../api/dashboard';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../auth';
 import { getAccessiblePaths } from '../rolePermissions';
 import type { Role } from '../rolePermissions';
+import { CommandPalette } from '../../components/CommandPalette';
 import { OnboardingTour } from '../../components/OnboardingTour';
 import { useEffect, useState } from 'react';
 
 const { Header, Sider, Content } = Layout;
+
+const MOBILE_NAV_MEDIA_QUERY = '(max-width: 767px)';
+
+/**
+ * Tracks a CSS media query, initialized synchronously to avoid layout flicker.
+ *
+ * @param query - Media query string to observe.
+ * @returns Whether the query currently matches.
+ */
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(query).matches
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    const handleChange = (event: MediaQueryListEvent) => setMatches(event.matches);
+    setMatches(media.matches);
+    media.addEventListener('change', handleChange);
+    return () => media.removeEventListener('change', handleChange);
+  }, [query]);
+
+  return matches;
+}
 
 const routeMenuPrefixes = [
   '/orders',
@@ -74,6 +117,7 @@ export function AppShell() {
   const { mode, setMode } = useTheme();
   const { isDemo, exitDemo } = useDemoMode();
   const { role, setRole, user, logout } = useAuth();
+  const { scope: storeScope, setScope: setStoreScope, stores: scopeStores } = useStoreScope();
   const accessiblePaths = getAccessiblePaths(role ?? 'Owner');
 
   const handleLogout = () => {
@@ -112,9 +156,20 @@ export function AppShell() {
   const selectedMenuKey = getSelectedMenuKey(location.pathname);
   const activeMenuGroup = getActiveMenuGroup(selectedMenuKey);
   const [openMenuKeys, setOpenMenuKeys] = useState<string[]>(() => activeMenuGroup ? [activeMenuGroup] : []);
+  const isMobileNav = useMediaQuery(MOBILE_NAV_MEDIA_QUERY);
+  const [siderCollapsed, setSiderCollapsed] = useState(false);
+  const [navDrawerOpen, setNavDrawerOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
+  // Close the mobile nav drawer after any route change.
   useEffect(() => {
-    setOpenMenuKeys(activeMenuGroup ? [activeMenuGroup] : []);
+    setNavDrawerOpen(false);
+  }, [location.pathname]);
+
+  // E4: auto-open the active group additively — never force-close groups the user opened.
+  useEffect(() => {
+    if (!activeMenuGroup) return;
+    setOpenMenuKeys((prev) => (prev.includes(activeMenuGroup) ? prev : [...prev, activeMenuGroup]));
   }, [activeMenuGroup]);
 
   const menuItems = [
@@ -214,39 +269,143 @@ export function AppShell() {
     { key: '/settings/guide', icon: <QuestionCircleOutlined />, label: t('nav.helpCenter') },
   ];
 
+  const experienceLabel =
+    user?.experience === 'onboarding' ? t('shell.newMerchant') : t('shell.establishedMerchant');
+
+  // Identity panel (E3): user summary + demo "view as" role switcher + logout in one place.
+  const identityPanel = (
+    <div className="identity-menu">
+      <div className="identity-menu-user">
+        <Avatar
+          size={40}
+          style={{ background: user?.experience === 'onboarding' ? 'var(--ark-blue)' : 'var(--ark-green)' }}
+        >
+          {user?.name.slice(-2) ?? 'AM'}
+        </Avatar>
+        <div>
+          <Typography.Text strong style={{ display: 'block' }}>{user?.name}</Typography.Text>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>{experienceLabel}</Typography.Text>
+        </div>
+      </div>
+      <div className="identity-menu-role">
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('shell.currentRole')}</Typography.Text>
+        <Tag style={{ margin: 0 }}>{role ?? 'Owner'}</Tag>
+      </div>
+      <Divider style={{ margin: '10px 0' }} />
+      <div className="identity-menu-viewas">
+        <Space size={6}>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('shell.viewAs')}</Typography.Text>
+          <Tooltip title={t('shell.viewAsHint')}>
+            <QuestionCircleOutlined className="identity-menu-hint" />
+          </Tooltip>
+        </Space>
+        <Select
+          size="small"
+          value={role ?? 'Owner'}
+          onChange={(v) => setRole(v as Role)}
+          style={{ width: '100%' }}
+          options={[
+            { label: 'Owner', value: 'Owner' },
+            { label: 'Admin', value: 'Admin' },
+            { label: 'Operator', value: 'Operator' },
+            { label: 'Approver', value: 'Approver' },
+            { label: 'Finance', value: 'Finance' },
+            { label: 'Viewer', value: 'Viewer' },
+          ]}
+        />
+      </div>
+      <Divider style={{ margin: '10px 0' }} />
+      <Button block icon={<LogoutOutlined />} onClick={handleLogout}>
+        {t('shell.logout')}
+      </Button>
+    </div>
+  );
+
+  const navContent = (
+    <>
+      <div className="brand">
+        <div className="brand-mark">A</div>
+        <div>
+          <Typography.Text strong>AllMall</Typography.Text>
+          <Typography.Text type="secondary" className="brand-subtitle">
+            {t('app.subtitle')}
+          </Typography.Text>
+        </div>
+      </div>
+      <Menu
+        mode="inline"
+        selectedKeys={[selectedMenuKey]}
+        openKeys={openMenuKeys}
+        onOpenChange={(keys) => setOpenMenuKeys(keys as string[])}
+        items={filterMenuByRole(menuItems)}
+        onClick={({ key }) => {
+          navigate(key);
+          if (isMobileNav) setNavDrawerOpen(false);
+        }}
+      />
+    </>
+  );
+
   return (
     <Layout className="app-shell">
-      <Sider width={248} className="app-sider">
-        <div className="brand">
-          <div className="brand-mark">A</div>
-          <div>
-            <Typography.Text strong>AllMall</Typography.Text>
-            <Typography.Text type="secondary" className="brand-subtitle">
-              {t('app.subtitle')}
-            </Typography.Text>
-          </div>
-        </div>
-        <Menu
-          mode="inline"
-          selectedKeys={[selectedMenuKey]}
-          openKeys={openMenuKeys}
-          onOpenChange={(keys) => {
-            const latestKey = keys.find(key => !openMenuKeys.includes(key));
-            setOpenMenuKeys(latestKey ? [latestKey] : []);
-          }}
-          items={filterMenuByRole(menuItems)}
-          onClick={({ key }) => navigate(key)}
-        />
-      </Sider>
+      {isMobileNav ? (
+        <Drawer
+          placement="left"
+          width={264}
+          open={navDrawerOpen}
+          onClose={() => setNavDrawerOpen(false)}
+          closable={false}
+          className="app-nav-drawer"
+          styles={{ body: { padding: 0 } }}
+        >
+          {navContent}
+        </Drawer>
+      ) : (
+        <Sider
+          width={248}
+          className="app-sider"
+          collapsible
+          collapsed={siderCollapsed}
+          trigger={null}
+          breakpoint="lg"
+          collapsedWidth={0}
+          onCollapse={(collapsed) => setSiderCollapsed(collapsed)}
+        >
+          {navContent}
+        </Sider>
+      )}
       <Layout>
         <Header className="app-header">
           <Space>
+            <Button
+              type="text"
+              icon={<MenuOutlined />}
+              aria-label={t('shell.menuToggle')}
+              title={t('shell.menuToggle')}
+              onClick={() => (isMobileNav ? setNavDrawerOpen(true) : setSiderCollapsed((prev) => !prev))}
+            />
             <Badge status="processing" text={t('app.beta')} />
-            <Typography.Text type="secondary">
-              {user?.experience === 'onboarding' ? '租户：新用户体验空间' : t('app.tenant')}
+            <Typography.Text type="secondary" className="app-header-tenant">
+              {user?.experience === 'onboarding' ? t('shell.tenantOnboarding') : t('app.tenant')}
             </Typography.Text>
           </Space>
           <Space>
+            <Select
+              className="header-store-scope"
+              size="small"
+              aria-label={t('shell.storeScope')}
+              title={t('shell.storeScope')}
+              value={storeScope === 'all' ? 'all' : String(storeScope)}
+              onChange={(value) => setStoreScope(value === 'all' ? 'all' : Number(value))}
+              popupMatchSelectWidth={false}
+              options={[
+                { value: 'all', label: <><ShopOutlined /> {t('shell.allStores')}</> },
+                ...scopeStores.map((store) => ({
+                  value: String(store.id),
+                  label: <><ShopOutlined /> {store.name}</>
+                }))
+              ]}
+            />
             <Segmented
               size="small"
               value={mode}
@@ -268,55 +427,39 @@ export function AppShell() {
                 ]}
               />
             )}
-            <Button icon={<BellOutlined />}>{t('app.alerts')}</Button>
-            <Select
-              size="small"
-              value={role ?? 'Owner'}
-              onChange={(v) => setRole(v as Role)}
-              style={{ width: 110 }}
-              options={[
-                { label: 'Owner', value: 'Owner' },
-                { label: 'Admin', value: 'Admin' },
-                { label: 'Operator', value: 'Operator' },
-                { label: 'Approver', value: 'Approver' },
-                { label: 'Finance', value: 'Finance' },
-                { label: 'Viewer', value: 'Viewer' },
-              ]}
+            <Button
+              icon={<SearchOutlined />}
+              aria-label={t('shell.searchOpen')}
+              title={t('shell.searchOpen')}
+              onClick={() => setPaletteOpen(true)}
             />
-            <Space size={8} className="header-user-summary">
-              <Avatar style={{ background: user?.experience === 'onboarding' ? '#2563eb' : '#16a34a' }}>
-                {user?.name.slice(-2) ?? 'AM'}
-              </Avatar>
-              <div>
-                <Typography.Text strong style={{ display: 'block', fontSize: 12 }}>{user?.name}</Typography.Text>
-                <Typography.Text type="secondary" style={{ display: 'block', fontSize: 10 }}>
-                  {user?.experience === 'onboarding' ? '新用户' : '成熟商家'}
-                </Typography.Text>
-              </div>
-            </Space>
-            <Button type="text" icon={<LogoutOutlined />} onClick={handleLogout} title="退出登录" />
+            <Button icon={<BellOutlined />}>{t('app.alerts')}</Button>
+            <Dropdown trigger={['click']} placement="bottomRight" dropdownRender={() => identityPanel}>
+              <button type="button" className="header-identity" aria-label={t('shell.currentRole')}>
+                <Avatar style={{ background: user?.experience === 'onboarding' ? 'var(--ark-blue)' : 'var(--ark-green)' }}>
+                  {user?.name.slice(-2) ?? 'AM'}
+                </Avatar>
+                <span className="header-identity-copy">
+                  <Typography.Text strong style={{ display: 'block', fontSize: 12 }}>{user?.name}</Typography.Text>
+                  <Typography.Text type="secondary" style={{ display: 'block', fontSize: 10 }}>
+                    {experienceLabel}
+                  </Typography.Text>
+                </span>
+              </button>
+            </Dropdown>
           </Space>
         </Header>
         <Content className="app-content">
           {isDemo && (
-            <div style={{
-              background: 'linear-gradient(90deg, #fef3c7 0%, #fde68a 100%)',
-              borderBottom: '1px solid #f59e0b',
-              padding: '6px 24px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexShrink: 0,
-            }}>
+            <div className="demo-banner">
               <Space size={8}>
-                <LabOutlined style={{ color: '#d97706', fontSize: 14 }} />
-                <Typography.Text style={{ fontSize: 12, color: '#92400e', fontWeight: 500 }}>
+                <LabOutlined className="demo-banner-icon" />
+                <Typography.Text className="demo-banner-text">
                   {t('app.demoBanner')}
                 </Typography.Text>
-                <Tag color="gold" style={{ fontSize: 10, margin: 0 }}>完整经营场景体验</Tag>
+                <Tag color="gold" style={{ fontSize: 10, margin: 0 }}>{t('shell.demoScenarioTag')}</Tag>
               </Space>
-              <Button size="small" type="text" icon={<CloseOutlined />} onClick={exitDemo}
-                style={{ color: '#92400e', fontSize: 11 }}>
+              <Button size="small" type="text" icon={<CloseOutlined />} onClick={exitDemo} className="demo-banner-exit">
                 {t('app.exitDemo')}
               </Button>
             </div>
@@ -325,6 +468,7 @@ export function AppShell() {
         </Content>
       </Layout>
       <OnboardingTour />
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </Layout>
   );
 }
