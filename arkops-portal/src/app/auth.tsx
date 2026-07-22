@@ -69,6 +69,12 @@ export interface AuthContextValue {
   logout: () => void;
   /** Switch role (for demo/testing purposes — only available in prototype mode) */
   setRole: (role: Role) => void;
+  /**
+   * Update the current user's experience stage in place (e.g. flip
+   * 'onboarding' → 'established' once the first store finishes syncing),
+   * keeping the mock token and per-tab session storage in sync.
+   */
+  updateExperience: (experience: SessionUser['experience']) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -143,9 +149,24 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setLegacyRoleState(next);
   }, []);
 
+  const updateExperience = useCallback((experience: SessionUser['experience']) => {
+    setSessionUser((current) => {
+      if (!current || current.experience === experience) return current;
+      const next = { ...current, experience };
+      // Refresh the mock token and per-tab session copy so the change survives reloads.
+      storeTokens(createMockToken(next, 3600_000));
+      try {
+        sessionStorage.setItem(SESSION_USER_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ isAuthenticated, user, role, login, logout, setRole }),
-    [isAuthenticated, user, role, login, logout, setRole]
+    () => ({ isAuthenticated, user, role, login, logout, setRole, updateExperience }),
+    [isAuthenticated, user, role, login, logout, setRole, updateExperience]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
