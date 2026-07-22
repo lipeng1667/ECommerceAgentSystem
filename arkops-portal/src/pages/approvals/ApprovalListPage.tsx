@@ -1,6 +1,6 @@
-import { EyeOutlined, RobotOutlined } from '@ant-design/icons';
+import { EyeOutlined, InboxOutlined, RobotOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Card, Collapse, Select, Space, Table, Tag, Typography } from 'antd';
+import { Button, Card, Segmented, Select, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useMemo, useState } from 'react';
@@ -15,7 +15,8 @@ import { PageHeader } from '../../components/PageHeader';
 import { StatusBadge } from '../../components/StatusBadge';
 import { StoreConnectionEmptyState } from '../../components/StoreConnectionEmptyState';
 import { DataTableCard } from '../../components/table/DataTableCard';
-import type { AgentConfig, AgentType, Approval, ApprovalPolicy } from '../../types/domain';
+import { URGENCY_COLORS, formatAge, formatRemaining, getApprovalUrgency } from '../inbox/urgency';
+import type { AgentConfig, AgentType, Approval, ApprovalPolicy, ApprovalStatus } from '../../types/domain';
 
 const actionLabels: Record<ApprovalPolicy['action'], string> = {
   auto_execute: 'agent.autoExecute',
@@ -37,11 +38,36 @@ export function ApprovalListPage() {
   const { data: policies = [] } = useQuery({ queryKey: ['approval-policies'], queryFn: approvalPolicyApi.list });
   const [policyOpen, setPolicyOpen] = useState(false);
   const [agentFilter, setAgentFilter] = useState<AgentType | 'all'>('all');
+  // WS-B (B5): default to pending so the list answers "what needs me right now"
+  const [statusFilter, setStatusFilter] = useState<ApprovalStatus | 'all'>('pending');
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: approvals.length };
+    for (const approval of approvals) {
+      counts[approval.status] = (counts[approval.status] ?? 0) + 1;
+    }
+    return counts;
+  }, [approvals]);
 
   const filteredApprovals = useMemo(() => {
-    if (agentFilter === 'all') return approvals;
-    return approvals.filter((a) => a.agentType === agentFilter);
-  }, [approvals, agentFilter]);
+    const matches = approvals.filter((a) => {
+      if (statusFilter !== 'all' && a.status !== statusFilter) return false;
+      if (agentFilter !== 'all' && a.agentType !== agentFilter) return false;
+      return true;
+    });
+    // Pending first, then soonest expiry; decided items newest first.
+    return matches.sort((a, b) => {
+      if ((a.status === 'pending') !== (b.status === 'pending')) {
+        return a.status === 'pending' ? -1 : 1;
+      }
+      if (a.status === 'pending' && b.status === 'pending') {
+        const ua = getApprovalUrgency(a);
+        const ub = getApprovalUrgency(b);
+        return (ua?.remainingMs ?? Infinity) - (ub?.remainingMs ?? Infinity);
+      }
+      return dayjs(b.requestedAt).valueOf() - dayjs(a.requestedAt).valueOf();
+    });
+  }, [approvals, agentFilter, statusFilter]);
 
   const agentPolicies = agents.map((agent) => {
     const policy = policies.find((p) => p.riskLevel === agent.riskLevel);
@@ -58,7 +84,27 @@ export function ApprovalListPage() {
     { title: t('approvals.item'), dataIndex: 'title', render: (title, record) => <Link to={`/approvals/${record.id}`}>{title}</Link> },
     { title: t('approvals.riskHeader'), dataIndex: 'riskLevel', render: (risk) => <StatusBadge value={risk} />, width: 100 },
     { title: t('approvals.statusHeader'), dataIndex: 'status', render: (status) => <StatusBadge value={status} />, width: 100 },
-    { title: t('approvals.requested'), dataIndex: 'requestedAt', render: (value) => dayjs(value).format('YYYY-MM-DD HH:mm'), width: 160 }
+    {
+      // WS-B (B5): "requested X ago / expires in Y" with color escalation
+      title: t('inbox.ageColumn'),
+      dataIndex: 'requestedAt',
+      width: 190,
+      render: (value: string, record) => {
+        const urgency = record.status === 'pending' ? getApprovalUrgency(record) : undefined;
+        return (
+          <Space direction="vertical" size={0}>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }} title={dayjs(value).format('YYYY-MM-DD HH:mm')}>
+              {formatAge(t, value)}
+            </Typography.Text>
+            {urgency && (
+              <Typography.Text strong style={{ fontSize: 12, color: URGENCY_COLORS[urgency.tone] }}>
+                {formatRemaining(t, urgency.remainingMs)}
+              </Typography.Text>
+            )}
+          </Space>
+        );
+      }
+    }
   ];
 
   const policyColumns: ColumnsType<AgentConfig & { policy?: ApprovalPolicy }> = [
@@ -66,7 +112,7 @@ export function ApprovalListPage() {
       title: t('agent.name'),
       dataIndex: 'displayName',
       render: (name: string) => (
-        <Typography.Text strong><RobotOutlined style={{ marginRight: 6, color: '#7c3aed' }} />{name}</Typography.Text>
+        <Typography.Text strong><RobotOutlined style={{ marginRight: 6, color: 'var(--ark-purple)' }} />{name}</Typography.Text>
       )
     },
     {
@@ -104,7 +150,16 @@ export function ApprovalListPage() {
 
   return (
     <div className="page-stack">
-      <PageHeader title={t('approvals.title')} description={t('approvals.description')} />
+      {/* WS-B (B2): this page is a filtered view of the Action Inbox */}
+      <PageHeader
+        title={t('approvals.title')}
+        description={t('approvals.description')}
+        actions={
+          <Link to="/inbox?type=approval">
+            <Button icon={<InboxOutlined />}>{t('inbox.viewInInbox')}</Button>
+          </Link>
+        }
+      />
 
       {/* 审批策略参考（可折叠） */}
       <Card
@@ -147,6 +202,19 @@ export function ApprovalListPage() {
         scroll={{ x: 900 }}
         toolbar={
           <PageFilterBar>
+          {/* WS-B (B5): status segmented control, pending by default */}
+          <Segmented
+            size="small"
+            value={statusFilter}
+            onChange={(v) => setStatusFilter(v as ApprovalStatus | 'all')}
+            options={(['pending', 'approved', 'rejected', 'expired', 'all'] as const).map((status) => ({
+              value: status,
+              label:
+                status === 'all'
+                  ? `${t('inbox.filterAll')} (${statusCounts.all ?? 0})`
+                  : `${t(`status.${status}`)} (${statusCounts[status] ?? 0})`
+            }))}
+          />
           <Select
             value={agentFilter}
             onChange={(v) => setAgentFilter(v)}
