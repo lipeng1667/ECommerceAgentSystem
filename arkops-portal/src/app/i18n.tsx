@@ -2035,7 +2035,22 @@ const dictionaries = {
     'dashboardv2.storeCompare': 'Store Performance Comparison',
     'dashboardv2.scopeAllStores': 'Account-wide (not affected by store filter)',
     'dashboardv2.achievementLine': 'AI results today: {hours} hours saved · ¥{revenue} extra revenue · {tasks} tasks processed ({rate}% success)',
-    'dashboardv2.viewAgents': 'Agent Center'
+    'dashboardv2.viewAgents': 'Agent Center',
+    'ordersv2.autoRateNote': 'automation rate {rate}% (excl. cancelled)',
+    'ordersv2.cardCancelled': 'Cancelled',
+    'ordersv2.cancelRefundTitle': 'Cancel Order & Refund',
+    'ordersv2.releaseTitle': 'Release Risk-blocked Order',
+    'ordersv2.cancelRefundWarning': 'This immediately cancels the order and refunds the buyer. It cannot be undone.',
+    'ordersv2.releaseWarning': 'After release the order enters the normal shipping flow. Confirm you have verified the risk evidence.',
+    'ordersv2.confirmEvidence': 'Order Evidence',
+    'ordersv2.riskEvidence': 'Risk Evidence',
+    'ordersv2.reasonLabel': 'Reason (required, recorded in the order timeline)',
+    'ordersv2.reasonPlaceholder': 'Explain why you are cancelling / releasing this order…',
+    'ordersv2.reasonPrefix': 'Reason',
+    'ordersv2.timelineCancelled': 'Cancelled & refunded by operator',
+    'ordersv2.timelineRefundStarted': 'Refund initiated',
+    'ordersv2.timelineReleased': 'Manually reviewed & released',
+    'ordersv2.timelineToShipping': 'Entering shipping flow'
   },
   zh: {
     'nav.dashboard': '经营总览',
@@ -4070,7 +4085,22 @@ const dictionaries = {
     'dashboardv2.storeCompare': '店铺经营对比',
     'dashboardv2.scopeAllStores': '全账号范围（不受店铺筛选影响）',
     'dashboardv2.achievementLine': 'AI 今日成果：节省 {hours} 小时 · 增收 ¥{revenue} · 处理任务 {tasks} 项（成功率 {rate}%）',
-    'dashboardv2.viewAgents': 'Agent 中心'
+    'dashboardv2.viewAgents': 'Agent 中心',
+    'ordersv2.autoRateNote': '自动化率 {rate}%（不含取消单）',
+    'ordersv2.cardCancelled': '已取消',
+    'ordersv2.cancelRefundTitle': '取消订单并退款',
+    'ordersv2.releaseTitle': '解除风控拦截并放行',
+    'ordersv2.cancelRefundWarning': '该操作将立即取消订单并向买家发起退款，不可撤销。',
+    'ordersv2.releaseWarning': '放行后订单将进入正常发货流程，请确认已核实风控证据。',
+    'ordersv2.confirmEvidence': '订单信息',
+    'ordersv2.riskEvidence': '风控证据',
+    'ordersv2.reasonLabel': '处理原因（必填，将记录到订单时间线）',
+    'ordersv2.reasonPlaceholder': '请说明取消 / 放行该订单的原因…',
+    'ordersv2.reasonPrefix': '原因',
+    'ordersv2.timelineCancelled': '运营取消并退款',
+    'ordersv2.timelineRefundStarted': '退款已发起',
+    'ordersv2.timelineReleased': '人工审核通过（放行）',
+    'ordersv2.timelineToShipping': '进入发货流程'
   }
 } as const satisfies Record<Language, Dictionary>;
 
