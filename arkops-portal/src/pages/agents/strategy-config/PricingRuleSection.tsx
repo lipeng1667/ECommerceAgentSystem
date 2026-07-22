@@ -1,6 +1,6 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button, InputNumber, Select, Space, Switch, Typography, Upload } from 'antd';
+import { Button, InputNumber, Select, Space, Switch, Typography, Upload, message } from 'antd';
 import { useI18n } from '../../../app/i18n';
 import { updateConfigSection, type AgentWithStrategyConfig } from './sharedUtils';
 
@@ -26,6 +26,8 @@ export function PricingRuleSection({ agent }: PricingRuleSectionProps) {
                     value={agent.strategyConfig.pricingRule.mode}
                     style={{ width: 140 }}
                     onChange={(v) => {
+                      // WS-D (D5): mode switches reset sub-fields — say so instead of doing it silently.
+                      message.info(t('agenttrust.modeSwitchReset'));
                       updateConfigSection(queryClient, agent, 'pricingRule', (pr) => {
                         const base = { ...pr, mode: v };
                         if (v === 'market') return { ...base, targetMargin: 30, competitorStrategy: 'match' };
@@ -168,8 +170,22 @@ export function PricingRuleSection({ agent }: PricingRuleSectionProps) {
                         prefix="¥"
                         value={agent.strategyConfig.pricingRule.floorPrice}
                         onChange={(v) => {
+                          const next = v ?? 0;
+                          const ceiling = agent.strategyConfig.pricingRule?.ceilingPrice ?? 0;
+                          const prev = agent.strategyConfig.pricingRule?.floorPrice ?? 0;
+                          // WS-D (D5): cross-field validation — floor must not exceed ceiling.
+                          if (ceiling > 0 && next > ceiling) {
+                            message.error(t('agenttrust.floorAboveCeiling'));
+                            return;
+                          }
+                          // Lowering the floor loosens the guardrail.
+                          if (prev > 0 && next < prev) {
+                            message.warning(t('agenttrust.guardrailLoosened', {
+                              detail: t('agenttrust.loosenDetailFloor', { from: prev, to: next }),
+                            }));
+                          }
                           updateConfigSection(queryClient, agent, 'pricingRule', (pr) => ({
-                            ...pr, floorPrice: v ?? 0,
+                            ...pr, floorPrice: next,
                           }));
                         }}
                       />
@@ -182,8 +198,22 @@ export function PricingRuleSection({ agent }: PricingRuleSectionProps) {
                         prefix="¥"
                         value={agent.strategyConfig.pricingRule.ceilingPrice}
                         onChange={(v) => {
+                          const next = v ?? 0;
+                          const floor = agent.strategyConfig.pricingRule?.floorPrice ?? 0;
+                          const prev = agent.strategyConfig.pricingRule?.ceilingPrice ?? 0;
+                          // WS-D (D5): cross-field validation — ceiling must not fall below floor.
+                          if (next > 0 && next < floor) {
+                            message.error(t('agenttrust.ceilingBelowFloor'));
+                            return;
+                          }
+                          // Raising the ceiling loosens the guardrail.
+                          if (prev > 0 && next > prev) {
+                            message.warning(t('agenttrust.guardrailLoosened', {
+                              detail: t('agenttrust.loosenDetailCeiling', { from: prev, to: next }),
+                            }));
+                          }
                           updateConfigSection(queryClient, agent, 'pricingRule', (pr) => ({
-                            ...pr, ceilingPrice: v ?? 0,
+                            ...pr, ceilingPrice: next,
                           }));
                         }}
                       />
