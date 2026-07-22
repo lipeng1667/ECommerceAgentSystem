@@ -9,11 +9,11 @@ import {
   DatabaseOutlined,
   InfoCircleOutlined,
   LockOutlined,
+  RobotOutlined,
   RocketOutlined,
   SafetyCertificateOutlined,
   ShopOutlined,
   ShoppingOutlined,
-  SyncOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import {
@@ -36,10 +36,18 @@ import {
   Table,
   Tag,
   Typography,
+  message,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { agentsApi } from '../../api/agents';
+import { approvalsApi } from '../../api/approvals';
+import { storesApi } from '../../api/stores';
+import { useAuth } from '../../app/auth';
+import { useI18n } from '../../app/i18n';
+import { queueDailyLoopTour } from '../../components/OnboardingTour';
 
 type Journey = 'import' | 'migrate';
 type PlatformKey = 'pinduoduo' | 'taobao' | 'jd';
@@ -72,6 +80,59 @@ interface MigrationPreview {
   status: 'ready' | 'needs_input' | 'blocked';
 }
 
+interface MigrationCategory {
+  key: string;
+  name: string;
+  count: number;
+}
+
+/** Persisted snapshot of the wizard so the merchant can leave and resume (A5). */
+interface WizardSavedState {
+  journey: Journey | null;
+  step: number;
+  sourcePlatform: PlatformKey;
+  targetPlatform: PlatformKey;
+  storeName: string;
+  connected: boolean;
+  authAttempts: number;
+  selectedEntities: SyncEntityKey[];
+  orderRange: string;
+  syncProgress: number;
+  syncInterrupted: boolean;
+  syncResumed: boolean;
+  migrationScope: string;
+  selectedCategories: string[];
+  priceMode: string;
+  priceAdjustment: number;
+  stockMode: string;
+  safeStock: number;
+  optimizeContent: boolean;
+  publishProgress: number;
+  targetAuthorized: boolean;
+  targetAuthAttempts: number;
+  storeCreated: { id: number; name: string; platform: string } | null;
+}
+
+const WIZARD_STORAGE_KEY = 'allmall-store-wizard';
+
+function loadWizardState(): Partial<WizardSavedState> | null {
+  try {
+    const raw = localStorage.getItem(WIZARD_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as Partial<WizardSavedState>;
+  } catch {
+    return null;
+  }
+}
+
+function clearWizardState() {
+  try {
+    localStorage.removeItem(WIZARD_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 const platforms: PlatformOption[] = [
   { key: 'pinduoduo', name: '拼多多', short: '拼', color: '#e02e24', soft: '#fff1f0', description: '拼多多商家后台' },
   { key: 'taobao', name: '淘宝', short: '淘', color: '#ff6a00', soft: '#fff7e6', description: '千牛商家工作台' },
@@ -84,6 +145,14 @@ const syncEntities: SyncEntity[] = [
   { key: 'orders', name: '历史订单', description: '默认同步最近 12 个月', count: 28410 },
   { key: 'reviews', name: '商品评价', description: '评分、内容和回复状态', count: 9642 },
   { key: 'inventory', name: '当前库存', description: '各 SKU 的实时库存', count: 3852 },
+];
+
+const migrationCategories: MigrationCategory[] = [
+  { key: 'bags', name: '箱包皮具', count: 52 },
+  { key: 'apparel', name: '女装', count: 46 },
+  { key: 'toys', name: '玩具乐器', count: 30 },
+  { key: 'outdoor', name: '户外装备', count: 24 },
+  { key: 'shoes', name: '鞋靴运动', count: 18 },
 ];
 
 const previewRows: MigrationPreview[] = [
@@ -99,7 +168,7 @@ const importSteps = [
   { title: '安全连接', description: '授权并检查数据权限' },
   { title: '同步范围', description: '确认需要导入的数据' },
   { title: '智能同步', description: '自动拉取和整理数据' },
-  { title: '完成', description: '开始使用经营数据' },
+  { title: '完成', description: '开启第一个 Agent' },
 ];
 
 const migrationSteps = [
@@ -107,8 +176,11 @@ const migrationSteps = [
   { title: '选择商品', description: '筛选准备迁移的商品' },
   { title: '迁移规则', description: '设置价格、库存与内容' },
   { title: '智能检查', description: '预览平台适配结果' },
-  { title: '批量上架', description: '确认后创建商品' },
+  { title: '确认并创建草稿', description: '审核后创建商品草稿' },
 ];
+
+/** Number of unanswered negative reviews found by the first-agent scan (A9 demo). */
+const FIRST_AGENT_REVIEW_COUNT = 3;
 
 function PlatformCard({ platform, selected, onClick }: { platform: PlatformOption; selected: boolean; onClick: () => void }) {
   return (
@@ -153,40 +225,117 @@ function JourneyChoice({ onSelect }: { onSelect: (journey: Journey) => void }) {
 }
 
 export function StoreOnboardingPage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { updateExperience } = useAuth();
   const [searchParams] = useSearchParams();
+
+  // A5: hydrate once from localStorage so leaving the page never loses progress.
+  const [saved] = useState(() => loadWizardState());
+
   const [journey, setJourney] = useState<Journey | null>(() => {
+    if (saved?.journey === 'import' || saved?.journey === 'migrate') return saved.journey;
     const requestedJourney = searchParams.get('journey');
     return requestedJourney === 'import' || requestedJourney === 'migrate' ? requestedJourney : null;
   });
-  const [step, setStep] = useState(0);
-  const [sourcePlatform, setSourcePlatform] = useState<PlatformKey>('pinduoduo');
-  const [targetPlatform, setTargetPlatform] = useState<PlatformKey>('taobao');
-  const [storeName, setStoreName] = useState('拼多多旗舰店');
+  const [step, setStep] = useState(saved?.step ?? 0);
+  const [sourcePlatform, setSourcePlatform] = useState<PlatformKey>(saved?.sourcePlatform ?? 'pinduoduo');
+  const [targetPlatform, setTargetPlatform] = useState<PlatformKey>(saved?.targetPlatform ?? 'taobao');
+  const [storeName, setStoreName] = useState(saved?.storeName ?? '我的拼多多店铺');
   const [connecting, setConnecting] = useState(false);
-  const [connected, setConnected] = useState(false);
-  const [selectedEntities, setSelectedEntities] = useState<SyncEntityKey[]>(syncEntities.map(item => item.key));
-  const [orderRange, setOrderRange] = useState('12_months');
-  const [syncProgress, setSyncProgress] = useState(0);
+  const [connected, setConnected] = useState(saved?.connected ?? false);
+  // A4: the first authorization attempt fails (simulated) and must be retried.
+  const [authAttempts, setAuthAttempts] = useState(saved?.authAttempts ?? 0);
+  const [authError, setAuthError] = useState(false);
+  const [selectedEntities, setSelectedEntities] = useState<SyncEntityKey[]>(saved?.selectedEntities ?? syncEntities.map(item => item.key));
+  const [orderRange, setOrderRange] = useState(saved?.orderRange ?? '12_months');
+  const [syncProgress, setSyncProgress] = useState(saved?.syncProgress ?? 0);
   const [syncing, setSyncing] = useState(false);
-  const [migrationScope, setMigrationScope] = useState('all_active');
-  const [priceMode, setPriceMode] = useState('smart');
-  const [priceAdjustment, setPriceAdjustment] = useState(5);
-  const [stockMode, setStockMode] = useState('shared');
-  const [safeStock, setSafeStock] = useState(5);
-  const [optimizeContent, setOptimizeContent] = useState(true);
-  const [publishProgress, setPublishProgress] = useState(0);
+  // A4: the first full sync is interrupted mid-way and resumes from a checkpoint.
+  const [syncInterrupted, setSyncInterrupted] = useState(saved?.syncInterrupted ?? false);
+  const [syncResumed, setSyncResumed] = useState(saved?.syncResumed ?? false);
+  const [migrationScope, setMigrationScope] = useState(saved?.migrationScope ?? 'all_active');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(saved?.selectedCategories ?? ['bags', 'apparel', 'toys']);
+  const [priceMode, setPriceMode] = useState(saved?.priceMode ?? 'smart');
+  const [priceAdjustment, setPriceAdjustment] = useState(saved?.priceAdjustment ?? 5);
+  const [stockMode, setStockMode] = useState(saved?.stockMode ?? 'shared');
+  const [safeStock, setSafeStock] = useState(saved?.safeStock ?? 5);
+  const [optimizeContent, setOptimizeContent] = useState(saved?.optimizeContent ?? true);
+  const [publishProgress, setPublishProgress] = useState(saved?.publishProgress ?? 0);
   const [publishing, setPublishing] = useState(false);
+  // A6: the migration target store requires its own authorization before continuing.
+  const [targetAuthorized, setTargetAuthorized] = useState(saved?.targetAuthorized ?? false);
+  const [targetAuthAttempts, setTargetAuthAttempts] = useState(saved?.targetAuthAttempts ?? 0);
+  const [targetAuthError, setTargetAuthError] = useState(false);
+  const [targetConnecting, setTargetConnecting] = useState(false);
+  // A1: the store record created when the first sync completes.
+  const [storeCreated, setStoreCreated] = useState<WizardSavedState['storeCreated']>(saved?.storeCreated ?? null);
+  // A9: first-agent moment state (not persisted — re-runnable after a reload).
+  const [agentMoment, setAgentMoment] = useState<'idle' | 'enabling' | 'running' | 'done'>('idle');
+  const [firstApprovalId, setFirstApprovalId] = useState<number | null>(null);
+  const [showResume, setShowResume] = useState(() => Boolean(saved?.journey && ((saved.step ?? 0) > 0 || saved.connected)));
 
   const source = platforms.find(item => item.key === sourcePlatform)!;
   const target = platforms.find(item => item.key === targetPlatform)!;
   const steps = journey === 'migrate' ? migrationSteps : importSteps;
+
+  // A5: persist every meaningful selection so "稍后继续" is actually true.
+  useEffect(() => {
+    const payload: WizardSavedState = {
+      journey, step, sourcePlatform, targetPlatform, storeName, connected, authAttempts,
+      selectedEntities, orderRange, syncProgress, syncInterrupted, syncResumed,
+      migrationScope, selectedCategories, priceMode, priceAdjustment, stockMode, safeStock,
+      optimizeContent, publishProgress, targetAuthorized, targetAuthAttempts, storeCreated,
+    };
+    try {
+      localStorage.setItem(WIZARD_STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+      // ignore
+    }
+  }, [journey, step, sourcePlatform, targetPlatform, storeName, connected, authAttempts,
+    selectedEntities, orderRange, syncProgress, syncInterrupted, syncResumed,
+    migrationScope, selectedCategories, priceMode, priceAdjustment, stockMode, safeStock,
+    optimizeContent, publishProgress, targetAuthorized, targetAuthAttempts, storeCreated]);
+
+  // A1: if a reload reset the in-memory mock data, re-insert the connected store.
+  useEffect(() => {
+    if (!storeCreated) return;
+    let cancelled = false;
+    storesApi.get(storeCreated.id).then((existing) => {
+      if (cancelled || existing) return;
+      storesApi.create({ name: storeCreated.name, platform: storeCreated.platform, authMethod: 'oauth', region: 'CN', currency: 'CNY', services: [] }).then((recreated) => {
+        storesApi.updateStatus(recreated.id, 'connected');
+        if (!cancelled) {
+          setStoreCreated({ id: recreated.id, name: recreated.name, platform: recreated.platform });
+          queryClient.invalidateQueries({ queryKey: ['stores'] });
+        }
+      });
+    });
+    return () => { cancelled = true; };
+    // Run once on mount only — later storeCreated changes come from this effect itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // A7: auto-start (and auto-resume after a reload) the sync when entering the sync step.
+  useEffect(() => {
+    if (journey !== 'import' || step !== 3) return;
+    if (syncing || syncInterrupted || syncProgress >= 100) return;
+    setSyncing(true);
+  }, [journey, step, syncing, syncInterrupted, syncProgress]);
 
   useEffect(() => {
     if (!syncing) return;
     const timer = window.setInterval(() => {
       setSyncProgress(current => {
         const next = Math.min(current + (current < 48 ? 8 : current < 84 ? 4 : 2), 100);
+        // A4: simulate a session drop on the first run; the retry resumes from here.
+        if (!syncResumed && next >= 52) {
+          window.clearInterval(timer);
+          setSyncing(false);
+          setSyncInterrupted(true);
+          return 52;
+        }
         if (next === 100) {
           window.clearInterval(timer);
           setSyncing(false);
@@ -195,7 +344,31 @@ export function StoreOnboardingPage() {
       });
     }, 420);
     return () => window.clearInterval(timer);
-  }, [syncing]);
+  }, [syncing, syncResumed]);
+
+  // A1: when the first sync completes, create the store record and flip the persona
+  // flag so /stores, dashboard and the navigation all reflect the connected store.
+  useEffect(() => {
+    if (journey !== 'import' || syncProgress !== 100 || storeCreated) return;
+    let cancelled = false;
+    (async () => {
+      const created = await storesApi.create({
+        name: storeName.trim() || `我的${source.name}店铺`,
+        platform: sourcePlatform,
+        authMethod: 'oauth',
+        region: 'CN',
+        currency: 'CNY',
+        services: [],
+      });
+      await storesApi.updateStatus(created.id, 'connected');
+      if (cancelled) return;
+      setStoreCreated({ id: created.id, name: created.name, platform: created.platform });
+      updateExperience('established');
+      queryClient.invalidateQueries({ queryKey: ['stores'] });
+      message.success(t('storewizard.storeCreatedToast', { name: created.name }));
+    })();
+    return () => { cancelled = true; };
+  }, [journey, syncProgress, storeCreated, storeName, sourcePlatform, source.name, updateExperience, queryClient, t]);
 
   useEffect(() => {
     if (!publishing) return;
@@ -213,7 +386,10 @@ export function StoreOnboardingPage() {
   }, [publishing]);
 
   const overallProgress = journey ? Math.round(((step + 1) / steps.length) * 100) : 0;
-  const selectedCount = migrationScope === 'all_active' ? 1108 : migrationScope === 'in_stock' ? 982 : 128;
+  const categoryCount = migrationCategories
+    .filter(category => selectedCategories.includes(category.key))
+    .reduce((sum, category) => sum + category.count, 0);
+  const selectedCount = migrationScope === 'all_active' ? 1108 : migrationScope === 'in_stock' ? 982 : categoryCount;
 
   const selectJourney = (next: Journey) => {
     setJourney(next);
@@ -233,14 +409,37 @@ export function StoreOnboardingPage() {
 
   const connectStore = () => {
     setConnecting(true);
+    setAuthError(false);
     window.setTimeout(() => {
       setConnecting(false);
+      // A4: reject the very first authorization attempt, then succeed on retry.
+      if (authAttempts === 0) {
+        setAuthAttempts(1);
+        setAuthError(true);
+        return;
+      }
       setConnected(true);
     }, 1100);
   };
 
-  const startSync = () => {
-    setSyncProgress(0);
+  const authorizeTarget = () => {
+    setTargetConnecting(true);
+    setTargetAuthError(false);
+    window.setTimeout(() => {
+      setTargetConnecting(false);
+      // A4/A6: first target authorization fails (simulated), retry succeeds.
+      if (targetAuthAttempts === 0) {
+        setTargetAuthAttempts(1);
+        setTargetAuthError(true);
+        return;
+      }
+      setTargetAuthorized(true);
+    }, 1100);
+  };
+
+  const resumeSync = () => {
+    setSyncResumed(true);
+    setSyncInterrupted(false);
     setSyncing(true);
   };
 
@@ -249,6 +448,64 @@ export function StoreOnboardingPage() {
     setStep(0);
     setConnected(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const startOver = () => {
+    clearWizardState();
+    window.location.assign(window.location.pathname);
+  };
+
+  // Wizard exits: clear the saved progress so the next visit starts fresh.
+  const finishToDashboard = () => {
+    clearWizardState();
+    queueDailyLoopTour();
+    navigate('/dashboard');
+  };
+
+  const finishToFirstApproval = () => {
+    if (firstApprovalId == null) return;
+    clearWizardState();
+    navigate(`/agents/approvals/${firstApprovalId}`);
+  };
+
+  const finishMigration = () => {
+    clearWizardState();
+    navigate('/products');
+  };
+
+  // A9: enable the recommended read-only agent, simulate its first run, and seed
+  // one pending approval so the merchant can complete their first decision.
+  const enableFirstAgent = async () => {
+    if (!storeCreated) return;
+    setAgentMoment('enabling');
+    const agent = await agentsApi.get('review_manager');
+    if (agent && !agent.enabled) {
+      await agentsApi.toggle('review_manager');
+    }
+    queryClient.invalidateQueries({ queryKey: ['agents'] });
+    setAgentMoment('running');
+    window.setTimeout(async () => {
+      const task = await agentsApi.createTask('review_manager', {
+        title: '差评巡检与回复草稿',
+        goal: '扫描最近同步的商品评价，为超过 24 小时未回复的差评生成回复草稿。',
+        storeId: storeCreated.id,
+      });
+      const approval = await approvalsApi.create({
+        taskId: task.id,
+        storeId: storeCreated.id,
+        storeName: storeCreated.name,
+        agentType: 'review_manager',
+        title: `发布 ${FIRST_AGENT_REVIEW_COUNT} 条差评回复`,
+        reason: `首次巡检发现 ${FIRST_AGENT_REVIEW_COUNT} 条 1-2 星差评超过 24 小时未回复，长期不回复会影响店铺评分。`,
+        proposedAction: `使用生成的专业友好话术回复这 ${FIRST_AGENT_REVIEW_COUNT} 条差评，不做任何其他修改。`,
+        beforeValue: `${FIRST_AGENT_REVIEW_COUNT} 条差评未回复`,
+        afterValue: `${FIRST_AGENT_REVIEW_COUNT} 条差评已回复（草稿见任务详情）`,
+        riskLevel: 'low',
+      });
+      queryClient.invalidateQueries({ queryKey: ['approvals'] });
+      setFirstApprovalId(approval.id);
+      setAgentMoment('done');
+    }, 1600);
   };
 
   const importEntityProgress = (entity: SyncEntity, index: number) => {
@@ -278,10 +535,11 @@ export function StoreOnboardingPage() {
     { title: '原售价', dataIndex: 'sourcePrice', width: 90, render: (value: number) => `¥${value.toFixed(2)}` },
     { title: '建议售价', dataIndex: 'targetPrice', width: 100, render: (value: number) => <Typography.Text strong style={{ color: '#2563eb' }}>¥{value.toFixed(2)}</Typography.Text> },
     {
+      // A6: use the same "暂不支持迁移" label as the summary cards for blocked items.
       title: '检查结果', dataIndex: 'status', width: 120,
       render: (status: MigrationPreview['status']) => status === 'ready'
         ? <Tag color="success">可直接迁移</Tag>
-        : status === 'needs_input' ? <Tag color="warning">需补充信息</Tag> : <Tag color="error">需要处理</Tag>,
+        : status === 'needs_input' ? <Tag color="warning">需补充信息</Tag> : <Tag color="error">暂不支持迁移</Tag>,
     },
   ], [target.name]);
 
@@ -302,8 +560,9 @@ export function StoreOnboardingPage() {
                   if (targetPlatform === platform.key) {
                     setTargetPlatform(platforms.find(item => item.key !== platform.key)!.key);
                   }
-                  setStoreName(`${platform.name.replace(' / 天猫', '')}旗舰店`);
+                  setStoreName(`我的${platform.name}店铺`);
                   setConnected(false);
+                  setAuthError(false);
                 }} />
               </Col>
             ))}
@@ -313,7 +572,7 @@ export function StoreOnboardingPage() {
               <Typography.Text strong>店铺备注名称</Typography.Text>
               <Typography.Text type="secondary">仅在 AllMall 内用于区分店铺</Typography.Text>
             </div>
-            <Input value={storeName} onChange={event => setStoreName(event.target.value)} placeholder="例如：拼多多旗舰店" />
+            <Input value={storeName} onChange={event => setStoreName(event.target.value)} placeholder="例如：我的拼多多店铺" />
           </div>
         </div>
       );
@@ -345,9 +604,18 @@ export function StoreOnboardingPage() {
               <div className="onboarding-permission-row muted"><SafetyCertificateOutlined /> 只读访问，不会修改商品或处理订单</div>
             </Space>
             <Button type="primary" size="large" block loading={connecting} disabled={connected} onClick={connectStore} style={{ marginTop: 24 }}>
-              {connected ? '已安全连接' : `打开${source.name}并授权`}
+              {connected ? '已安全连接' : authError ? t('storewizard.retryAuth') : `打开${source.name}并授权`}
             </Button>
           </Card>
+          {authError && (
+            <Alert
+              type="error"
+              showIcon
+              message={t('storewizard.authFailedTitle')}
+              description={t('storewizard.authFailedDesc')}
+              action={<Button size="small" danger onClick={connectStore} loading={connecting}>{t('storewizard.retryAuth')}</Button>}
+            />
+          )}
           {connected && (
             <Alert type="success" showIcon message="权限检测已完成" description="商品、订单、评价、库存均可读取，预计共有 1,236 个商品。" />
           )}
@@ -399,10 +667,19 @@ export function StoreOnboardingPage() {
         <div className="onboarding-section narrow">
           <div className="onboarding-section-heading centered">
             <span className={`onboarding-sync-orbit ${syncing ? 'is-running' : ''}`}><CloudSyncOutlined /></span>
-            <Typography.Title level={2}>{syncProgress === 100 ? '店铺数据已同步' : '正在智能同步店铺数据'}</Typography.Title>
-            <Typography.Paragraph type="secondary">你可以离开此页面，任务会在后台继续执行。</Typography.Paragraph>
+            <Typography.Title level={2}>{syncProgress === 100 ? '店铺数据已同步' : syncInterrupted ? t('storewizard.syncInterruptedTitle') : '正在智能同步店铺数据'}</Typography.Title>
+            <Typography.Paragraph type="secondary">你可以离开此页面，进度会自动保存，回来后从断点继续。</Typography.Paragraph>
           </div>
-          <Progress percent={syncProgress} status={syncing ? 'active' : syncProgress === 100 ? 'success' : 'normal'} size={['100%', 10]} />
+          <Progress percent={syncProgress} status={syncing ? 'active' : syncInterrupted ? 'exception' : syncProgress === 100 ? 'success' : 'normal'} size={['100%', 10]} />
+          {syncInterrupted && (
+            <Alert
+              type="error"
+              showIcon
+              message={t('storewizard.syncInterruptedTitle')}
+              description={t('storewizard.syncInterruptedDesc', { percent: syncProgress })}
+              action={<Button size="small" type="primary" onClick={resumeSync}>{t('storewizard.resumeSync')}</Button>}
+            />
+          )}
           <div className="onboarding-sync-list">
             {syncEntities.filter(entity => selectedEntities.includes(entity.key)).map((entity, index) => {
               const progress = importEntityProgress(entity, index);
@@ -420,7 +697,6 @@ export function StoreOnboardingPage() {
               );
             })}
           </div>
-          {syncProgress === 0 && <Button type="primary" size="large" block icon={<SyncOutlined />} onClick={startSync}>开始首次全量同步</Button>}
         </div>
       );
     }
@@ -429,8 +705,8 @@ export function StoreOnboardingPage() {
       <div className="onboarding-section narrow">
         <div className="onboarding-success-hero">
           <span><CheckOutlined /></span>
-          <Typography.Title level={2}>{storeName} 已准备就绪</Typography.Title>
-          <Typography.Paragraph type="secondary">完整数据已经进入 AllMall，日常增量同步也已自动开启。</Typography.Paragraph>
+          <Typography.Title level={2}>{storeCreated?.name ?? storeName} 已准备就绪</Typography.Title>
+          <Typography.Paragraph type="secondary">完整数据已经进入 AllMall，日常增量同步也已自动开启。店铺已出现在「店铺管理」和经营总览中。</Typography.Paragraph>
         </div>
         <Row gutter={[12, 12]} className="onboarding-result-grid">
           {[['商品', '1,236'], ['SKU', '3,852'], ['订单', '28,410'], ['评价', '9,642']].map(([label, value]) => (
@@ -438,12 +714,55 @@ export function StoreOnboardingPage() {
           ))}
         </Row>
         <Alert type="success" showIcon message="每日自动同步已开启" description="订单每 15 分钟、商品与库存每小时、评价和经营指标每天自动更新。" />
+
+        {/* A9: guided first-agent moment — the onboarding arc ends at the first approval. */}
+        <Card className="onboarding-first-agent-card">
+          <Space align="start" size={16} style={{ width: '100%' }}>
+            <span className="onboarding-journey-icon" style={{ flexShrink: 0 }}><RobotOutlined /></span>
+            <Space direction="vertical" size={8} style={{ flex: 1 }}>
+              <Space size={6} wrap>
+                <Typography.Title level={4} style={{ margin: 0 }}>{t('onboarding.firstAgentTitle')}</Typography.Title>
+                <Tag color="green">{t('onboarding.firstAgentReadOnly')}</Tag>
+                <Tag color="blue">{t('onboarding.firstAgentLowRisk')}</Tag>
+              </Space>
+              {agentMoment === 'idle' && (
+                <>
+                  <Typography.Paragraph type="secondary" style={{ margin: 0 }}>{t('onboarding.firstAgentDesc')}</Typography.Paragraph>
+                  <Button type="primary" size="large" icon={<RobotOutlined />} onClick={enableFirstAgent} disabled={!storeCreated}>
+                    {t('onboarding.enableFirstAgent')}
+                  </Button>
+                </>
+              )}
+              {(agentMoment === 'enabling' || agentMoment === 'running') && (
+                <>
+                  <Typography.Paragraph type="secondary" style={{ margin: 0 }}>{t('onboarding.firstAgentRunning')}</Typography.Paragraph>
+                  <Progress percent={agentMoment === 'enabling' ? 30 : 70} status="active" showInfo={false} size={['100%', 8]} />
+                </>
+              )}
+              {agentMoment === 'done' && (
+                <>
+                  <Alert
+                    type="success"
+                    showIcon
+                    message={t('onboarding.firstAgentDoneTitle')}
+                    description={t('onboarding.firstAgentDoneDesc', { count: FIRST_AGENT_REVIEW_COUNT })}
+                  />
+                  <Button type="primary" size="large" icon={<ArrowRightOutlined />} onClick={finishToFirstApproval}>
+                    {t('onboarding.goFirstApproval')}
+                  </Button>
+                </>
+              )}
+            </Space>
+          </Space>
+        </Card>
+
+        {/* A7: migration upsell demoted to a secondary follow-up action. */}
         <div className="onboarding-next-action">
           <div>
-            <Typography.Title level={4}>下一步，把生意扩展到新平台</Typography.Title>
+            <Typography.Title level={4}>之后，把生意扩展到新平台</Typography.Title>
             <Typography.Paragraph type="secondary">使用刚同步的商品，一键生成适合其他平台的商品草稿。</Typography.Paragraph>
           </div>
-          <Button type="primary" size="large" icon={<CopyOutlined />} onClick={beginMigration}>复制到其他平台</Button>
+          <Button size="large" icon={<CopyOutlined />} onClick={beginMigration}>复制到其他平台</Button>
         </div>
       </div>
     );
@@ -472,15 +791,38 @@ export function StoreOnboardingPage() {
               <Typography.Text type="secondary">目标平台</Typography.Text>
               <Select
                 value={targetPlatform}
-                onChange={value => setTargetPlatform(value)}
+                onChange={value => {
+                  setTargetPlatform(value);
+                  setTargetAuthorized(false);
+                  setTargetAuthError(false);
+                }}
                 size="large"
                 style={{ width: '100%', marginTop: 12 }}
                 options={platforms.filter(item => item.key !== sourcePlatform).map(item => ({ label: item.name, value: item.key }))}
               />
-              <div className="onboarding-target-status"><SafetyCertificateOutlined /> 上架前需要你确认</div>
+              {targetAuthorized ? (
+                <div className="onboarding-target-status"><CheckCircleFilled style={{ color: '#16a34a' }} /> {t('storewizard.targetAuthorized')} · 上架前仍需你确认</div>
+              ) : (
+                <>
+                  {/* A6: the target store must be authorized before drafts can be written to it. */}
+                  <Button type="primary" block loading={targetConnecting} onClick={authorizeTarget} style={{ marginTop: 12 }}>
+                    {targetAuthError ? t('storewizard.retryAuth') : t('storewizard.authorizeTarget', { platform: target.name })}
+                  </Button>
+                  <div className="onboarding-target-status"><SafetyCertificateOutlined /> {t('storewizard.targetAuthRequired')}</div>
+                </>
+              )}
             </Card>
           </div>
-          <Alert type="info" showIcon message={`还没有${target.name}店铺？`} description="完成平台实名认证、类目资质和保证金后返回此处授权，我们会保留当前迁移配置。" action={<Button size="small">查看开店指引</Button>} />
+          {targetAuthError && (
+            <Alert
+              type="error"
+              showIcon
+              message={t('storewizard.targetAuthFailedTitle')}
+              description={t('storewizard.targetAuthFailedDesc')}
+              action={<Button size="small" danger onClick={authorizeTarget} loading={targetConnecting}>{t('storewizard.retryAuth')}</Button>}
+            />
+          )}
+          <Alert type="info" showIcon message={`还没有${target.name}店铺？`} description="完成平台实名认证、类目资质和保证金后返回此处授权，我们会保留当前迁移配置。" action={<Button size="small" onClick={() => navigate('/settings/guide')}>查看开店指引</Button>} />
         </div>
       );
     }
@@ -496,8 +838,32 @@ export function StoreOnboardingPage() {
           <Radio.Group value={migrationScope} onChange={event => setMigrationScope(event.target.value)} className="onboarding-scope-list">
             <Radio.Button value="all_active"><ShoppingOutlined /> 全部在售商品 <strong>1,108</strong><span>包含当前所有在售商品</span></Radio.Button>
             <Radio.Button value="in_stock"><CheckCircleFilled /> 仅有库存商品 <strong>982</strong><span>自动排除缺货 SKU</span></Radio.Button>
-            <Radio.Button value="selected"><ShopOutlined /> 按分类选择 <strong>128</strong><span>当前选择 3 个分类</span></Radio.Button>
+            <Radio.Button value="selected"><ShopOutlined /> 按分类选择 <strong>{categoryCount}</strong><span>当前选择 {selectedCategories.length} 个分类</span></Radio.Button>
           </Radio.Group>
+          {migrationScope === 'selected' && (
+            /* A6: real category picker backing the "按分类选择" scope. */
+            <Card size="small" className="onboarding-advanced-card">
+              <div style={{ marginBottom: 12 }}>
+                <Typography.Text strong>{t('storewizard.categoryLabel')}</Typography.Text>
+                <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12 }}>{t('storewizard.categoryHint')}</Typography.Text>
+              </div>
+              <Checkbox.Group
+                value={selectedCategories}
+                onChange={values => setSelectedCategories(values as string[])}
+                style={{ width: '100%' }}
+              >
+                <Row gutter={[12, 12]}>
+                  {migrationCategories.map(category => (
+                    <Col xs={12} md={8} key={category.key}>
+                      <Checkbox value={category.key}>
+                        {category.name}（{category.count}）
+                      </Checkbox>
+                    </Col>
+                  ))}
+                </Row>
+              </Checkbox.Group>
+            </Card>
+          )}
           <Card className="onboarding-selection-summary">
             <div><Typography.Text type="secondary">本次将迁移</Typography.Text><Typography.Title level={2}>{selectedCount.toLocaleString()} 个商品</Typography.Title></div>
             <Divider type="vertical" />
@@ -552,7 +918,7 @@ export function StoreOnboardingPage() {
             <Col span={8}><Card><Typography.Text type="secondary">需要补充信息</Typography.Text><Typography.Title level={2} style={{ color: '#ea580c' }}>{Math.round(selectedCount * 0.09)}</Typography.Title><Progress percent={9} showInfo={false} strokeColor="#ea580c" /></Card></Col>
             <Col span={8}><Card><Typography.Text type="secondary">暂不支持迁移</Typography.Text><Typography.Title level={2} style={{ color: '#dc2626' }}>{Math.round(selectedCount * 0.02)}</Typography.Title><Progress percent={2} showInfo={false} strokeColor="#dc2626" /></Card></Col>
           </Row>
-          <Card title="商品转换预览" extra={<Button>查看全部 {selectedCount.toLocaleString()} 个商品</Button>}>
+          <Card title="商品转换预览" extra={<Typography.Text type="secondary">{t('storewizard.previewShownHint', { total: selectedCount.toLocaleString() })}</Typography.Text>}>
             <Table columns={previewColumns} dataSource={previewRows} pagination={false} size="small" scroll={{ x: 840 }} />
           </Card>
           <Alert type="warning" showIcon message="创建草稿前需要你的确认" description="系统不会自动发布商品。确认后将先在目标平台创建商品草稿，完成最终检查后再由你选择是否正式上架。" />
@@ -565,7 +931,7 @@ export function StoreOnboardingPage() {
       <div className="onboarding-section narrow">
         <div className="onboarding-section-heading centered">
           <span className={`onboarding-sync-orbit purple ${publishing ? 'is-running' : ''}`}><RocketOutlined /></span>
-          <Typography.Title level={2}>{publishProgress === 100 ? `${target.name}商品草稿已创建` : '准备批量创建商品草稿'}</Typography.Title>
+          <Typography.Title level={2}>{publishProgress === 100 ? `${target.name}商品草稿已创建` : '确认并创建商品草稿'}</Typography.Title>
           <Typography.Paragraph type="secondary">仅创建草稿，不会在未确认的情况下直接发布。</Typography.Paragraph>
         </div>
         <Card className="onboarding-publish-card">
@@ -588,6 +954,8 @@ export function StoreOnboardingPage() {
               <Col span={8}><Card size="small"><Typography.Text type="secondary">等待补充</Typography.Text><Typography.Title level={3} style={{ color: '#ea580c' }}>{Math.round(selectedCount * 0.04)}</Typography.Title></Card></Col>
               <Col span={8}><Card size="small"><Typography.Text type="secondary">平台拒绝</Typography.Text><Typography.Title level={3} style={{ color: '#dc2626' }}>{Math.round(selectedCount * 0.02)}</Typography.Title></Card></Col>
             </Row>
+            {/* A6: rejected items get an explanation and a remediation path. */}
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('storewizard.rejectedHint')}</Typography.Text>
             <Alert type="success" showIcon message="迁移任务已完成" description="草稿已保存到目标店铺。你可以前往商品管理完成最终审核和正式发布。" />
           </>
         )}
@@ -597,7 +965,7 @@ export function StoreOnboardingPage() {
 
   const canContinue = journey === 'import'
     ? (step === 0 ? Boolean(storeName.trim()) : step === 1 ? connected : step === 2 ? selectedEntities.length > 0 : step === 3 ? syncProgress === 100 : true)
-    : true;
+    : (step === 0 ? targetAuthorized : step === 1 ? selectedCount > 0 : true);
 
   const isLastStep = journey ? step === steps.length - 1 : false;
 
@@ -608,6 +976,18 @@ export function StoreOnboardingPage() {
         <div className="onboarding-brand-pill"><ThunderboltOutlined /> AllMall 智能开店助手</div>
         <Button type="text" onClick={() => navigate('/stores')}>稍后继续</Button>
       </div>
+
+      {showResume && (
+        <Alert
+          type="info"
+          showIcon
+          closable
+          onClose={() => setShowResume(false)}
+          message={t('storewizard.resumeBanner')}
+          action={<Button size="small" onClick={startOver}>{t('storewizard.startOver')}</Button>}
+          style={{ marginBottom: 16 }}
+        />
+      )}
 
       {!journey ? (
         <div className="onboarding-welcome">
@@ -644,11 +1024,12 @@ export function StoreOnboardingPage() {
                   继续 <ArrowRightOutlined />
                 </Button>
               )}
+              {/* A7: primary CTA is the dashboard; migration upsell stays secondary above. */}
               {isLastStep && journey === 'import' && (
-                <Button size="large" onClick={() => navigate('/dashboard')}>进入经营总览</Button>
+                <Button type="primary" size="large" onClick={finishToDashboard}>进入经营总览</Button>
               )}
               {isLastStep && journey === 'migrate' && publishProgress === 100 && (
-                <Button type="primary" size="large" onClick={() => navigate('/products')}>前往商品管理 <ArrowRightOutlined /></Button>
+                <Button type="primary" size="large" onClick={finishMigration}>前往商品管理 <ArrowRightOutlined /></Button>
               )}
             </div>
           </main>
