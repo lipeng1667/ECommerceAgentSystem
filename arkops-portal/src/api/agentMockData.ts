@@ -1,4 +1,4 @@
-import type { AgentConfig, AgentRunStats } from '../types/domain';
+import type { AgentConfig, AgentOutcomeRecord, AgentRunStats } from '../types/domain';
 
 /* ===== 15 Agent 完整配置 ===== */
 
@@ -525,4 +525,97 @@ export const agentRunStatsMap: Record<string, AgentRunStats> = {
     trend: makeTrend(7, 1, 100),
     failureReasons: []
   }
+};
+
+/* ===== WS-D (S4): 决策与结果 mock 数据 =====
+ * 定义未来后端需要的数据契约：每个重要动作 → 指标执行前 → 3/7 天后 → 评估。
+ */
+
+const daysAgo = (d: number) => new Date(Date.now() - d * 86400000).toISOString();
+
+export const agentOutcomesMap: Partial<Record<string, AgentOutcomeRecord[]>> = {
+  pricing_strategy: [
+    {
+      id: 9001, agentType: 'pricing_strategy',
+      action: '上调 SKU A-102（无线耳机 Pro 2）售价 ¥86 → ¥92',
+      decidedAt: daysAgo(9), decision: 'approved',
+      metric: '日均销量', before: '34 件/天', after3d: '31 件/天', after7d: '33 件/天',
+      assessment: 'positive', assessmentNote: '销量基本持平，毛利提升约 6.5%，调价有效。',
+    },
+    {
+      id: 9002, agentType: 'pricing_strategy',
+      action: '跟随竞品下调 SKU B-215 售价 ¥45 → ¥41',
+      decidedAt: daysAgo(5), decision: 'auto',
+      metric: '日均销量', before: '12 件/天', after3d: '19 件/天',
+      assessment: 'positive', assessmentNote: '3 天销量 +58%，毛利下降 4%，净收益为正；7 天数据待回收。',
+    },
+    {
+      id: 9003, agentType: 'pricing_strategy',
+      action: '上调 SKU C-330 售价 ¥128 → ¥139',
+      decidedAt: daysAgo(12), decision: 'approved',
+      metric: '日均销量', before: '8 件/天', after3d: '4 件/天', after7d: '5 件/天',
+      assessment: 'negative', assessmentNote: '销量下滑 37%，超过毛利增幅，建议回调；已生成回调建议待审批。',
+    },
+  ],
+  ads_optimizer: [
+    {
+      id: 9011, agentType: 'ads_optimizer',
+      action: '暂停低效广告计划 C-102（ROI 0.8）',
+      decidedAt: daysAgo(8), decision: 'approved',
+      metric: '广告 ROI（账户）', before: '1.6', after3d: '2.1', after7d: '2.3',
+      assessment: 'positive', assessmentNote: '账户整体 ROI +44%，节省日消耗约 ¥120。',
+    },
+    {
+      id: 9012, agentType: 'ads_optimizer',
+      action: '上调计划 C-088 日预算 ¥100 → ¥150',
+      decidedAt: daysAgo(4), decision: 'approved',
+      metric: '计划 GMV', before: '¥820/天', after3d: '¥1,150/天',
+      assessment: 'pending', assessmentNote: '3 天 GMV +40%，ROI 稳定在 2.0；7 天数据待回收。',
+    },
+  ],
+  promotion_campaign: [
+    {
+      id: 9021, agentType: 'promotion_campaign',
+      action: '为 3 个滞销 SKU 创建 35% OFF 闪购（7 天）',
+      decidedAt: daysAgo(10), decision: 'approved',
+      metric: '滞销库存件数', before: '312 件', after3d: '208 件', after7d: '96 件',
+      assessment: 'positive', assessmentNote: '清仓 69%，活动 ROI 1.8，高于预期。',
+    },
+  ],
+  after_sales: [
+    {
+      id: 9031, agentType: 'after_sales',
+      action: '自动通过订单 TB-10218 退款 ¥18.50（低于上限）',
+      decidedAt: daysAgo(6), decision: 'auto',
+      metric: '售后响应时长', before: '4.2 小时', after3d: '0.3 小时', after7d: '0.4 小时',
+      assessment: 'positive', assessmentNote: '响应时长下降 90%+，该买家后续追加复购 1 单。',
+    },
+  ],
+  crm_retention: [
+    {
+      id: 9041, agentType: 'crm_retention',
+      action: '向 23 位高流失风险客户发放 15% 挽留券',
+      decidedAt: daysAgo(7), decision: 'auto',
+      metric: '挽回订单数', before: '0 单', after3d: '5 单', after7d: '9 单',
+      assessment: 'positive', assessmentNote: '券核销率 39%，挽回 GMV ¥1,240，超出券成本 4.1 倍。',
+    },
+  ],
+  inventory_alert: [
+    {
+      id: 9051, agentType: 'inventory_alert',
+      action: '为 SKU A-102 创建补货单 200 件（¥2,900）',
+      decidedAt: daysAgo(11), decision: 'approved',
+      metric: '断货天数（当月）', before: '3 天', after3d: '0 天', after7d: '0 天',
+      assessment: 'positive', assessmentNote: '断货归零，预计避免 GMV 损失约 ¥8,600。',
+    },
+  ],
+  review_manager: [
+    {
+      id: 9061, agentType: 'review_manager',
+      action: '自动回复 2 条差评并向 5 位好评客户致谢',
+      decidedAt: daysAgo(5), decision: 'auto',
+      metric: '店铺评分', before: '4.6', after3d: '4.6', after7d: '4.7',
+      assessment: 'neutral', assessmentNote: '评分小幅回升 0.1，其中 1 条差评买家已修改评价。',
+    },
+  ],
 };

@@ -1,11 +1,12 @@
 import { mockDelay } from './client';
-import { agentConfigs, agentRunStatsMap } from './agentMockData';
+import { agentConfigs, agentOutcomesMap, agentRunStatsMap } from './agentMockData';
 import { stores, tasks } from './mockData';
 import { insertFirst, replaceItem } from './mockRepository';
 import { nextId } from './idGenerator';
 import { recordAuditLog } from './auditLogger';
 import type {
   AgentConfig,
+  AgentOutcomeRecord,
   AgentRunStats,
   AgentStrategyConfig,
   AgentType,
@@ -36,6 +37,10 @@ export const agentsApi = {
     mockDelay(agentConfigs.find((a) => a.agentType === agentType)),
 
   getStats: (agentType: AgentType) => mockDelay(agentRunStatsMap[agentType]),
+
+  // WS-D (S4): mock "decisions & outcomes" records — action → metric before/after 3/7d → assessment.
+  getOutcomes: (agentType: AgentType): Promise<AgentOutcomeRecord[]> =>
+    mockDelay(agentOutcomesMap[agentType] ?? []),
 
   getTasks: (agentType: AgentType): Promise<Task[]> =>
     mockDelay(tasks.filter((t) => t.agentType === agentType)),
@@ -110,13 +115,15 @@ export const agentsApi = {
   },
 
   batchEnable: (agentTypes: AgentType[]): Promise<AgentConfig[]> => {
-    // Check dependencies for each agent before batch enabling
-    // This was previously missing dependency checks (security fix)
+    // Check dependencies for each agent before batch enabling.
+    // WS-D: dependencies included in the same batch count as satisfied, so
+    // scenario bundles can enable an agent together with its dependencies.
+    const batch = new Set<AgentType>(agentTypes);
     for (const agentType of agentTypes) {
       const agent = agentConfigs.find((a) => a.agentType === agentType);
       if (agent && !agent.enabled) {
         const missing = agent.dependsOn.filter(
-          (dep) => !agentConfigs.find((a) => a.agentType === dep)?.enabled
+          (dep) => !batch.has(dep) && !agentConfigs.find((a) => a.agentType === dep)?.enabled
         );
         if (missing.length > 0) {
           throw new Error(
