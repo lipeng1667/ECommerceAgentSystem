@@ -1,34 +1,29 @@
 import {
-  BankOutlined,
-  CheckCircleOutlined,
-  CloseOutlined,
-  CreditCardOutlined,
   CrownOutlined,
   DownloadOutlined,
-  EditOutlined,
   FileTextOutlined,
   LineChartOutlined,
-  MailOutlined,
-  PhoneOutlined,
-  RocketOutlined,
-  SafetyCertificateOutlined,
-  ShopOutlined,
-  SwapOutlined,
-  TeamOutlined,
-  WalletOutlined
+  TagsOutlined
 } from '@ant-design/icons';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, Col, Descriptions, Form, Input, message, Progress, Row, Statistic, Switch, Table, Tag, Typography } from 'antd';
+import { useQuery } from '@tanstack/react-query';
+import { Button, Card, Col, Progress, Row, Statistic, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { useState } from 'react';
+import dayjs from 'dayjs';
 import { financeApi } from '../../../api/finance';
 import { useI18n } from '../../../app/i18n';
 import { TrendBarChart } from '../../../components/charts/TrendBarChart';
 import { MetricCard } from '../../../components/metrics/MetricCard';
-import type { BillingRecord, SubscriptionPlan } from '../../../types/domain';
+import type { BillingRecord } from '../../../types/domain';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY', minimumFractionDigits: 2 }).format(value);
+}
+
+/** WS-F F3: next bill date is always computed — first day of the next cycle. */
+export function computeNextBillDate(pendingDueDate?: string) {
+  const now = dayjs();
+  if (pendingDueDate && dayjs(pendingDueDate).isAfter(now, 'day')) return pendingDueDate;
+  return now.add(1, 'month').startOf('month').format('YYYY-MM-DD');
 }
 
 // ===== 顶部概览卡片 =====
@@ -42,9 +37,17 @@ export function FinanceSummary({ onSwitchToSubscription }: { onSwitchToSubscript
   const { data: records } = useQuery({ queryKey: ['billingRecords'], queryFn: financeApi.getBillingRecords });
   const pendingRecord = records?.find((r) => r.status === 'pending');
 
+  // WS-F F3: linear projection of the month-end total from month-to-date overage.
+  const now = dayjs();
+  const overageToDate = currentBill ? currentBill.total - currentBill.baseSubscription - currentBill.discount : 0;
+  const projectedTotal = currentBill
+    ? currentBill.baseSubscription + overageToDate * (now.daysInMonth() / Math.max(now.date(), 1))
+    : 0;
+  const nextBillDate = computeNextBillDate(pendingRecord?.dueDate);
+
   return (
     <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
-      <Col xs={24} sm={12} lg={5}>
+      <Col xs={24} sm={12} lg={4}>
         <Card style={{ height: '100%', borderTop: '3px solid #2563eb' }} bodyStyle={{ padding: '16px 20px' }}>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('finance.currentPlanLabel')}</Typography.Text>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
@@ -56,7 +59,7 @@ export function FinanceSummary({ onSwitchToSubscription }: { onSwitchToSubscript
           </Typography.Link>
         </Card>
       </Col>
-      <Col xs={12} sm={6} lg={5}>
+      <Col xs={12} sm={6} lg={4}>
         <MetricCard
           title={t('finance.monthlyFee')}
           value={currentBill?.total ?? 0}
@@ -66,7 +69,17 @@ export function FinanceSummary({ onSwitchToSubscription }: { onSwitchToSubscript
           helper={`${t('finance.baseFee')} ¥${currentBill?.baseSubscription ?? 0}`}
         />
       </Col>
-      <Col xs={12} sm={6} lg={5}>
+      <Col xs={12} sm={6} lg={4}>
+        <MetricCard
+          title={t('billingv2.projectedTotal')}
+          value={projectedTotal}
+          prefix="¥"
+          precision={2}
+          valueStyle={{ color: '#7c3aed', fontWeight: 'bold', fontSize: 20 }}
+          helper={t('billingv2.projectedHelper')}
+        />
+      </Col>
+      <Col xs={12} sm={6} lg={4}>
         <MetricCard
           title={t('finance.usagePercent')}
           value={usage ? Math.round((usage.agentCalls.used / usage.agentCalls.limit) * 100) : 0}
@@ -80,7 +93,7 @@ export function FinanceSummary({ onSwitchToSubscription }: { onSwitchToSubscript
           />
         </MetricCard>
       </Col>
-      <Col xs={12} sm={6} lg={5}>
+      <Col xs={12} sm={6} lg={4}>
         <MetricCard
           title={t('finance.savedAmount')}
           value={analysis?.estimatedSaving.savedAmount ?? 0}
@@ -91,9 +104,10 @@ export function FinanceSummary({ onSwitchToSubscription }: { onSwitchToSubscript
       </Col>
       <Col xs={12} sm={6} lg={4}>
         <MetricCard
-          title={t('finance.nextDueDate')}
-          value={pendingRecord?.dueDate ?? '-'}
+          title={t('subscription.nextBillDate')}
+          value={nextBillDate}
           valueStyle={{ color: '#ea580c', fontWeight: 'bold', fontSize: 18 }}
+          helper={t('billingv2.nextBillHelper')}
         >
           <Tag color={pendingRecord ? 'orange' : 'default'} style={{ marginTop: 4 }}>{pendingRecord ? t('finance.status_pending') : t('finance.noPending')}</Tag>
         </MetricCard>
@@ -102,24 +116,47 @@ export function FinanceSummary({ onSwitchToSubscription }: { onSwitchToSubscript
   );
 }
 
+// ===== 超额费率卡 =====
+
+export function OverageRateSection() {
+  const { t } = useI18n();
+  const { data: rates = [] } = useQuery({ queryKey: ['overageRates'], queryFn: financeApi.getOverageRates });
+
+  const columns: ColumnsType<{ key: string; label: string; included: string; rate: string }> = [
+    { title: t('billingv2.rateItem'), dataIndex: 'label' },
+    { title: t('billingv2.includedInPlan'), dataIndex: 'included' },
+    { title: t('billingv2.overageRate'), dataIndex: 'rate', render: (v: string) => <Typography.Text strong style={{ color: '#ea580c' }}>{v}</Typography.Text> }
+  ];
+
+  return (
+    <Card title={<><TagsOutlined /> {t('billingv2.rateCard')}</>} style={{ marginBottom: 24 }}>
+      <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 12 }}>
+        {t('billingv2.rateCardDesc')}
+      </Typography.Paragraph>
+      <Table rowKey="key" columns={columns} dataSource={rates} pagination={false} size="small" />
+    </Card>
+  );
+}
+
 // ===== 用量 =====
+
+/** Distance in px from the chart container bottom to the bars' baseline (label + gap). */
+const CHART_BASELINE_OFFSET = 32;
+const MAX_BAR_HEIGHT = 90;
 
 export function UsageSection() {
   const { t } = useI18n();
   const { data: trend = [] } = useQuery({ queryKey: ['usageTrend'], queryFn: financeApi.getUsageTrend });
+  const { data: usage } = useQuery({ queryKey: ['usageOverview'], queryFn: financeApi.getUsageOverview });
   if (trend.length === 0) return null;
 
+  // WS-F F3: plan limits drawn on every metered trend (token limit converted to K).
   const metrics = [
-    { key: 'agentCalls' as const, label: t('finance.agentCalls'), color: '#2563eb' },
-    { key: 'tokenUsage' as const, label: t('finance.tokenUsage'), color: '#7c3aed' },
-    { key: 'browserSessions' as const, label: t('finance.browserSessions'), color: '#0f766e' },
-    { key: 'stores' as const, label: t('subscription.stores'), color: '#ea580c' }
+    { key: 'agentCalls' as const, label: t('finance.agentCalls'), color: '#2563eb', limit: usage?.agentCalls.limit, limitText: usage ? `${usage.agentCalls.limit} 次` : undefined },
+    { key: 'tokenUsage' as const, label: t('finance.tokenUsage'), color: '#7c3aed', limit: usage ? usage.tokenUsage.limit / 1000 : undefined, limitText: usage ? `${usage.tokenUsage.limit / 1000}K` : undefined },
+    { key: 'browserSessions' as const, label: t('finance.browserSessions'), color: '#0f766e', limit: usage?.browserSessions.limit, limitText: usage ? `${usage.browserSessions.limit} 个` : undefined },
+    { key: 'stores' as const, label: t('subscription.stores'), color: '#ea580c', limit: usage?.stores.limit, limitText: usage ? `${usage.stores.limit} 个` : undefined }
   ];
-
-  const maxValues: Record<string, number> = {};
-  for (const m of metrics) {
-    maxValues[m.key] = Math.max(...trend.map((d) => d[m.key] ?? 0), 1);
-  }
 
   return (
     <Card
@@ -127,36 +164,70 @@ export function UsageSection() {
       style={{ marginBottom: 24 }}
     >
       <Row gutter={[16, 16]}>
-        {metrics.map((m) => (
-          <Col xs={24} lg={12} key={m.key}>
-            <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>{m.label}</Typography.Text>
-            <TrendBarChart
-              className="usage-chart"
-              barAreaHeight={100}
-              maxBarHeight={90}
-              points={trend.map((item) => ({
-                key: `${m.key}-${item.month}`,
-                label: item.month,
-                bars: [
-                  {
-                    value: item[m.key] ?? 0,
-                    max: maxValues[m.key],
-                    title: `${m.label}: ${item[m.key]}${m.key === 'tokenUsage' ? 'K' : ''}`,
-                    color: m.color,
-                    minHeight: 10,
-                    width: 18
-                  }
-                ]
-              }))}
-            />
-            <div style={{ textAlign: 'right', marginTop: 4 }}>
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                {t('finance.monthAvg')}: {Math.round(trend.reduce((sum, d) => sum + (d[m.key] ?? 0), 0) / trend.length).toLocaleString()}{m.key === 'tokenUsage' ? 'K' : ' 次'}
-              </Typography.Text>
-            </div>
-          </Col>
-        ))}
+        {metrics.map((m) => {
+          const dataMax = Math.max(...trend.map((d) => d[m.key] ?? 0), 1);
+          const scaleMax = Math.max(dataMax, m.limit ?? 0);
+          return (
+            <Col xs={24} lg={12} key={m.key}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+                <Typography.Text strong>{m.label}</Typography.Text>
+                {m.limitText && (
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    <span style={{ display: 'inline-block', width: 18, borderTop: '2px dashed var(--ark-orange)', verticalAlign: 'middle', marginRight: 4 }} />
+                    {t('billingv2.planLimit')} {m.limitText}
+                  </Typography.Text>
+                )}
+              </div>
+              <div style={{ position: 'relative' }}>
+                <TrendBarChart
+                  className="usage-chart"
+                  barAreaHeight={100}
+                  maxBarHeight={MAX_BAR_HEIGHT}
+                  points={trend.map((item) => {
+                    const value = item[m.key] ?? 0;
+                    const overLimit = m.limit != null && value > m.limit;
+                    return {
+                      key: `${m.key}-${item.month}`,
+                      label: item.month,
+                      bars: [
+                        {
+                          value,
+                          max: scaleMax,
+                          title: `${m.label}: ${value}${m.key === 'tokenUsage' ? 'K' : ''}${overLimit ? ` · ${t('billingv2.overLimit')}` : ''}`,
+                          color: overLimit ? '#dc2626' : m.color,
+                          minHeight: 10,
+                          width: 18
+                        }
+                      ]
+                    };
+                  })}
+                />
+                {m.limit != null && (
+                  <div
+                    aria-hidden
+                    style={{
+                      position: 'absolute',
+                      left: 4,
+                      right: 4,
+                      bottom: CHART_BASELINE_OFFSET + Math.min(m.limit / scaleMax, 1) * MAX_BAR_HEIGHT,
+                      borderTop: '2px dashed var(--ark-orange)',
+                      pointerEvents: 'none'
+                    }}
+                  />
+                )}
+              </div>
+              <div style={{ textAlign: 'right', marginTop: 4 }}>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  {t('finance.monthAvg')}: {Math.round(trend.reduce((sum, d) => sum + (d[m.key] ?? 0), 0) / trend.length).toLocaleString()}{m.key === 'tokenUsage' ? 'K' : ' 次'}
+                </Typography.Text>
+              </div>
+            </Col>
+          );
+        })}
       </Row>
+      <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: 12, marginBottom: 0 }}>
+        {t('billingv2.overLimitNote')}
+      </Typography.Paragraph>
     </Card>
   );
 }

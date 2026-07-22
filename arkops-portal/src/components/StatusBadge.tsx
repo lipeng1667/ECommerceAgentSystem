@@ -11,6 +11,7 @@
  *
  * Major updates:
  * - 2026-07-03: Added ownership and function documentation for AI-assisted collaboration.
+ * - 2026-07-22: WS-F F1 — normalized to the single canonical spelling `cancelled`.
  */
 import { memo } from 'react';
 import { Tag } from 'antd';
@@ -29,7 +30,6 @@ const colors: Record<string, string> = {
   waiting_approval: 'orange',
   succeeded: 'green',
   failed: 'red',
-  canceled: 'default',
   cancelled: 'default',
   pending: 'orange',
   approved: 'green',

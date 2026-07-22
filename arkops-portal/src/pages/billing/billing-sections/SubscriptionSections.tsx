@@ -4,10 +4,8 @@ import {
   CloseOutlined,
   CreditCardOutlined,
   CrownOutlined,
-  DownloadOutlined,
   EditOutlined,
   FileTextOutlined,
-  LineChartOutlined,
   MailOutlined,
   PhoneOutlined,
   RocketOutlined,
@@ -23,9 +21,8 @@ import type { ColumnsType } from 'antd/es/table';
 import { useState } from 'react';
 import { financeApi } from '../../../api/finance';
 import { useI18n } from '../../../app/i18n';
-import { TrendBarChart } from '../../../components/charts/TrendBarChart';
-import { MetricCard } from '../../../components/metrics/MetricCard';
-import type { BillingRecord, SubscriptionPlan } from '../../../types/domain';
+import type { SubscriptionPlan } from '../../../types/domain';
+import { computeNextBillDate } from './UsageBillingSections';
 
 // ========== 订阅计划对比表格 ==========
 
@@ -195,7 +192,7 @@ export function CurrentPlanSection() {
           <Statistic title={t('subscription.currentPlan')} value={currentPlan?.tier ?? '-'} valueStyle={{ color: '#2563eb', fontWeight: 700 }} />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Statistic title={t('subscription.nextBillDate')} value="2026-07-01" valueStyle={{ fontWeight: 600 }} />
+          <Statistic title={t('subscription.nextBillDate')} value={computeNextBillDate()} valueStyle={{ fontWeight: 600 }} />
           <Typography.Text type="secondary">{t('subscription.autoRenew')} <Tag color="green" style={{ marginLeft: 4 }}>{t('subscription.autoRenewOn')}</Tag></Typography.Text>
         </Col>
         <Col xs={24} sm={12} lg={6}>
@@ -331,7 +328,7 @@ export function BankTransferInfoSection() {
         <Col xs={24} lg={10}>
           <Card size="small" className="panel-soft full-height">
             <Typography.Title level={5}>{t('subscription.transferNote')}</Typography.Title>
-            <ul style={{ paddingLeft: 20, lineHeight: 2, color: '#64748b', fontSize: 13 }}>
+            <ul style={{ paddingLeft: 20, lineHeight: 2, color: 'var(--ark-muted)', fontSize: 13 }}>
               <li>{t('subscription.transferNote1')}</li>
               <li>{t('subscription.transferNote2')}</li>
               <li>{t('subscription.transferNote3')}</li>

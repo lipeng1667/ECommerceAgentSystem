@@ -2,7 +2,7 @@ import { Tabs } from 'antd';
 import { useState } from 'react';
 import { useI18n } from '../../app/i18n';
 import { PageHeader } from '../../components/PageHeader';
-import { BillingSection, FinanceSummary, UsageSection } from './billing-sections/UsageBillingSections';
+import { BillingSection, FinanceSummary, OverageRateSection, UsageSection } from './billing-sections/UsageBillingSections';
 import {
   BankTransferInfoSection,
   CurrentPlanSection,
@@ -24,6 +24,7 @@ export function BillingSettingsPage() {
         <>
           <FinanceSummary onSwitchToSubscription={() => setActiveTab('subscription')} />
           <UsageSection />
+          <OverageRateSection />
           <BillingSection />
         </>
       ),

@@ -482,3 +482,19 @@ export interface StoreBusinessDetail {
   };
   topProducts: { name: string; gmv: number; orders: number; sku: string }[];
 }
+
+// ===== WS-F: Notification channels & event matrix (appended) =====
+
+export type NotificationChannelType = 'feishu' | 'dingtalk' | 'webhook';
+
+export type NotificationEventKey = 'approval_required' | 'relogin_required' | 'run_failed';
+
+export interface NotificationChannelConfig {
+  id: string;
+  type: NotificationChannelType;
+  name: string;
+  status: 'connected' | 'not_configured';
+  endpoint?: string;
+  /** Event subscription matrix: which runtime events this channel receives. */
+  events: Record<NotificationEventKey, boolean>;
+}

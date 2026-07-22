@@ -73,6 +73,15 @@ export const financeApi = {
       { month: '5月', agentCalls: 580, tokenUsage: 600, browserSessions: 7, stores: 3 },
       { month: '6月', agentCalls: 665, tokenUsage: 686, browserSessions: 7, stores: 3 }
     ]),
+  // WS-F F3: overage rate card — unit prices charged beyond current plan allowances.
+  // Rates are consistent with the mocked current-bill overage items above.
+  getOverageRates: (): Promise<{ key: string; label: string; included: string; rate: string }[]> =>
+    mockDelay([
+      { key: 'agentCalls', label: 'Agent 调用', included: '500 次/月', rate: '¥0.08 / 次' },
+      { key: 'tokenUsage', label: '模型 Token', included: '500,000 tokens/月', rate: '¥0.03 / 1K tokens' },
+      { key: 'browserSessions', label: '浏览器会话', included: '12 个', rate: '¥2.00 / 个 · 月' },
+      { key: 'stores', label: '连接店铺', included: '5 个', rate: '¥10.00 / 个 · 月' }
+    ]),
   getCostAnalysis: (): Promise<CostAnalysis> =>
     mockDelay({
       byStore: [
