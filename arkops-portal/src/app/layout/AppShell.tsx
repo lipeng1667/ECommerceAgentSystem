@@ -442,24 +442,15 @@ export function AppShell() {
         </Header>
         <Content className="app-content">
           {isDemo && (
-            <div style={{
-              background: 'linear-gradient(90deg, #fef3c7 0%, #fde68a 100%)',
-              borderBottom: '1px solid #f59e0b',
-              padding: '6px 24px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexShrink: 0,
-            }}>
+            <div className="demo-banner">
               <Space size={8}>
-                <LabOutlined style={{ color: '#d97706', fontSize: 14 }} />
-                <Typography.Text style={{ fontSize: 12, color: '#92400e', fontWeight: 500 }}>
+                <LabOutlined className="demo-banner-icon" />
+                <Typography.Text className="demo-banner-text">
                   {t('app.demoBanner')}
                 </Typography.Text>
                 <Tag color="gold" style={{ fontSize: 10, margin: 0 }}>{t('shell.demoScenarioTag')}</Tag>
               </Space>
-              <Button size="small" type="text" icon={<CloseOutlined />} onClick={exitDemo}
-                style={{ color: '#92400e', fontSize: 11 }}>
+              <Button size="small" type="text" icon={<CloseOutlined />} onClick={exitDemo} className="demo-banner-exit">
                 {t('app.exitDemo')}
               </Button>
             </div>

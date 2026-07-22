@@ -1,3 +1,18 @@
+/**
+ * File: tokens.css
+ * Purpose: Theme token registry — the single source of truth for colors.
+ *
+ * TOKEN USAGE RULE (WS-E, UX finding 5.2):
+ * - Raw hex colors belong ONLY in this file (and their antd mirror in
+ *   src/app/providers.tsx). Everywhere else use `var(--ark-*)`, or
+ *   `color-mix(in srgb, var(--ark-*) N%, var(--ark-panel))` for derived
+ *   soft backgrounds/borders, so both light and dark themes stay correct.
+ * - Audit with `scripts/check-hex.sh` (lists offending lines; exits 1 on hits).
+ * - Intentionally theme-invariant surfaces may be fenced between comment lines
+ *   containing `hex-audit-off` and `hex-audit-on`, plus a justification.
+ *
+ * Author: Michael Lee
+ */
 :root {
   --ark-bg: #f5f7fb;
   --ark-panel: #ffffff;
@@ -10,6 +25,10 @@
   --ark-green: #16a34a;
   --ark-orange: #ea580c;
   --ark-purple: #7c3aed;
+  --ark-red: #dc2626;
+  --ark-teal: #0f766e;
+  --ark-amber: #f59e0b;
+  --ark-on-accent: #ffffff;
   --ark-card-shadow: 0 10px 32px rgba(31, 45, 71, 0.05);
   --ark-login-bg: linear-gradient(135deg, #eff6ff 0%, #f8fafc 56%, #f0fdf4 100%);
   --ark-dashboard-feed-grid: rgba(37, 99, 235, 0.035);
@@ -27,6 +46,10 @@
   --ark-green: #22c55e;
   --ark-orange: #f59e0b;
   --ark-purple: #a78bfa;
+  --ark-red: #f87171;
+  --ark-teal: #2dd4bf;
+  --ark-amber: #fbbf24;
+  --ark-on-accent: #ffffff;
   --ark-card-shadow: 0 16px 38px rgba(0, 0, 0, 0.22);
   --ark-login-bg: linear-gradient(135deg, #0b1120 0%, #111827 58%, #12201e 100%);
   --ark-dashboard-feed-grid: rgba(96, 165, 250, 0.055);
