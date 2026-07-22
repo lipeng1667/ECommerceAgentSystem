@@ -11,6 +11,9 @@
  *
  * Major updates:
  * - 2026-07-03: Added ownership and function documentation for AI-assisted collaboration.
+ * - 2026-07-22: WS-D (D8) — narration now interpolates thresholds from the agent's actual
+ *   strategyConfig / approvalStrategy / riskGuard instead of hardcoded copy, so console
+ *   claims always match the merchant's configuration.
  */
 import {
   CheckCircleOutlined,
@@ -26,7 +29,7 @@ import { Button, Card, Space, Tag, Tooltip, Typography, message } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../app/i18n';
-import type { Task } from '../types/domain';
+import type { AgentConfig, Task } from '../types/domain';
 
 type LiveEventLevel = 'info' | 'success' | 'warning' | 'error';
 
@@ -51,16 +54,23 @@ const levelIcon: Record<LiveEventLevel, JSX.Element> = {
  *
  * @param task - Current task shown in the Agent detail page.
  * @param language - Active UI language.
+ * @param agent - Optional agent config; when provided, thresholds in the narration
+ *   are interpolated from the real strategyConfig / approvalStrategy / riskGuard (WS-D D8).
  * @returns Ordered live-event list used by AgentLiveConsole.
  *
  * Author: Michael Lee
  * Created: 2026-07-03
  */
-function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
+function buildLiveEvents(task: Task, language: 'en' | 'zh', agent?: AgentConfig): LiveEvent[] {
   const zh = language === 'zh';
   const base = dayjs(task.createdAt);
   const at = (seconds: number) => base.add(seconds, 'second').toISOString();
   const source = task.agentType === 'login_bootstrap' ? 'Login Bootstrap Agent' : 'Runtime Adapter';
+  // WS-D (D8): config-derived thresholds with the previous copy values as fallbacks.
+  const sc = agent?.strategyConfig;
+  const rules = agent?.approvalStrategy?.autoApproveRules;
+  const approverRole = agent?.approvalStrategy?.approverRole || 'Operator';
+  const maxBudgetPerAction = agent?.riskGuard?.maxBudgetPerAction ?? 0;
 
   const commonStart: LiveEvent[] = [
     {
@@ -86,6 +96,10 @@ function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
   ];
 
   if (task.agentType === 'ads_optimizer') {
+    const lookbackDays = sc?.adSpendBudget?.lookbackDays ?? 7;
+    const targetROI = sc?.adSpendBudget?.targetROI ?? 2.0;
+    const dailyCap = sc?.adSpendBudget?.dailyCap ?? 500;
+    const maxBudgetChange = rules?.maxBudgetChange ?? 50;
     return [
       ...commonStart,
       {
@@ -105,8 +119,8 @@ function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
         source: 'Browser Agent',
         title: zh ? '广告管理页面已打开' : 'Ads manager page opened',
         summary: zh
-          ? '已进入广告管理页面，开始读取过去 7 天广告表现。'
-          : 'Entered ads manager and started reading 7-day campaign performance.'
+          ? `已进入广告管理页面，开始读取过去 ${lookbackDays} 天广告表现。`
+          : `Entered ads manager and started reading ${lookbackDays}-day campaign performance.`
       },
       {
         id: `${task.id}-live-005`,
@@ -115,8 +129,8 @@ function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
         source: 'Analysis Engine',
         title: zh ? '正在交叉检查广告与库存数据' : 'Cross-checking ads and inventory',
         summary: zh
-          ? 'Agent 正在结合 ROI、消耗、库存和转化率筛选可调整广告计划。'
-          : 'Agent is combining ROI, spend, inventory, and conversion rate to shortlist actions.'
+          ? `Agent 正在结合 ROI（目标 ${targetROI}）、消耗（日预算上限 ¥${dailyCap}）、库存和转化率筛选可调整广告计划。`
+          : `Agent combines ROI (target ${targetROI}), spend (daily cap ¥${dailyCap}), inventory, and conversion rate to shortlist actions.`
       },
       {
         id: `${task.id}-live-006`,
@@ -125,8 +139,8 @@ function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
         source: 'Risk Policy',
         title: zh ? '发现高风险预算动作' : 'High-risk budget action detected',
         summary: zh
-          ? '暂停广告计划 C-102 超过租户阈值，必须进入人工审批。'
-          : 'Pausing campaign C-102 exceeds tenant threshold and requires human approval.'
+          ? `暂停广告计划 C-102 的预算影响超过自动通过额度 ¥${maxBudgetChange}，必须进入人工审批。`
+          : `Pausing campaign C-102 exceeds the ¥${maxBudgetChange} auto-approve budget threshold and requires human approval.`
       },
       {
         id: `${task.id}-live-007`,
@@ -135,8 +149,8 @@ function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
         source: 'Approval Service',
         title: zh ? '已创建审批请求' : 'Approval request created',
         summary: zh
-          ? '任务已暂停，等待审批人审核预算调整建议。'
-          : 'Task is paused until an approver reviews the budget adjustment proposal.'
+          ? `任务已暂停，等待 ${approverRole} 审核预算调整建议。`
+          : `Task is paused until ${approverRole} reviews the budget adjustment proposal.`
       }
     ];
   }
@@ -224,21 +238,32 @@ function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
   }
 
   if (task.agentType === 'pricing_strategy') {
+    const targetMargin = sc?.pricingRule?.targetMargin ?? 30;
+    const maxPriceChangePct = rules?.maxPriceChangePct;
     return [
       ...commonStart,
       { id: `${task.id}-live-003`, at: at(10), level: 'info', source: 'Pricing Engine', title: zh ? '正在拉取竞品定价快照' : 'Fetching competitor pricing snapshot', summary: zh ? '从市场情报 Agent 获取最新竞品均价和最低价。' : 'Retrieving latest competitor avg/min prices from intel agent.' },
-      { id: `${task.id}-live-004`, at: at(22), level: 'info', source: 'Margin Calculator', title: zh ? '正在计算各 SKU 毛利率' : 'Calculating margins for all SKUs', summary: zh ? '结合成本、运费和平台佣金计算实际毛利率。' : 'Computing real margins with cost, shipping, and platform commission.' },
+      { id: `${task.id}-live-004`, at: at(22), level: 'info', source: 'Margin Calculator', title: zh ? '正在计算各 SKU 毛利率' : 'Calculating margins for all SKUs', summary: zh ? `结合成本、运费和平台佣金计算实际毛利率（目标利润率 ${targetMargin}%）。` : `Computing real margins with cost, shipping, and commission (target margin ${targetMargin}%).` },
       { id: `${task.id}-live-005`, at: at(36), level: 'warning', source: 'Risk Policy', title: zh ? '检测到 3 个 SKU 低于市场均价 15%' : '3 SKUs priced 15% below market average', summary: zh ? '建议上调价格以提升毛利，已生成调价建议。' : 'Recommendation to raise prices generated for margin improvement.' },
-      { id: `${task.id}-live-006`, at: at(50), level: 'success', source: 'Approval Service', title: zh ? '调价建议已提交审批' : 'Price adjustment submitted for approval', summary: zh ? '5%以内变动自动通过，超出部分等待 Operator 审核。' : 'Changes within 5% auto-approved; larger changes pending Operator review.' },
+      {
+        id: `${task.id}-live-006`, at: at(50), level: 'success', source: 'Approval Service',
+        title: zh ? '调价建议已提交审批' : 'Price adjustment submitted for approval',
+        summary: maxPriceChangePct !== undefined
+          ? (zh ? `${maxPriceChangePct}%以内变动自动通过，超出部分等待 ${approverRole} 审核。` : `Changes within ${maxPriceChangePct}% auto-approved; larger changes pending ${approverRole} review.`)
+          : (zh ? `全部调价建议等待 ${approverRole} 审核。` : `All price adjustments pending ${approverRole} review.`)
+      },
     ];
   }
 
   if (task.agentType === 'crm_retention') {
+    const discountCap = sc?.crmConfig?.discountCap ?? 20;
+    const crmBudget = maxBudgetPerAction > 0 ? maxBudgetPerAction : 100;
+    const segmentCount = sc?.crmConfig?.segmentCount ?? 3;
     return [
       ...commonStart,
-      { id: `${task.id}-live-003`, at: at(12), level: 'info', source: 'CRM Engine', title: zh ? '正在刷新客户分层' : 'Refreshing customer segments', summary: zh ? '基于近 90 天购买行为重新计算新客/活跃/沉睡/流失分层。' : 'Recomputing new/active/dormant/churned segments from 90-day behavior.' },
+      { id: `${task.id}-live-003`, at: at(12), level: 'info', source: 'CRM Engine', title: zh ? '正在刷新客户分层' : 'Refreshing customer segments', summary: zh ? `基于近 90 天购买行为重新计算 ${segmentCount} 个客户分层。` : `Recomputing ${segmentCount} customer segments from 90-day behavior.` },
       { id: `${task.id}-live-004`, at: at(30), level: 'warning', source: 'Churn Predictor', title: zh ? '识别到 23 个高流失风险客户' : '23 customers at high churn risk', summary: zh ? '预测模型显示这些客户 7 天内流失概率 > 70%。' : 'Predicted churn probability > 70% within 7 days for these customers.' },
-      { id: `${task.id}-live-005`, at: at(44), level: 'info', source: 'Campaign Engine', title: zh ? '正在生成挽留券方案' : 'Generating retention coupon plan', summary: zh ? '为高流失风险客户匹配 15% 折扣券，预算控制在 ¥200 以内。' : 'Matching 15% discount coupons for at-risk customers within ¥200 budget.' },
+      { id: `${task.id}-live-005`, at: at(44), level: 'info', source: 'Campaign Engine', title: zh ? '正在生成挽留券方案' : 'Generating retention coupon plan', summary: zh ? `为高流失风险客户匹配折扣券（折扣上限 ${discountCap}%），预算控制在 ¥${crmBudget} 以内。` : `Matching discount coupons (cap ${discountCap}%) for at-risk customers within ¥${crmBudget} budget.` },
       { id: `${task.id}-live-006`, at: at(60), level: 'success', source: 'Notification Service', title: zh ? '挽留券已自动发放' : 'Retention coupons auto-dispatched', summary: zh ? '已向 23 位客户发送个性化挽留券，预计挽回 8 单。' : 'Personalized coupons sent to 23 customers, est. 8 orders recovered.' },
     ];
   }
@@ -247,8 +272,8 @@ function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
     return [
       ...commonStart,
       { id: `${task.id}-live-003`, at: at(8), level: 'info', source: 'Review Scanner', title: zh ? '正在扫描新增评价' : 'Scanning new reviews', summary: zh ? '已拉取 淘宝 和 拼多多 近 2 小时新增的 12 条评价。' : 'Fetched 12 new reviews from 淘宝 and 拼多多 in the last 2h.' },
-      { id: `${task.id}-live-004`, at: at(18), level: 'warning', source: 'NLP Engine', title: zh ? '检测到 2 条差评（1-2 星）' : '2 negative reviews detected (1-2 stars)', summary: zh ? '差评内容涉及产品质量和物流速度，已标记为优先处理。' : 'Negative sentiment on product quality and shipping speed flagged.' },
-      { id: `${task.id}-live-005`, at: at(32), level: 'info', source: 'AI Reply Generator', title: zh ? '正在生成差评回复' : 'Generating review replies', summary: zh ? 'Agent 正在按"专业友好"语气生成个性化回复模板。' : 'Agent is generating personalized reply templates in professional-friendly tone.' },
+      { id: `${task.id}-live-004`, at: at(18), level: 'warning', source: 'NLP Engine', title: zh ? `检测到 2 条差评（${sc?.reviewConfig?.autoReplyThreshold ?? 2} 星及以下）` : `2 negative reviews detected (≤ ${sc?.reviewConfig?.autoReplyThreshold ?? 2} stars)`, summary: zh ? '差评内容涉及产品质量和物流速度，已标记为优先处理。' : 'Negative sentiment on product quality and shipping speed flagged.' },
+      { id: `${task.id}-live-005`, at: at(32), level: 'info', source: 'AI Reply Generator', title: zh ? '正在生成差评回复' : 'Generating review replies', summary: zh ? `Agent 正在按「${sc?.reviewConfig?.replyTone ?? '专业友好'}」语气生成个性化回复模板。` : `Agent is generating personalized reply templates in "${sc?.reviewConfig?.replyTone ?? '专业友好'}" tone.` },
       { id: `${task.id}-live-006`, at: at(46), level: 'success', source: 'Reply Service', title: zh ? '差评回复已自动发送' : 'Replies auto-sent', summary: zh ? '2 条差评已回复，同时向 5 位好评客户发送了感谢消息。' : 'Replied to 2 negative reviews; sent thank-you to 5 positive reviewers.' },
     ];
   }
@@ -264,32 +289,43 @@ function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
   }
 
   if (task.agentType === 'after_sales') {
+    const refundCap = sc?.afterSalesConfig?.autoRefundCap ?? 20;
+    const amount = (refundCap + 12.99).toFixed(2);
     return [
       ...commonStart,
-      { id: `${task.id}-live-003`, at: at(10), level: 'info', source: 'Event Listener', title: zh ? '检测到退货申请' : 'Return request detected', summary: zh ? '订单 TB-10245 申请退货，原因：商品缺陷，金额 ¥32.99。' : 'Order TB-10245 return request: defective product, CNY 32.99.' },
-      { id: `${task.id}-live-004`, at: at(20), level: 'info', source: 'Policy Engine', title: zh ? '正在评估自动处理条件' : 'Evaluating auto-process conditions', summary: zh ? '金额 ¥32.99 超过自动退款上限 ¥20，需 Operator 审批。' : 'Amount ¥32.99 exceeds auto-refund limit ¥20, requires Operator approval.' },
-      { id: `${task.id}-live-005`, at: at(34), level: 'warning', source: 'Approval Service', title: zh ? '退货申请已转人工审批' : 'Return request sent for manual approval', summary: zh ? '已创建审批工单并通知 Operator，同时暂停自动处理流程。' : 'Approval ticket created, Operator notified, auto-processing paused.' },
+      { id: `${task.id}-live-003`, at: at(10), level: 'info', source: 'Event Listener', title: zh ? '检测到退货申请' : 'Return request detected', summary: zh ? `订单 TB-10245 申请退货，原因：商品缺陷，金额 ¥${amount}。` : `Order TB-10245 return request: defective product, CNY ${amount}.` },
+      { id: `${task.id}-live-004`, at: at(20), level: 'info', source: 'Policy Engine', title: zh ? '正在评估自动处理条件' : 'Evaluating auto-process conditions', summary: zh ? `金额 ¥${amount} 超过自动退款上限 ¥${refundCap}，需 ${approverRole} 审批。` : `Amount ¥${amount} exceeds auto-refund limit ¥${refundCap}, requires ${approverRole} approval.` },
+      { id: `${task.id}-live-005`, at: at(34), level: 'warning', source: 'Approval Service', title: zh ? '退货申请已转人工审批' : 'Return request sent for manual approval', summary: zh ? `已创建审批工单并通知 ${approverRole}，同时暂停自动处理流程。` : `Approval ticket created, ${approverRole} notified, auto-processing paused.` },
       { id: `${task.id}-live-006`, at: at(48), level: 'info', source: 'Logistics Tracker', title: zh ? '已关联退货运单追踪' : 'Return shipment tracking linked', summary: zh ? '退货地址已发送给买家，系统将自动跟踪物流状态。' : 'Return address sent to buyer; system will auto-track return shipment.' },
     ];
   }
 
   if (task.agentType === 'promotion_campaign') {
+    const deadStockDays = sc?.promotionConfig?.autoTriggerRules?.deadStockDays ?? 60;
+    const deadStockDiscount = sc?.promotionConfig?.autoTriggerRules?.deadStockDiscount ?? 35;
+    const promoBudgetCap = maxBudgetPerAction > 0 ? maxBudgetPerAction : 500;
+    const estBudget = Math.max(1, Math.round(promoBudgetCap * 0.9));
+    const platforms = sc?.promotionConfig?.targetPlatforms?.join(' 和 ') ?? '淘宝 和 拼多多';
     return [
       ...commonStart,
-      { id: `${task.id}-live-003`, at: at(12), level: 'info', source: 'Trigger Engine', title: zh ? '自动触发促销规则命中' : 'Auto-trigger rule matched', summary: zh ? '3 个 SKU 滞销超过 60 天，触发自动闪购规则（35% OFF）。' : '3 SKUs dead-stocked > 60 days, triggering auto flash sale (35% OFF).' },
-      { id: `${task.id}-live-004`, at: at(24), level: 'info', source: 'Budget Planner', title: zh ? '正在计算活动预算' : 'Calculating campaign budget', summary: zh ? '预估活动预算 ¥450，低于 ¥500 自动审批额度。' : 'Estimated budget ¥450, within ¥500 auto-approval threshold.' },
-      { id: `${task.id}-live-005`, at: at(38), level: 'success', source: 'Campaign Service', title: zh ? '闪购活动已自动创建' : 'Flash sale auto-created', summary: zh ? '已在 淘宝 和 拼多多 同步上线，周期 7 天。' : 'Live on 淘宝 and 拼多多, 7-day duration.' },
+      { id: `${task.id}-live-003`, at: at(12), level: 'info', source: 'Trigger Engine', title: zh ? '自动触发促销规则命中' : 'Auto-trigger rule matched', summary: zh ? `3 个 SKU 滞销超过 ${deadStockDays} 天，触发自动闪购规则（${deadStockDiscount}% OFF）。` : `3 SKUs dead-stocked > ${deadStockDays} days, triggering auto flash sale (${deadStockDiscount}% OFF).` },
+      { id: `${task.id}-live-004`, at: at(24), level: 'info', source: 'Budget Planner', title: zh ? '正在计算活动预算' : 'Calculating campaign budget', summary: zh ? `预估活动预算 ¥${estBudget}，低于 ¥${promoBudgetCap} 单次动作预算上限。` : `Estimated budget ¥${estBudget}, within the ¥${promoBudgetCap} per-action budget cap.` },
+      { id: `${task.id}-live-005`, at: at(38), level: 'success', source: 'Campaign Service', title: zh ? '闪购活动已自动创建' : 'Flash sale auto-created', summary: zh ? `已在 ${platforms} 同步上线，周期 7 天。` : `Live on ${platforms}, 7-day duration.` },
       { id: `${task.id}-live-006`, at: at(52), level: 'info', source: 'Monitor', title: zh ? '活动效果监控已启动' : 'Campaign performance monitoring started', summary: zh ? '将每 4 小时检查一次 ROI，低于 1.5 时自动告警。' : 'ROI checked every 4h; alert if below 1.5.' },
     ];
   }
 
   if (task.agentType === 'inventory_alert') {
+    const lowStockThreshold = sc?.inventoryConfig?.lowStockThreshold ?? 20;
+    const remainUnits = Math.max(1, Math.round(lowStockThreshold * 0.4));
+    const maxOrderValue = rules?.maxOrderValue ?? 500;
+    const orderValue = Math.max(1, Math.round(maxOrderValue * 0.86));
     return [
       ...commonStart,
       { id: `${task.id}-live-003`, at: at(8), level: 'info', source: 'Inventory Scanner', title: zh ? '正在扫描库存快照' : 'Scanning inventory snapshot', summary: zh ? '已拉取 4 个店铺共 156 个 SKU 的实时库存数据。' : 'Fetched real-time inventory for 156 SKUs across 4 stores.' },
-      { id: `${task.id}-live-004`, at: at(18), level: 'warning', source: 'Threshold Checker', title: zh ? '发现 4 个低库存 SKU' : '4 low-stock SKUs detected', summary: zh ? 'Wireless Earbuds Pro 2 仅剩 8 件，低于阈值 20。' : 'Wireless Earbuds Pro 2 down to 8 units, below threshold of 20.' },
+      { id: `${task.id}-live-004`, at: at(18), level: 'warning', source: 'Threshold Checker', title: zh ? '发现 4 个低库存 SKU' : '4 low-stock SKUs detected', summary: zh ? `Wireless Earbuds Pro 2 仅剩 ${remainUnits} 件，低于告警阈值 ${lowStockThreshold}。` : `Wireless Earbuds Pro 2 down to ${remainUnits} units, below the ${lowStockThreshold}-unit threshold.` },
       { id: `${task.id}-live-005`, at: at(30), level: 'info', source: 'Replenish Planner', title: zh ? '正在生成补货建议' : 'Generating replenishment suggestions', summary: zh ? '根据日均销量和到货周期计算建议补货量 200 件。' : 'Calculated suggested replenishment qty of 200 units based on daily sales and lead time.' },
-      { id: `${task.id}-live-006`, at: at(44), level: 'success', source: 'Auto Replenish', title: zh ? '补货订单已自动创建' : 'Replenishment order auto-created', summary: zh ? '采购金额 ¥2,900 低于 ¥500 自动审批额度限制，已提交供应商。' : 'Order value within auto-approval limit, submitted to supplier.' },
+      { id: `${task.id}-live-006`, at: at(44), level: 'success', source: 'Auto Replenish', title: zh ? '补货订单已自动创建' : 'Replenishment order auto-created', summary: zh ? `采购金额 ¥${orderValue} 低于 ¥${maxOrderValue} 自动审批额度限制，已提交供应商。` : `Order value ¥${orderValue} within the ¥${maxOrderValue} auto-approval limit, submitted to supplier.` },
     ];
   }
 
@@ -297,8 +333,8 @@ function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
     return [
       ...commonStart,
       { id: `${task.id}-live-003`, at: at(12), level: 'info', source: 'Creative Engine', title: zh ? '正在生成广告素材' : 'Generating ad creatives', summary: zh ? '基于商品图片和市场情报生成 3 组广告图和文案。' : 'Generating 3 ad creative sets from product images and market intel.' },
-      { id: `${task.id}-live-004`, at: at(28), level: 'info', source: 'Copy Generator', title: zh ? '正在生成广告文案' : 'Generating ad copy', summary: zh ? '按"促销感"语气生成 5 条标题和 3 组描述文案。' : 'Generating 5 headlines and 3 description sets in promotional tone.' },
-      { id: `${task.id}-live-005`, at: at(44), level: 'success', source: 'Asset Service', title: zh ? '素材已归档' : 'Creatives archived', summary: zh ? '3 组素材（1:1 / 16:9 / 9:16）已保存，待 Operator 选用。' : '3 creative sets (1:1 / 16:9 / 9:16) saved, pending Operator selection.' },
+      { id: `${task.id}-live-004`, at: at(28), level: 'info', source: 'Copy Generator', title: zh ? '正在生成广告文案' : 'Generating ad copy', summary: zh ? `按「${sc?.creativeConfig?.copyTone ?? '促销感'}」语气生成 5 条标题和 3 组描述文案。` : `Generating 5 headlines and 3 description sets in "${sc?.creativeConfig?.copyTone ?? '促销感'}" tone.` },
+      { id: `${task.id}-live-005`, at: at(44), level: 'success', source: 'Asset Service', title: zh ? '素材已归档' : 'Creatives archived', summary: zh ? `3 组素材（${(sc?.creativeConfig?.outputSizes ?? '1:1,16:9,9:16').split(',').join(' / ')}）已保存，待 ${approverRole} 选用。` : `3 creative sets (${(sc?.creativeConfig?.outputSizes ?? '1:1,16:9,9:16').split(',').join(' / ')}) saved, pending ${approverRole} selection.` },
       { id: `${task.id}-live-006`, at: at(56), level: 'info', source: 'Pipeline', title: zh ? '素材已推送至广告 Agent' : 'Creatives pushed to ads agent', summary: zh ? '广告投放 Agent 已收到新素材，将在下次巡检中测试效果。' : 'Ads agent received new creatives for next patrol A/B test.' },
     ];
   }
@@ -306,7 +342,7 @@ function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
   if (task.agentType === 'risk_control') {
     return [
       ...commonStart,
-      { id: `${task.id}-live-003`, at: at(6), level: 'info', source: 'Risk Scanner', title: zh ? '正在扫描 11 个 Agent 行为日志' : 'Scanning 11 agents behavior logs', summary: zh ? '检查近 1 分钟内所有 Agent 操作是否违反风控规则。' : 'Checking all agent actions in the last minute against risk rules.' },
+      { id: `${task.id}-live-003`, at: at(6), level: 'info', source: 'Risk Scanner', title: zh ? '正在扫描 11 个 Agent 行为日志' : 'Scanning 11 agents behavior logs', summary: zh ? `检查近 1 分钟内所有 Agent 操作是否违反风控规则（ROI 红线 ${sc?.riskControlConfig?.behavior.roiFloorThreshold ?? 1.2}、价格偏差 > ${sc?.riskControlConfig?.behavior.priceDeviationPercent ?? 30}%）。` : `Checking all agent actions in the last minute against risk rules (ROI floor ${sc?.riskControlConfig?.behavior.roiFloorThreshold ?? 1.2}, price deviation > ${sc?.riskControlConfig?.behavior.priceDeviationPercent ?? 30}%).` },
       { id: `${task.id}-live-004`, at: at(16), level: 'warning', source: 'Compliance Guard', title: zh ? '检测到 1 个合规风险' : '1 compliance risk detected', summary: zh ? '广告文案含"全网最低"违禁词，已标记需修改。' : 'Ad copy contains prohibited term "lowest全网", flagged for revision.' },
       { id: `${task.id}-live-005`, at: at(28), level: 'info', source: 'Circuit Breaker', title: zh ? '熔断器状态检查完成' : 'Circuit breaker status checked', summary: zh ? '所有 Agent 熔断器处于 closed 状态，无异常流量。' : 'All agent circuit breakers closed, no abnormal traffic detected.' },
       { id: `${task.id}-live-006`, at: at(40), level: 'success', source: 'Risk Report', title: zh ? '风控扫描完成' : 'Risk scan completed', summary: zh ? '发现 1 个中风险项已通知对应 Agent，0 个高风险项。' : '1 medium-risk item reported to agent, 0 high-risk items.' },
@@ -318,7 +354,7 @@ function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
       ...commonStart,
       { id: `${task.id}-live-003`, at: at(14), level: 'info', source: 'Reconciliation Engine', title: zh ? '正在拉取平台账单' : 'Fetching platform statements', summary: zh ? '从 淘宝 和 拼多多 API 拉取本月订单和结算数据。' : 'Fetching monthly orders and settlement data from 淘宝 and 拼多多 APIs.' },
       { id: `${task.id}-live-004`, at: at(30), level: 'info', source: 'Bank Matcher', title: zh ? '正在匹配银行到账记录' : 'Matching bank deposits', summary: zh ? '已匹配 1,245 笔订单收款，匹配率 98.2%。' : 'Matched 1,245 order payments, match rate 98.2%.' },
-      { id: `${task.id}-live-005`, at: at(46), level: 'warning', source: 'Discrepancy Detector', title: zh ? '发现 ¥250 账面差异' : '¥250 discrepancy detected', summary: zh ? '淘宝 平台收入 ¥32,100，银行到账 ¥31,850，差异已标记调查。' : '淘宝 revenue ¥32,100 vs bank received ¥31,850, discrepancy flagged.' },
+      { id: `${task.id}-live-005`, at: at(46), level: 'warning', source: 'Discrepancy Detector', title: zh ? '发现 ¥250 账面差异' : '¥250 discrepancy detected', summary: zh ? `淘宝 平台收入 ¥32,100，银行到账 ¥31,850，差异超过告警阈值 ¥${sc?.financeConfig?.discrepancyAlertThreshold ?? 100}，已标记调查。` : `淘宝 revenue ¥32,100 vs bank received ¥31,850 — exceeds the ¥${sc?.financeConfig?.discrepancyAlertThreshold ?? 100} alert threshold, flagged.` },
       { id: `${task.id}-live-006`, at: at(60), level: 'success', source: 'Report Generator', title: zh ? '对账报告已自动生成' : 'Reconciliation report auto-generated', summary: zh ? '月度对账报告已归档，差异项已通知财务负责人。' : 'Monthly report archived; discrepancy items notified to finance lead.' },
     ];
   }
@@ -326,7 +362,7 @@ function buildLiveEvents(task: Task, language: 'en' | 'zh'): LiveEvent[] {
   if (task.agentType === 'live_stream_ops') {
     return [
       ...commonStart,
-      { id: `${task.id}-live-003`, at: at(8), level: 'info', source: 'Stream Monitor', title: zh ? '直播已开始，进入监控' : 'Live stream started, monitoring engaged', summary: zh ? '拼多多 直播间已上线，当前观看 1,250 人。' : '拼多多 live stream online, 1,250 current viewers.' },
+      { id: `${task.id}-live-003`, at: at(8), level: 'info', source: 'Stream Monitor', title: zh ? '直播已开始，进入监控' : 'Live stream started, monitoring engaged', summary: zh ? `拼多多 直播间已上线，当前观看 1,250 人（低于 ${sc?.liveStreamConfig?.performanceAlertThreshold ?? 500} 人时预警）。` : `拼多多 live stream online, 1,250 current viewers (alert below ${sc?.liveStreamConfig?.performanceAlertThreshold ?? 500}).` },
       { id: `${task.id}-live-004`, at: at(20), level: 'info', source: 'Product Pinner', title: zh ? '已自动置顶热销商品' : 'Auto-pinned top-selling product', summary: zh ? 'Wireless Earbuds Pro 2 已置顶，点击率提升 15%。' : 'Wireless Earbuds Pro 2 pinned, CTR up 15%.' },
       { id: `${task.id}-live-005`, at: at(34), level: 'success', source: 'AI Reply', title: zh ? 'AI 已回复 8 条评论' : 'AI replied to 8 comments', summary: zh ? '自动回复商品价格和库存问题，转化率 3.2%。' : 'Auto-replied to price/stock questions, 3.2% conversion rate.' },
       { id: `${task.id}-live-006`, at: at(48), level: 'info', source: 'Metrics Dashboard', title: zh ? '实时数据已同步' : 'Real-time metrics synced', summary: zh ? 'GMV ¥1,240，点赞 3,200，评论 45，转化率 3.2%。' : 'GMV ¥1,240, 3,200 likes, 45 comments, 3.2% conversion.' },
@@ -380,14 +416,15 @@ function formatLine(event: LiveEvent) {
  * Renders a task-level live execution console with localized simulated runtime events.
  *
  * @param task - Agent task used to derive the event stream and runtime metadata.
+ * @param agent - Optional agent config for threshold interpolation (WS-D D8).
  * @returns React element containing the live console card.
  *
  * Author: Michael Lee
  * Created: 2026-07-03
  */
-export function AgentLiveConsole({ task }: { task: Task }) {
+export function AgentLiveConsole({ task, agent }: { task: Task; agent?: AgentConfig }) {
   const { language, t } = useI18n();
-  const allEvents = useMemo(() => buildLiveEvents(task, language), [task, language]);
+  const allEvents = useMemo(() => buildLiveEvents(task, language, agent), [task, language, agent]);
   const [visibleCount, setVisibleCount] = useState(1);
   const [isStreaming, setIsStreaming] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);

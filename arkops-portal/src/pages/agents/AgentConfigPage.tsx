@@ -49,10 +49,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { agentsApi } from '../../api/agents';
 import { storesApi } from '../../api/stores';
 import { useI18n } from '../../app/i18n';
+import { AgentLiveConsole } from '../../components/AgentLiveConsole';
+import { AgentOutcomesSection } from '../../components/agents/AgentOutcomesSection';
+import { AgentPreEnableDrawer } from '../../components/agents/AgentPreEnableDrawer';
 import { MetricCard } from '../../components/metrics/MetricCard';
 import { PageHeader } from '../../components/PageHeader';
 import { StatusBadge } from '../../components/StatusBadge';
-import { AgentBuiltinTasksSection } from './AgentBuiltinTasksSection';
+import { AgentBuiltinTasksSection, BUILTIN_TASKS } from './AgentBuiltinTasksSection';
 import { AgentStrategyConfigSection } from './AgentStrategyConfigSection';
 import { AgentConditionalCards } from './AgentConditionalCards';
 import { LoginBootstrapSessionCard } from './LoginBootstrapSessionCard';
@@ -71,6 +74,8 @@ export function AgentConfigPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [taskModalOpen, setTaskModalOpen] = useState(false);
+  // WS-D (D4): shared pre-enable confirmation drawer
+  const [preEnableOpen, setPreEnableOpen] = useState(false);
   const [taskForm] = Form.useForm();
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [recognizing, setRecognizing] = useState(false);
@@ -189,14 +194,8 @@ export function AgentConfigPage() {
   const isFinanceAudit = agentType === 'finance_audit';
   const isLiveStreamOps = agentType === 'live_stream_ops';
 
-  const exclusiveAgentTypes = [
-    'login_bootstrap', 'product_launch', 'competitor_intel', 'creative_factory',
-    'ads_optimizer', 'pricing_strategy', 'crm_retention', 'review_manager',
-    'customer_service', 'after_sales', 'promotion_campaign', 'inventory_alert',
-    'risk_control', 'finance_audit', 'live_stream_ops',
-  ];
-  const hasExclusiveCard = exclusiveAgentTypes.includes(agentType!);
-
+  // WS-D (D7): table semantics unified for every agent — Active tasks (with cancel)
+  // + History; the previous hasExclusiveCard content branching was removed.
   const activeStatuses: TaskStatus[] = ['draft', 'queued', 'running', 'waiting_approval'];
   const logStatuses: TaskStatus[] = ['succeeded', 'failed', 'cancelled'];
   const activeTasks = tasks.filter((t) => activeStatuses.includes(t.status));
@@ -253,16 +252,25 @@ export function AgentConfigPage() {
         actions={
           <Space>
             <span>{agent.enabled ? t('agent.enable') : t('agent.disable')}</span>
-            <Popconfirm
-              title={t('agent.toggleConfirmTitle', { action: agent.enabled ? t('agent.toggleDisable') : t('agent.toggleEnable') })}
-              description={t('agent.toggleConfirmContent', { action: agent.enabled ? t('agent.toggleDisable') : t('agent.toggleEnable') })}
-              onConfirm={() => toggleMutation.mutate()}
-              okText={t('common.confirm')}
-              cancelText={t('common.cancel')}
-              disabled={switchDisabled}
-            >
-              <Switch checked={agent.enabled} disabled={switchDisabled} />
-            </Popconfirm>
+            {agent.enabled ? (
+              <Popconfirm
+                title={t('agent.toggleConfirmTitle', { action: t('agent.toggleDisable') })}
+                description={t('agent.toggleConfirmContent', { action: t('agent.toggleDisable') })}
+                onConfirm={() => toggleMutation.mutate()}
+                okText={t('common.confirm')}
+                cancelText={t('common.cancel')}
+                disabled={switchDisabled}
+              >
+                <Switch checked disabled={switchDisabled} />
+              </Popconfirm>
+            ) : (
+              /* WS-D (D4): enabling goes through the shared pre-enable drawer */
+              <Switch
+                checked={false}
+                disabled={switchDisabled}
+                onChange={() => setPreEnableOpen(true)}
+              />
+            )}
             {depsMissing.length > 0 && (
               <Typography.Text type="danger" style={{ fontSize: 11, display: 'block' }}>
                 {t('agent.dependsOn')}: {depsMissing.map((d) => t(`agent.${d}`)).join(', ')}
@@ -332,7 +340,17 @@ export function AgentConfigPage() {
         </Descriptions>
       </Card>
 
-      <AgentBuiltinTasksSection agentType={agent.agentType} />
+      {/* WS-D (D6): built-in task cards open the task modal pre-filled with the template */}
+      <AgentBuiltinTasksSection
+        agentType={agent.agentType}
+        onTaskSelect={(template) => {
+          setTaskModalOpen(true);
+          if (!isProductLaunch) {
+            taskForm.setFieldsValue({ title: template.title, goal: template.goal });
+            message.success(t('agenttrust.templateApplied', { title: template.title }));
+          }
+        }}
+      />
       <AgentStrategyConfigSection agent={agent} />
 
       {/* login_bootstrap 专属：店铺会话状态 */}
@@ -357,8 +375,8 @@ export function AgentConfigPage() {
         />
       )}
 
-      {/* 运行中任务 — 无专属卡片的 Agent 显示 */}
-      {activeTasks.length > 0 && !hasExclusiveCard && (
+      {/* 运行中任务 — WS-D (D7): 所有 Agent 统一显示（含取消操作） */}
+      {activeTasks.length > 0 && (
         <Card
           title={<><UnorderedListOutlined /> {t('agent.activeTasks')} ({activeTasks.length})</>}
           extra={
@@ -374,10 +392,15 @@ export function AgentConfigPage() {
             pagination={false}
             size="small"
             expandable={{
+              // WS-D (D8): expanded row shows the live console narrating this
+              // agent's actual strategyConfig thresholds.
               expandedRowRender: (record: Task) => (
-                <Typography.Paragraph type="secondary" style={{ fontSize: 12, padding: 8 }}>
-                  {record.goal}
-                </Typography.Paragraph>
+                <div style={{ padding: 8 }}>
+                  <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 8 }}>
+                    {record.goal}
+                  </Typography.Paragraph>
+                  <AgentLiveConsole task={record} agent={agent} />
+                </div>
               ),
               rowExpandable: () => true,
             }}
@@ -437,19 +460,22 @@ export function AgentConfigPage() {
         </Card>
       )}
 
-      {/* 任务日志 */}
-      {(hasExclusiveCard ? tasks.length > 0 : logTasks.length > 0) && (
+      {/* WS-D (D9): 决策与结果（S4 数据契约，mock） */}
+      <AgentOutcomesSection agentType={agent.agentType} />
+
+      {/* 任务日志 — WS-D (D7): 统一为历史任务（成功/失败/取消） */}
+      {logTasks.length > 0 && (
         <Card
           title={
             <Space>
               <CheckCircleOutlined />
-              {t('agent.taskLogs')} ({hasExclusiveCard ? tasks.length : logTasks.length})
+              {t('agent.taskLogs')} ({logTasks.length})
             </Space>
           }
         >
           <Table
             rowKey="id"
-            dataSource={hasExclusiveCard ? tasks : logTasks}
+            dataSource={logTasks}
             pagination={{ pageSize: 10, size: 'small' }}
             size="small"
             columns={[
@@ -545,6 +571,28 @@ export function AgentConfigPage() {
             onFinish={(values) => createTaskMutation.mutate(values)}
             initialValues={{ storeId: stores[0]?.id }}
           >
+            {/* WS-D (D6): per-agent goal templates from built-in tasks */}
+            {(BUILTIN_TASKS[agent.agentType] ?? []).length > 0 && (
+              <Form.Item label={t('agenttrust.goalTemplate')}>
+                <Select
+                  allowClear
+                  placeholder={t('agenttrust.goalTemplatePlaceholder')}
+                  options={(BUILTIN_TASKS[agent.agentType] ?? []).map((spec) => ({
+                    value: spec.titleKey,
+                    label: t(`agent.${spec.titleKey}`),
+                  }))}
+                  onChange={(titleKey?: string) => {
+                    const spec = (BUILTIN_TASKS[agent.agentType] ?? []).find((s) => s.titleKey === titleKey);
+                    if (spec) {
+                      taskForm.setFieldsValue({
+                        title: t(`agent.${spec.titleKey}`),
+                        goal: t(`agent.${spec.descKey}`),
+                      });
+                    }
+                  }}
+                />
+              </Form.Item>
+            )}
             <Form.Item label={t('entity.task')} name="title" rules={[{ required: true }]}>
               <Input placeholder={t('agent.taskTitlePlaceholder')} />
             </Form.Item>
@@ -571,6 +619,18 @@ export function AgentConfigPage() {
           </Form>
         )}
       </Modal>
+
+      {/* WS-D (D4): shared pre-enable drawer (same surface as the list page) */}
+      <AgentPreEnableDrawer
+        agent={agent}
+        open={preEnableOpen}
+        allAgents={allAgents}
+        confirmLoading={toggleMutation.isPending}
+        onConfirm={() => {
+          toggleMutation.mutate(undefined, { onSuccess: () => setPreEnableOpen(false) });
+        }}
+        onClose={() => setPreEnableOpen(false)}
+      />
     </div>
   );
 }

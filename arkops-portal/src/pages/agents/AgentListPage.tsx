@@ -12,12 +12,15 @@ import {
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
-import { Button, Card, Col, Input, Popconfirm, Progress, Row, Space, Switch, Table, Tag, Tooltip, Typography, message } from 'antd';
+import { Button, Card, Col, Input, Progress, Row, Space, Switch, Table, Tag, Tooltip, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useNavigate } from 'react-router-dom';
 import { agentsApi } from '../../api/agents';
 import type { AgentListItem } from '../../api/agents';
+import { computeEnableClosure } from '../../api/scenarioData';
 import { financeApi } from '../../api/finance';
+import { AgentPreEnableDrawer } from '../../components/agents/AgentPreEnableDrawer';
+import { EnableAllReviewModal } from '../../components/agents/EnableAllReviewModal';
 import { useAuth } from '../../app/auth';
 import { useI18n } from '../../app/i18n';
 import { PageHeader } from '../../components/PageHeader';
@@ -55,7 +58,9 @@ export function AgentListPage() {
   const queryClient = useQueryClient();
   const { data: agents = [] } = useQuery({ queryKey: ['agents'], queryFn: agentsApi.list });
   const [searchText, setSearchText] = useState('');
-  const [enabling, setEnabling] = useState(false);
+  // WS-D (D4): risk-grouped bulk-enable review modal + shared pre-enable drawer
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [preEnableAgent, setPreEnableAgent] = useState<AgentListItem | null>(null);
 
   const filteredAgents = searchText
     ? agents.filter(a =>
@@ -103,42 +108,24 @@ export function AgentListPage() {
   });
 
   const disabledAgents = agents.filter(a => !a.enabled && !isPremiumLocked(a.agentType)).length;
+  const bulkCandidates = agents.filter(a => !a.enabled && !isPremiumLocked(a.agentType));
 
-  const handleEnableAll = async () => {
-    const candidates = agents.filter(a => !a.enabled && !isPremiumLocked(a.agentType));
-    if (candidates.length === 0) return;
-
-    const enabledSet = new Set(agents.filter(a => a.enabled).map(a => a.agentType));
-    const toEnable: AgentListItem[] = [];
-    const remaining = [...candidates];
-    while (remaining.length > 0) {
-      const before = remaining.length;
-      for (let i = 0; i < remaining.length; i++) {
-        const agent = remaining[i];
-        if (agent.dependsOn.every(dep => enabledSet.has(dep))) {
-          toEnable.push(agent);
-          enabledSet.add(agent.agentType);
-          remaining.splice(i, 1);
-          i--;
-        }
-      }
-      if (remaining.length === before) break;
-    }
-
-    setEnabling(true);
-    try {
-      for (const agent of toEnable) {
-        await agentsApi.toggle(agent.agentType);
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
+  // WS-D (D4): bulk enable happens only after the review modal — dependency-ordered batch.
+  const bulkEnableMutation = useMutation({
+    mutationFn: async (selected: AgentType[]) => {
+      const { ordered } = computeEnableClosure(selected);
+      await agentsApi.batchEnable(ordered);
+      return ordered.length;
+    },
+    onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ['agents'] });
-      message.success(t('auto.enableAllSuccess', { count: toEnable.length }));
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setEnabling(false);
+      message.success(t('agenttrust.bulkEnableDone', { count }));
+      setBulkModalOpen(false);
+    },
+    onError: (error: Error) => {
+      message.error(error.message);
     }
-  };
+  });
 
   const getMissingDeps = (agent: AgentListItem) =>
     agent.dependsOn
@@ -234,7 +221,12 @@ export function AgentListPage() {
               size="small"
               checked={locked ? false : record.enabled}
               disabled={disabled || locked}
-              onChange={() => toggleMutation.mutate(record.agentType)}
+              onChange={() => {
+                // WS-D (D4): enabling goes through the shared pre-enable drawer;
+                // disabling stays a direct toggle.
+                if (record.enabled) toggleMutation.mutate(record.agentType);
+                else setPreEnableAgent(record);
+              }}
             />
             {locked && (
               <Typography.Text type="secondary" style={{ fontSize: 9, display: 'block', marginTop: 2, color: '#b45309' }}>
@@ -402,19 +394,37 @@ export function AgentListPage() {
           style={{ maxWidth: 400 }}
         />
         {disabledAgents > 0 && (
-          <Popconfirm
-            title={t('auto.enableAll')}
-            description={t('auto.enableAllConfirm', { count: disabledAgents })}
-            onConfirm={handleEnableAll}
-            okText={t('common.confirm')}
-            cancelText={t('common.cancel')}
-          >
-            <Button type="primary" icon={<ThunderboltOutlined />} loading={enabling}>
-              {t('auto.oneClickEnable')} ({disabledAgents})
-            </Button>
-          </Popconfirm>
+          <Button type="primary" icon={<ThunderboltOutlined />} onClick={() => setBulkModalOpen(true)}>
+            {t('agenttrust.bulkEnableButton')} ({disabledAgents})
+          </Button>
         )}
       </div>
+
+      {/* WS-D (D4): risk-grouped bulk-enable review modal */}
+      <EnableAllReviewModal
+        open={bulkModalOpen}
+        title={t('agenttrust.bulkEnableTitle')}
+        candidates={bulkCandidates}
+        confirmLoading={bulkEnableMutation.isPending}
+        onConfirm={(selected) => bulkEnableMutation.mutate(selected)}
+        onCancel={() => setBulkModalOpen(false)}
+      />
+
+      {/* WS-D (D4): shared pre-enable drawer (also used by the agent detail page) */}
+      <AgentPreEnableDrawer
+        agent={preEnableAgent}
+        open={preEnableAgent !== null}
+        allAgents={agents}
+        confirmLoading={toggleMutation.isPending}
+        onConfirm={() => {
+          if (preEnableAgent) {
+            toggleMutation.mutate(preEnableAgent.agentType, {
+              onSuccess: () => setPreEnableAgent(null),
+            });
+          }
+        }}
+        onClose={() => setPreEnableAgent(null)}
+      />
 
       {/* ===== 已开通 ===== */}
       {enabledList.length > 0 && (
