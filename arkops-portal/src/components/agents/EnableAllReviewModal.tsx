@@ -50,11 +50,14 @@ export function EnableAllReviewModal({
   const [selected, setSelected] = useState<Set<AgentType>>(new Set());
 
   // Default selection whenever the modal (re)opens: low + medium checked, high unchecked.
+  // Depends on `open` only — candidates arrays are recreated on parent renders and must
+  // not reset the user's in-progress selection.
   useEffect(() => {
     if (open) {
       setSelected(new Set(candidates.filter((a) => a.riskLevel !== 'high').map((a) => a.agentType)));
     }
-  }, [open, candidates]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const groups = useMemo(
     () =>
