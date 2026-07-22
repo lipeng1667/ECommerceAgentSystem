@@ -1,30 +1,23 @@
 import {
   AlertOutlined,
-  ArrowDownOutlined,
-  ArrowUpOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
   DashboardOutlined,
-  PayCircleOutlined,
   LineChartOutlined,
+  PayCircleOutlined,
   PlayCircleOutlined,
-  RobotOutlined,
+  RightOutlined,
   RiseOutlined,
-  SettingOutlined,
+  RobotOutlined,
   ShoppingCartOutlined,
   SyncOutlined,
   UnorderedListOutlined,
-  WarningOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Badge, Button, Card, Col, Progress, Row, Segmented, Select, Space, Statistic, Table, Tag, Typography } from 'antd';
+import { Button, Card, Col, Progress, Row, Segmented, Select, Space, Table, Tag, Typography } from 'antd';
 import dayjs from 'dayjs';
-import { memo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { agentsApi } from '../../api/agents';
-import { businessDashboardApi } from '../../api/businessDashboard';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { businessDashboardApi, type DashboardTimeRange } from '../../api/businessDashboard';
 import { dashboardApi } from '../../api/dashboard';
-import { financeApi } from '../../api/finance';
 import { storesApi } from '../../api/stores';
 import { useAuth } from '../../app/auth';
 import { useDemoMode } from '../../app/demoMode';
@@ -35,15 +28,18 @@ import { PageHeader } from '../../components/PageHeader';
 import { StatusBadge } from '../../components/StatusBadge';
 import { StoreConnectionEmptyState } from '../../components/StoreConnectionEmptyState';
 import { AutomationOverview } from '../../components/AutomationOverview';
-import { ApprovalQueue } from '../../components/ApprovalQueue';
-import type { Store } from '../../types/domain';
 
 const statusColors: Record<string, string> = {
   succeeded: '#16a34a',
   waiting_approval: '#ea580c',
   running: '#2563eb',
-  failed: '#dc2626'
+  queued: '#94a3b8',
+  failed: '#dc2626',
+  cancelled: '#64748b'
 };
+
+/** Assumed net margin used only for the profit *estimate* KPI; surfaced in the UI (C4). */
+const ESTIMATED_NET_MARGIN = 0.21;
 
 function formatCurrency(value: number, currency = 'CNY') {
   return new Intl.NumberFormat('zh-CN', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
@@ -53,252 +49,102 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat('zh-CN').format(value);
 }
 
+/** Compact CJK-friendly value label for chart columns, e.g. 28640 → "2.9万". */
+function formatCompact(value: number) {
+  if (value >= 10000) return `${(value / 10000).toFixed(1)}万`;
+  return formatNumber(Math.round(value));
+}
+
 function changePercent(current: number, previous: number) {
   if (previous === 0) return { value: 0, up: true };
   const pct = Math.round(((current - previous) / previous) * 100);
   return { value: pct, up: pct >= 0 };
 }
 
-// ===== 统一运营总览 =====
+// ===== 任务状态环形图（可点击 + 可访问，C5）=====
 
-const OperationsOverview = memo(function OperationsOverview({
-  storesData,
-  timeRange,
-  selectedStoreName,
+function TaskStatusDonut({
+  breakdown,
 }: {
-  storesData: Store[];
-  timeRange: 'today' | '7d' | '30d';
-  selectedStoreName: string;
+  breakdown: { status: string; count: number }[];
 }) {
   const { t } = useI18n();
+  const navigate = useNavigate();
+  const total = breakdown.reduce((s, i) => s + i.count, 0);
+  const size = 158;
+  const strokeWidth = 30;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
 
-  const { data: biz } = useQuery({
-    queryKey: ['businessDashboard', timeRange],
-    queryFn: () => businessDashboardApi.getMetrics(timeRange)
+  const segmentTarget = (status: string) =>
+    status === 'waiting_approval' ? '/agents/approvals' : '/agents';
+
+  let offsetFraction = 0;
+  const segments = breakdown.map((item) => {
+    const fraction = total > 0 ? item.count / total : 0;
+    const segment = { ...item, fraction, startFraction: offsetFraction };
+    offsetFraction += fraction;
+    return segment;
   });
 
-  const { data: ops } = useQuery({ queryKey: ['dashboard'], queryFn: dashboardApi.getSummary });
-
-  // 店铺名称 → Store 映射，用于获取真实店铺状态
-  const storeByName = new Map(storesData.map(s => [s.name, s]));
+  const ariaSummary = breakdown
+    .map((item) => `${t(`status.${item.status}`)} ${item.count}`)
+    .join('，');
 
   return (
-    <>
-      {/* ===== 店铺经营对比 ===== */}
-      <Card
-        title={<span><PayCircleOutlined style={{ marginRight: 8 }} />店铺经营对比</span>}
-        size="small"
-        style={{ marginBottom: 16 }}
+    <div className="status-visual">
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        role="img"
+        aria-label={t('dashboardv2.donutAria', { detail: ariaSummary })}
       >
-        {biz ? (
-          <Table
-            rowKey="storeName"
-            dataSource={[
-              // 汇总行
-              { storeName: t('biz.allStores'), platform: '', gmv: biz.gmv.today, orders: biz.orders.today, roas: biz.adMetrics.roas, negativeReviews: biz.afterSales.negativeReviews - biz.afterSales.respondedReviews, status: 'summary' as const },
-              // 店铺行（GMV 来自 biz 数据，状态来自真实店铺数据）
-              { storeName: biz.storeGmvRank[0]?.storeName ?? 'Store A', platform: biz.storeGmvRank[0]?.platform ?? '', gmv: biz.storeGmvRank[0]?.gmv ?? 0, orders: 236, roas: 8.2, negativeReviews: 1, status: storeByName.get(biz.storeGmvRank[0]?.storeName ?? '')?.status ?? 'connected' },
-              { storeName: biz.storeGmvRank[1]?.storeName ?? 'Store B', platform: biz.storeGmvRank[1]?.platform ?? '', gmv: biz.storeGmvRank[1]?.gmv ?? 0, orders: 128, roas: 5.8, negativeReviews: 1, status: storeByName.get(biz.storeGmvRank[1]?.storeName ?? '')?.status ?? 'connected' },
-              { storeName: biz.storeGmvRank[2]?.storeName ?? 'Store C', platform: biz.storeGmvRank[2]?.platform ?? '', gmv: biz.storeGmvRank[2]?.gmv ?? 0, orders: 48, roas: 6.3, negativeReviews: 0, status: storeByName.get(biz.storeGmvRank[2]?.storeName ?? '')?.status ?? 'connected' },
-            ].filter(row => selectedStoreName === 'all' || (row.status !== 'summary' && row.storeName === selectedStoreName))}
-            pagination={false}
-            size="small"
-            columns={[
-              {
-                title: t('dashboard.colStore'), dataIndex: 'storeName', width: 200,
-                render: (name: string, record: any) => (
-                  <div>
-                    {record.status === 'summary' ? (
-                      <Typography.Text strong style={{ fontSize: 13, color: '#2563eb' }}>{name}</Typography.Text>
-                    ) : (
-                      <>
-                        <Typography.Text strong style={{ fontSize: 13 }}>{name}</Typography.Text>
-                        <Typography.Text type="secondary" style={{ fontSize: 10, display: 'block' }}>{record.platform as string}</Typography.Text>
-                      </>
-                    )}
-                  </div>
-                )
-              },
-              {
-                title: t('dashboard.colStatus'), dataIndex: 'status', width: 90,
-                render: (status: string) => {
-                  if (status === 'summary') return <Tag color="blue" style={{ fontSize: 10 }}>{t('dashboard.summary')}</Tag>;
-                  return <StatusBadge value={status as any} />;
-                }
-              },
-              {
-                title: 'GMV', dataIndex: 'gmv', width: 120, align: 'right' as const,
-                render: (v: number, _record: any, idx: number) => {
-                  const pct = idx === 0 ? changePercent(biz.gmv.today, biz.gmv.yesterday) : null;
-                  return (
-                    <span style={{ fontWeight: idx === 0 ? 700 : 400, color: idx === 0 ? '#2563eb' : 'inherit' }}>
-                      ¥{formatNumber(v)}
-                      {pct && (
-                        <span style={{ fontSize: 10, marginLeft: 4, color: pct.up ? '#16a34a' : '#dc2626' }}>
-                          {pct.up ? '▲' : '▼'}{Math.abs(pct.value)}%
-                        </span>
-                      )}
-                    </span>
-                  );
-                }
-              },
-              {
-                title: t('dashboard.colOrders'), dataIndex: 'orders', width: 100, align: 'right' as const,
-                render: (v: number, _record: any, idx: number) => {
-                  const pct = idx === 0 ? changePercent(biz.orders.today, biz.orders.yesterday) : null;
-                  return (
-                    <span style={{ fontWeight: idx === 0 ? 700 : 400 }}>
-                      {formatNumber(v)}
-                      {pct && (
-                        <span style={{ fontSize: 10, marginLeft: 4, color: pct.up ? '#16a34a' : '#dc2626' }}>
-                          {pct.up ? '▲' : '▼'}{Math.abs(pct.value)}%
-                        </span>
-                      )}
-                    </span>
-                  );
-                }
-              },
-              {
-                title: t('dashboard.colAdROI'), dataIndex: 'roas', width: 90, align: 'right' as const,
-                render: (v: number) => (
-                  <Typography.Text strong style={{ color: v >= 5 ? '#16a34a' : v >= 2 ? '#ea580c' : '#dc2626', fontSize: 13 }}>
-                    {v.toFixed(1)}×
-                  </Typography.Text>
-                )
-              },
-              {
-                title: t('dashboard.colNegativeReview'), dataIndex: 'negativeReviews', width: 70, align: 'right' as const,
-                render: (v: number) => v > 0
-                  ? <Tag color="red" style={{ fontSize: 10 }}>{v}{t('dashboard.pendingReply')}</Tag>
-                  : <Typography.Text type="secondary" style={{ fontSize: 11 }}>-</Typography.Text>
-              },
-            ]}
-          />
-        ) : (
-          <EmptyState description={t('common.empty')} />
-        )}
-      </Card>
-
-      {/* ===== 3. GMV 趋势 + 任务状态 ===== */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} lg={biz ? 14 : 24}>
-          {biz && (
-            <Card title={<><LineChartOutlined /> {t('dashboard.gmvOrderTrend')}</>} size="small">
-              <TrendBarChart
-                ariaLabel="GMV Trend"
-                points={biz.gmvTrend.map(point => ({
-                  key: point.date,
-                  label: point.date,
-                  bars: [
-                    { value: point.gmv, max: 35000, title: `GMV: ¥${formatNumber(point.gmv)}`, className: 'trend-bar-runs', minHeight: 10 },
-                    { value: point.orders, max: 500, title: t('dashboard.ordersColon', { count: point.orders }), className: 'trend-bar-approvals', minHeight: 6 }
-                  ]
-                }))}
-              />
-              <div className="chart-legend">
-                <span><i className="legend-dot legend-runs" />{t('dashboard.gmvTrend')}</span>
-                <span><i className="legend-dot legend-approvals" />{t('dashboard.ordersTrend')}</span>
-              </div>
-            </Card>
-          )}
-        </Col>
-        <Col xs={24} lg={biz ? 10 : 24}>
-          {ops && (
-            <Card title={<><DashboardOutlined /> {t('dashboard.taskOverview')}</>} size="small">
-              <div className="status-visual">
-                <div className="donut-chart" style={{
-                  background: `conic-gradient(${ops.taskStatusBreakdown.length
-                    ? ops.taskStatusBreakdown.map(item => {
-                        const total = ops.taskStatusBreakdown.reduce((s, i) => s + i.count, 0);
-                        return `${statusColors[item.status] ?? '#94a3b8'} ${ops.taskStatusBreakdown.slice(0, ops.taskStatusBreakdown.indexOf(item)).reduce((s, i) => s + (i.count / total * 100), 0)}% ${ops.taskStatusBreakdown.slice(0, ops.taskStatusBreakdown.indexOf(item) + 1).reduce((s, i) => s + (i.count / total * 100), 0)}%`;
-                      }).join(', ')
-                    : '#e2e8f0 0% 100%'})`
-                }}>
-                  <div><strong>{ops.taskStatusBreakdown.reduce((s, i) => s + i.count, 0)}</strong><span>{t('dashboard.taskUnit')}</span></div>
-                </div>
-                <div className="status-list">
-                  {ops.taskStatusBreakdown.map(item => (
-                    <div className="status-row" key={item.status}>
-                      <span className="status-label"><i style={{ background: statusColors[item.status] }} />{t(`status.${item.status}`)}</span>
-                      <span>{item.count}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Card>
-          )}
-        </Col>
-      </Row>
-
-      {/* ===== 3.5. 近期任务 ===== */}
-      {ops && ops.recentTasks && ops.recentTasks.length > 0 && (
-        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-          <Col span={24}>
-            <Card
-              title={<><UnorderedListOutlined /> {t('dashboard.recentTasksTitle')}</>}
-              size="small"
-              extra={<Link to="/agents" style={{ fontSize: 12 }}>{t('dashboard.agentCenterLink')}</Link>}
-            >
-              <Table
-                rowKey="id"
-                dataSource={ops.recentTasks}
-                pagination={false}
-                size="small"
-                columns={[
-                  { title: t('dashboard.taskName'), dataIndex: 'title', render: (v: string) => <Typography.Text style={{ fontSize: 12 }}>{v}</Typography.Text> },
-                  { title: t('dashboard.colStore'), dataIndex: 'storeId', width: 100, render: (_v: any, record: any) => {
-                    const store = storesData.find((s: any) => s.id === record.storeId);
-                    return <Typography.Text style={{ fontSize: 11 }} type="secondary">{store?.name ?? '-'}</Typography.Text>;
-                  }},
-                  { title: 'Agent', dataIndex: 'agentType', width: 110, render: (v: string) => <Tag style={{ fontSize: 10 }}>{t(`agent.${v}`)}</Tag> },
-                  { title: t('dashboard.colStatus'), dataIndex: 'status', width: 90, render: (v: string) => {
-                    const colorMap: Record<string, string> = { running: 'blue', succeeded: 'green', failed: 'red', waiting_approval: 'orange', queued: 'default' };
-                    return <Tag color={colorMap[v]} style={{ fontSize: 10 }}>{t(`status.${v}`)}</Tag>;
-                  }},
-                  { title: t('dashboard.colCreatedAt'), dataIndex: 'createdAt', width: 130, render: (v: string) => <Typography.Text style={{ fontSize: 11 }} type="secondary">{dayjs(v).format('MM-DD HH:mm')}</Typography.Text> },
-                ]}
-              />
-            </Card>
-          </Col>
-        </Row>
-      )}
-
-      {/* ===== 系统额度与健康信号（页面底部）===== */}
-      {ops && (
-        <Row gutter={[16, 16]}>
-          <Col xs={24} lg={12}>
-            <Card title={t('dashboard.quotaUsageShort')} size="small">
-              {ops.quotaUsage.map(item => {
-                const pct = Math.round((item.used / item.limit) * 100);
-                return (
-                  <div key={item.key} style={{ marginBottom: 12 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <Typography.Text style={{ fontSize: 12 }}>{t(item.key)}</Typography.Text>
-                      <Typography.Text type="secondary" style={{ fontSize: 11 }}>{formatNumber(item.used)}/{formatNumber(item.limit)}</Typography.Text>
-                    </div>
-                    <Progress percent={pct} strokeColor={item.color} size="small" />
-                  </div>
-                );
-              })}
-            </Card>
-          </Col>
-          <Col xs={24} lg={12}>
-            <Card title={t('dashboard.systemHealth')} size="small">
-              {ops.healthSignals?.slice(0, 4).map(item => (
-                <div key={item.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--ark-border-soft)' }}>
-                  <Typography.Text style={{ fontSize: 12 }}>{t(item.key)}</Typography.Text>
-                  <Tag color={item.status === 'healthy' ? 'green' : item.status === 'warning' ? 'orange' : 'red'} style={{ fontSize: 10 }}>
-                    {t(`dashboard.${item.status}`)}
-                  </Tag>
-                </div>
-              ))}
-            </Card>
-          </Col>
-        </Row>
-      )}
-    </>
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--ark-border-soft, #e2e8f0)" strokeWidth={strokeWidth} />
+        {segments.map((seg) => (
+          <circle
+            key={seg.status}
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={statusColors[seg.status] ?? '#94a3b8'}
+            strokeWidth={strokeWidth}
+            strokeDasharray={`${seg.fraction * circumference} ${circumference}`}
+            strokeDashoffset={-seg.startFraction * circumference}
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+            style={{ cursor: 'pointer' }}
+            role="button"
+            tabIndex={0}
+            aria-label={t('dashboardv2.donutSegmentAria', { status: t(`status.${seg.status}`), count: seg.count })}
+            onClick={() => navigate(segmentTarget(seg.status))}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') navigate(segmentTarget(seg.status));
+            }}
+          >
+            <title>{`${t(`status.${seg.status}`)}: ${seg.count}`}</title>
+          </circle>
+        ))}
+        <text x="50%" y="47%" textAnchor="middle" style={{ fontSize: 26, fontWeight: 700, fill: 'var(--ark-ink, #172033)' }}>
+          {total}
+        </text>
+        <text x="50%" y="62%" textAnchor="middle" style={{ fontSize: 12, fill: 'var(--ark-muted, #64748b)' }}>
+          {t('dashboard.taskUnit')}
+        </text>
+      </svg>
+      <div className="status-list">
+        {breakdown.map((item) => (
+          <Link to={segmentTarget(item.status)} key={item.status} style={{ color: 'inherit' }}>
+            <div className="status-row">
+              <span className="status-label"><i style={{ background: statusColors[item.status] ?? '#94a3b8' }} />{t(`status.${item.status}`)}</span>
+              <span>{item.count} <RightOutlined style={{ fontSize: 10, color: 'var(--ark-muted, #64748b)' }} /></span>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
   );
-});
+}
 
 // ===== 主页面 =====
 
@@ -306,37 +152,23 @@ export function DashboardPage() {
   const { t } = useI18n();
   const { user } = useAuth();
   const { isDemo, enterDemo } = useDemoMode();
-  const [timeRange, setTimeRange] = useState<'today' | '7d' | '30d'>('today');
-  const [selectedStoreName, setSelectedStoreName] = useState('all');
+  const [timeRange, setTimeRange] = useState<DashboardTimeRange>('today');
+  // TODO(integration): consume shell StoreScope context (D3) — replace this local state with the
+  // shell-level persistent store filter once WS-E lands it. Everything below reads only from
+  // `storeScope`, so the swap is a one-line change here.
+  const [storeScope, setStoreScope] = useState<string>('all');
+  const scopedStoreName = storeScope === 'all' ? undefined : storeScope;
 
   const { data: storesData } = useQuery({
     queryKey: ['stores'],
     queryFn: () => storesApi.list(),
   });
   const storeCount = storesData?.length ?? 0;
-
-  const { data: allAgents = [] } = useQuery({
-    queryKey: ['agents'],
-    queryFn: () => agentsApi.list(),
-  });
-  const enabledAgentCount = allAgents.filter(a => a.enabled && a.agentType !== 'login_bootstrap').length;
-
-  const { data: achievements } = useQuery({
-    queryKey: ['agentAchievements'],
-    queryFn: dashboardApi.getAgentAchievements,
-    enabled: storeCount > 0,
-    refetchInterval: 60_000,
-  });
-
-  const { data: trialStatus } = useQuery({
-    queryKey: ['trialStatus'],
-    queryFn: financeApi.getTrialStatus,
-    enabled: storeCount > 0,
-  });
+  const storeIdByName = new Map((storesData ?? []).map((s) => [s.name, s.id]));
 
   const { data: businessMetrics } = useQuery({
-    queryKey: ['businessDashboard', timeRange],
-    queryFn: () => businessDashboardApi.getMetrics(timeRange),
+    queryKey: ['businessDashboard', timeRange, storeScope],
+    queryFn: () => businessDashboardApi.getMetrics(timeRange, scopedStoreName),
     enabled: storeCount > 0,
   });
 
@@ -346,25 +178,66 @@ export function DashboardPage() {
     enabled: storeCount > 0,
   });
 
-  const selectedStoreMetric = businessMetrics?.storeGmvRank.find(item => item.storeName === selectedStoreName);
-  const storeOrders: Record<string, number> = {
-    '拼多多旗舰店': 236,
-    '淘宝户外用品店': 128,
-    '京东自营店': 48,
-  };
-  const currentGmv = selectedStoreMetric?.gmv ?? businessMetrics?.gmv.today ?? 0;
-  const currentOrders = selectedStoreMetric ? storeOrders[selectedStoreMetric.storeName] ?? 0 : businessMetrics?.orders.today ?? 0;
-  const pendingReviews = businessMetrics ? businessMetrics.afterSales.negativeReviews - businessMetrics.afterSales.respondedReviews : 0;
-  const gmvChange = businessMetrics ? changePercent(businessMetrics.gmv.today, businessMetrics.gmv.yesterday) : { value: 0, up: true };
-  const orderChange = businessMetrics ? changePercent(businessMetrics.orders.today, businessMetrics.orders.yesterday) : { value: 0, up: true };
+  const { data: achievements } = useQuery({
+    queryKey: ['agentAchievements'],
+    queryFn: dashboardApi.getAgentAchievements,
+    enabled: storeCount > 0,
+    refetchInterval: 60_000,
+  });
 
-  // 自适应状态条
-  const setupIncomplete = storeCount === 0 || enabledAgentCount === 0;
-  const statusBarStyle = storeCount === 0
-    ? { background: '#fff7ed', border: '1px solid #fed7aa' }
-    : enabledAgentCount === 0
-      ? { background: '#eff6ff', border: '1px solid #bfdbfe' }
-      : { background: '#f0fdf4', border: '1px solid #bbf7d0' };
+  const pendingReviews = businessMetrics
+    ? businessMetrics.afterSales.negativeReviews - businessMetrics.afterSales.respondedReviews
+    : 0;
+  const gmvChange = businessMetrics ? changePercent(businessMetrics.periodGmv.current, businessMetrics.periodGmv.previous) : { value: 0, up: true };
+  const orderChange = businessMetrics ? changePercent(businessMetrics.periodOrders.current, businessMetrics.periodOrders.previous) : { value: 0, up: true };
+  const comparisonLabel = businessMetrics ? t(businessMetrics.comparisonLabelKey) : '';
+
+  // ===== 顶部关注条数据（C1/C2）=====
+  const attentionItems = [
+    dashboardSummary && dashboardSummary.loginRequiredStores > 0
+      ? { key: 'login', to: '/stores', tag: t('dashboardv2.tagUrgent'), tagColor: 'red', label: t('dashboardv2.itemLoginRequired'), count: t('dashboardv2.countStores', { count: dashboardSummary.loginRequiredStores }) }
+      : null,
+    dashboardSummary && dashboardSummary.pendingApprovals > 0
+      ? { key: 'approvals', to: '/agents/approvals', tag: t('dashboardv2.tagApproval'), tagColor: 'orange', label: t('dashboardv2.itemPendingApprovals'), count: t('dashboardv2.countItems', { count: dashboardSummary.pendingApprovals }) }
+      : null,
+    dashboardSummary && dashboardSummary.exceptionCenterPending > 0
+      ? { key: 'exceptions', to: '/agents/exceptions', tag: t('dashboardv2.tagException'), tagColor: 'volcano', label: t('dashboardv2.itemExceptions'), count: t('dashboardv2.countItems', { count: dashboardSummary.exceptionCenterPending }) }
+      : null,
+    pendingReviews > 0
+      ? { key: 'reviews', to: '/agents/review_manager', tag: t('dashboardv2.tagReview'), tagColor: 'gold', label: t('dashboardv2.itemNegativeReviews'), count: t('dashboardv2.countReviews', { count: pendingReviews }) }
+      : null,
+    businessMetrics && businessMetrics.inventory.lowStockCount > 0
+      ? { key: 'stock', to: '/products?stock=low', tag: t('dashboardv2.tagStock'), tagColor: 'blue', label: t('dashboardv2.itemLowStock'), count: t('dashboardv2.countSkus', { count: businessMetrics.inventory.lowStockCount }) }
+      : null,
+  ].filter((item): item is NonNullable<typeof item> => item !== null);
+
+  // 全账号范围提示：这些卡片不受店铺筛选影响（C3 诚实标注）
+  const accountScopeTag = scopedStoreName ? (
+    <Tag style={{ fontSize: 12 }} color="default">{t('dashboardv2.scopeAllStores')}</Tag>
+  ) : null;
+
+  // 店铺经营对比行：全店时附带汇总行
+  const storeRows = businessMetrics
+    ? [
+        ...(scopedStoreName
+          ? []
+          : [{
+              storeName: t('biz.allStores'),
+              platform: '',
+              gmv: businessMetrics.periodGmv.current,
+              orders: businessMetrics.periodOrders.current,
+              roas: businessMetrics.adMetrics.roas,
+              pendingNegativeReviews: pendingReviews,
+              summary: true,
+            }]),
+        ...businessMetrics.storeMetrics.map((s) => ({ ...s, summary: false })),
+      ]
+    : [];
+
+  const scopedTasks = (dashboardSummary?.recentTasks ?? []).filter((task) => {
+    if (!scopedStoreName) return true;
+    return task.storeId === storeIdByName.get(scopedStoreName);
+  });
 
   if (user?.experience === 'onboarding') {
     return (
@@ -382,23 +255,25 @@ export function DashboardPage() {
         description={t('dashboard.description')}
         actions={
           <Space size={8} wrap>
-            <Typography.Text type="secondary" style={{ fontSize: 11 }}><SyncOutlined /> 数据更新于 {dayjs().format('HH:mm')}</Typography.Text>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              <SyncOutlined /> {t('dashboardv2.updatedAt', { time: dayjs().format('HH:mm') })}
+            </Typography.Text>
             <Select
-              value={selectedStoreName}
-              onChange={setSelectedStoreName}
+              value={storeScope}
+              onChange={setStoreScope}
               style={{ width: 190 }}
               options={[
-                { label: '全部店铺', value: 'all' },
-                ...(storesData ?? []).map(store => ({ label: store.name, value: store.name })),
+                { label: t('dashboardv2.filterAllStores'), value: 'all' },
+                ...(storesData ?? []).map((store) => ({ label: store.name, value: store.name })),
               ]}
             />
             <Segmented
               value={timeRange}
-              onChange={value => setTimeRange(value as 'today' | '7d' | '30d')}
+              onChange={(value) => setTimeRange(value as DashboardTimeRange)}
               options={[
-                { label: '当日', value: 'today' },
-                { label: '7 日', value: '7d' },
-                { label: '30 天', value: '30d' },
+                { label: t('dashboardv2.rangeToday'), value: 'today' },
+                { label: t('dashboardv2.range7d'), value: '7d' },
+                { label: t('dashboardv2.range30d'), value: '30d' },
               ]}
             />
           </Space>
@@ -426,23 +301,86 @@ export function DashboardPage() {
         </Card>
       )}
 
+      {/* ===== 顶部关注条：唯一的待办入口（C1）===== */}
+      {storeCount > 0 && (
+        <Card
+          size="small"
+          style={{ marginBottom: 16 }}
+          title={
+            <Space>
+              <AlertOutlined style={{ color: attentionItems.length > 0 ? '#ea580c' : '#16a34a' }} />
+              <Typography.Text strong>{t('dashboardv2.attentionTitle')}</Typography.Text>
+              {accountScopeTag}
+            </Space>
+          }
+          extra={
+            <Link to="/inbox">
+              <Button type="primary" size="small">{t('dashboardv2.attentionInboxCta')} <RightOutlined /></Button>
+            </Link>
+          }
+        >
+          {attentionItems.length > 0 ? (
+            <div className="dashboard-priority-list">
+              {attentionItems.map((item) => (
+                <Link to={item.to} key={item.key}>
+                  <span><Tag color={item.tagColor}>{item.tag}</Tag>{item.label}</span>
+                  <strong>{item.count} →</strong>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <Typography.Text type="success" style={{ fontSize: 13 }}>{t('dashboardv2.attentionAllClear')}</Typography.Text>
+          )}
+        </Card>
+      )}
+
+      {/* ===== 核心 KPI（≤4 个，C4）===== */}
       {businessMetrics && (
         <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
           {[
-            { title: 'GMV', value: formatCurrency(currentGmv), meta: `${gmvChange.up ? '↑' : '↓'} ${Math.abs(gmvChange.value)}% 较昨日`, color: '#2563eb', icon: <PayCircleOutlined /> },
-            { title: '订单', value: formatNumber(currentOrders), meta: `${orderChange.up ? '↑' : '↓'} ${Math.abs(orderChange.value)}% 较昨日`, color: '#0f766e', icon: <ShoppingCartOutlined /> },
-            { title: '预计利润', value: formatCurrency(Math.round(currentGmv * 0.21)), meta: '按 21% 预计净利率', color: '#16a34a', icon: <RiseOutlined /> },
-            { title: '广告 ROI', value: `${businessMetrics.adMetrics.roas.toFixed(1)}×`, meta: `目标 ${businessMetrics.adMetrics.targetRoas.toFixed(1)}×`, color: '#7c3aed', icon: <DashboardOutlined /> },
-            { title: '差评待回复', value: String(pendingReviews), meta: `回复率 ${businessMetrics.afterSales.reviewResponseRate}%`, color: pendingReviews > 0 ? '#dc2626' : '#16a34a', icon: <WarningOutlined /> },
-            { title: '低库存 SKU', value: String(businessMetrics.inventory.lowStockCount), meta: `${businessMetrics.inventory.outOfStockCount} 个已断货`, color: '#ea580c', icon: <AlertOutlined /> },
-          ].map(metric => (
-            <Col key={metric.title} xs={12} md={8} xl={4}>
+            {
+              title: t('dashboardv2.kpiGmv'),
+              value: formatCurrency(businessMetrics.periodGmv.current),
+              meta: `${gmvChange.up ? '↑' : '↓'} ${Math.abs(gmvChange.value)}% ${comparisonLabel}`,
+              color: '#2563eb',
+              icon: <PayCircleOutlined />,
+              estimate: false,
+            },
+            {
+              title: t('dashboardv2.kpiOrders'),
+              value: formatNumber(businessMetrics.periodOrders.current),
+              meta: `${orderChange.up ? '↑' : '↓'} ${Math.abs(orderChange.value)}% ${comparisonLabel}`,
+              color: '#0f766e',
+              icon: <ShoppingCartOutlined />,
+              estimate: false,
+            },
+            {
+              title: t('dashboardv2.kpiAdRoi'),
+              value: `${businessMetrics.adMetrics.roas.toFixed(1)}×`,
+              meta: t('dashboardv2.adRoiTarget', { target: businessMetrics.adMetrics.targetRoas.toFixed(1) }),
+              color: '#7c3aed',
+              icon: <DashboardOutlined />,
+              estimate: false,
+            },
+            {
+              title: t('dashboardv2.kpiEstProfit'),
+              value: formatCurrency(Math.round(businessMetrics.periodGmv.current * ESTIMATED_NET_MARGIN)),
+              meta: t('dashboardv2.estProfitAssumption'),
+              color: '#16a34a',
+              icon: <RiseOutlined />,
+              estimate: true,
+            },
+          ].map((metric) => (
+            <Col key={metric.title} xs={12} xl={6}>
               <Card size="small" className="business-kpi-card">
                 <Space align="start" style={{ width: '100%', justifyContent: 'space-between' }}>
                   <div>
-                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>{metric.title}</Typography.Text>
+                    <Space size={4}>
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>{metric.title}</Typography.Text>
+                      {metric.estimate && <Tag color="default" style={{ fontSize: 12, lineHeight: '16px', margin: 0 }}>{t('dashboardv2.estimateTag')}</Tag>}
+                    </Space>
                     <Typography.Title level={3} style={{ margin: '6px 0 2px', color: metric.color }}>{metric.value}</Typography.Title>
-                    <Typography.Text type="secondary" style={{ fontSize: 11 }}>{metric.meta}</Typography.Text>
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>{metric.meta}</Typography.Text>
                   </div>
                   <span className="business-kpi-icon" style={{ color: metric.color }}>{metric.icon}</span>
                 </Space>
@@ -452,129 +390,231 @@ export function DashboardPage() {
         </Row>
       )}
 
-      {businessMetrics && (
-        <Row gutter={[16, 16]} style={{ marginBottom: 16 }} align="stretch">
-          <Col xs={24} lg={10}>
-            <Card className="ai-business-brief" title={<Space><RobotOutlined />AI 经营简报</Space>}>
-              <Typography.Paragraph strong style={{ fontSize: 15, marginBottom: 12 }}>
-                今日 GMV 较昨日增长 {Math.abs(gmvChange.value)}%，整体经营稳定，但库存和店铺授权需要优先处理。
-              </Typography.Paragraph>
-              <Space direction="vertical" size={8}>
-                <Typography.Text>• 拼多多 贡献当前最高 GMV，广告 ROI 高于目标。</Typography.Text>
-                <Typography.Text>• 淘宝 店铺需要重新登录，否则后续数据可能停止更新。</Typography.Text>
-                <Typography.Text>• {businessMetrics.inventory.lowStockCount} 个 SKU 库存偏低，建议今天确认补货计划。</Typography.Text>
-              </Space>
-            </Card>
-          </Col>
-          <Col xs={24} lg={14}>
-            <Card title={<Space><AlertOutlined style={{ color: '#ea580c' }} />今日待办</Space>} extra={<Typography.Text type="secondary">按紧急程度排序</Typography.Text>} style={{ height: '100%' }}>
-              <div className="dashboard-priority-list">
-                {dashboardSummary && dashboardSummary.loginRequiredStores > 0 && <Link to="/stores"><span><Tag color="red">紧急</Tag>淘宝 店铺需要重新登录</span><strong>{dashboardSummary.loginRequiredStores} 家 →</strong></Link>}
-                {dashboardSummary && dashboardSummary.pendingApprovals > 0 && <Link to="/agents/approvals"><span><Tag color="orange">审批</Tag>Agent 操作等待人工确认</span><strong>{dashboardSummary.pendingApprovals} 项 →</strong></Link>}
-                {pendingReviews > 0 && <Link to="/agents/review_manager"><span><Tag color="gold">评价</Tag>差评等待回复</span><strong>{pendingReviews} 条 →</strong></Link>}
-                {businessMetrics.inventory.lowStockCount > 0 && <Link to="/products"><span><Tag color="blue">库存</Tag>SKU 库存不足</span><strong>{businessMetrics.inventory.lowStockCount} 个 →</strong></Link>}
+      {/* ===== 趋势 + 任务状态（C5）===== */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col xs={24} lg={14}>
+          {businessMetrics && (
+            <Card
+              title={<><LineChartOutlined /> {t('dashboardv2.trendTitle')}</>}
+              size="small"
+              extra={timeRange === '30d' ? <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('dashboardv2.trendBucketNote')}</Typography.Text> : null}
+            >
+              <TrendBarChart
+                ariaLabel={t('dashboardv2.trendTitle')}
+                points={businessMetrics.gmvTrend.map((point) => ({
+                  key: point.date,
+                  label: point.date,
+                  valueLabel: `¥${formatCompact(point.gmv)}`,
+                  bars: [
+                    { value: point.gmv, title: `GMV: ¥${formatNumber(point.gmv)}`, className: 'trend-bar-gmv', minHeight: 10 },
+                    { value: point.orders, title: t('dashboard.ordersColon', { count: point.orders }), className: 'trend-bar-orders', minHeight: 6 }
+                  ]
+                }))}
+              />
+              <div className="chart-legend">
+                <span><i className="legend-dot legend-gmv" />{t('dashboardv2.legendGmv')}</span>
+                <span><i className="legend-dot legend-orders" />{t('dashboardv2.legendOrders')}</span>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t('dashboardv2.trendScaleNote')}</Typography.Text>
               </div>
             </Card>
-          </Col>
-        </Row>
-      )}
+          )}
+        </Col>
+        <Col xs={24} lg={10}>
+          {dashboardSummary && (
+            <Card
+              title={<><DashboardOutlined /> {t('dashboard.taskOverview')}</>}
+              size="small"
+              extra={accountScopeTag}
+            >
+              <TaskStatusDonut breakdown={dashboardSummary.taskStatusBreakdown} />
+            </Card>
+          )}
+        </Col>
+      </Row>
 
-      <ApprovalQueue />
+      {/* ===== 店铺经营对比（C2 可点击、C9 可滚动 + 12px）===== */}
+      <Card
+        title={<span><PayCircleOutlined style={{ marginRight: 8 }} />{t('dashboardv2.storeCompare')}</span>}
+        size="small"
+        style={{ marginBottom: 16 }}
+      >
+        {businessMetrics ? (
+          <Table
+            rowKey="storeName"
+            dataSource={storeRows}
+            pagination={false}
+            size="small"
+            scroll={{ x: 760 }}
+            columns={[
+              {
+                title: t('dashboard.colStore'), dataIndex: 'storeName', width: 200,
+                render: (name: string, record) => {
+                  if (record.summary) {
+                    return <Typography.Text strong style={{ fontSize: 13, color: '#2563eb' }}>{name}</Typography.Text>;
+                  }
+                  const storeId = storeIdByName.get(name);
+                  const label = (
+                    <>
+                      <Typography.Text strong style={{ fontSize: 13, color: storeId ? '#2563eb' : undefined }}>{name}</Typography.Text>
+                      <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block' }}>{record.platform}</Typography.Text>
+                    </>
+                  );
+                  return storeId ? <Link to={`/stores/${storeId}`}>{label}</Link> : <div>{label}</div>;
+                }
+              },
+              {
+                title: t('dashboard.colStatus'), width: 90,
+                render: (_: unknown, record) => {
+                  if (record.summary) return <Tag color="blue" style={{ fontSize: 12 }}>{t('dashboard.summary')}</Tag>;
+                  const store = (storesData ?? []).find((s) => s.name === record.storeName);
+                  return store ? <StatusBadge value={store.status} /> : <Typography.Text type="secondary" style={{ fontSize: 12 }}>-</Typography.Text>;
+                }
+              },
+              {
+                title: 'GMV', dataIndex: 'gmv', width: 140, align: 'right' as const,
+                render: (v: number, record) => (
+                  <span style={{ fontWeight: record.summary ? 700 : 400, color: record.summary ? '#2563eb' : 'inherit', fontSize: 13 }}>
+                    ¥{formatNumber(v)}
+                    {record.summary && (
+                      <span style={{ fontSize: 12, marginLeft: 4, color: gmvChange.up ? '#16a34a' : '#dc2626' }}>
+                        {gmvChange.up ? '▲' : '▼'}{Math.abs(gmvChange.value)}%
+                      </span>
+                    )}
+                  </span>
+                )
+              },
+              {
+                title: t('dashboard.colOrders'), dataIndex: 'orders', width: 120, align: 'right' as const,
+                render: (v: number, record) => {
+                  const content = (
+                    <span style={{ fontWeight: record.summary ? 700 : 400, fontSize: 13 }}>
+                      {formatNumber(v)}
+                      {record.summary && (
+                        <span style={{ fontSize: 12, marginLeft: 4, color: orderChange.up ? '#16a34a' : '#dc2626' }}>
+                          {orderChange.up ? '▲' : '▼'}{Math.abs(orderChange.value)}%
+                        </span>
+                      )}
+                    </span>
+                  );
+                  if (record.summary) return content;
+                  return <Link to={`/orders?store=${encodeURIComponent(record.storeName)}`} style={{ color: 'inherit' }}>{content} <RightOutlined style={{ fontSize: 10, color: 'var(--ark-muted, #64748b)' }} /></Link>;
+                }
+              },
+              {
+                title: t('dashboard.colAdROI'), dataIndex: 'roas', width: 100, align: 'right' as const,
+                render: (v: number, record) => {
+                  const text = (
+                    <Typography.Text strong style={{ color: v >= 5 ? '#16a34a' : v >= 2 ? '#ea580c' : '#dc2626', fontSize: 13 }}>
+                      {v.toFixed(1)}×
+                    </Typography.Text>
+                  );
+                  if (record.summary) return text;
+                  return <Link to="/agents/ads_optimizer">{text} <RightOutlined style={{ fontSize: 10, color: 'var(--ark-muted, #64748b)' }} /></Link>;
+                }
+              },
+              {
+                title: t('dashboard.colNegativeReview'), dataIndex: 'pendingNegativeReviews', width: 90, align: 'right' as const,
+                render: (v: number) => v > 0
+                  ? <Link to="/agents/review_manager"><Tag color="red" style={{ fontSize: 12 }}>{v}{t('dashboard.pendingReply')} →</Tag></Link>
+                  : <Typography.Text type="secondary" style={{ fontSize: 12 }}>-</Typography.Text>
+              },
+            ]}
+          />
+        ) : (
+          <EmptyState description={t('common.empty')} />
+        )}
+      </Card>
 
-      {/* Agent 今日成果卡片 */}
+      {/* ===== Agent 今日成果 — 单行摘要（C4）===== */}
       {achievements && storeCount > 0 && (
-        <Card
-          size="small"
-          style={{ marginBottom: 16, background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', border: '1px solid #86efac' }}
-        >
-          <Row gutter={[16, 16]} align="middle">
+        <Card size="small" style={{ marginBottom: 16 }}>
+          <Row align="middle" justify="space-between" gutter={[12, 12]}>
             <Col flex="auto">
-              <Space size={4}>
-                <RobotOutlined style={{ color: '#16a34a', fontSize: 14 }} />
-                <Typography.Text strong style={{ fontSize: 13, color: '#166534' }}>{t('dashboard.achievementTitle')}</Typography.Text>
+              <Space size={6} wrap>
+                <RobotOutlined style={{ color: '#16a34a' }} />
+                <Typography.Text style={{ fontSize: 13 }}>
+                  {t('dashboardv2.achievementLine', {
+                    hours: achievements.hoursSaved,
+                    revenue: formatNumber(achievements.revenueUplift),
+                    tasks: achievements.tasksProcessed,
+                    rate: achievements.tasksSuccessRate,
+                  })}
+                </Typography.Text>
               </Space>
             </Col>
             <Col>
-              <Row gutter={[32, 16]}>
-                <Col>
-                  <Statistic
-                    title={<Space size={2}><ClockCircleOutlined style={{ fontSize: 10 }} /><span style={{ fontSize: 10 }}>{t('dashboard.achievementHours')}</span></Space>}
-                    value={achievements.hoursSaved}
-                    suffix={
-                      <span style={{ fontSize: 12, color: achievements.hoursSavedTrend > 0 ? '#16a34a' : '#dc2626' }}>
-                        <ArrowUpOutlined style={{ fontSize: 10 }} /> {achievements.hoursSavedTrend}%
-                      </span>
-                    }
-                    valueStyle={{ fontSize: 20, color: '#166534', fontWeight: 700 }}
-                  />
-                </Col>
-                <Col>
-                  <Statistic
-                    title={<Space size={2}><PayCircleOutlined style={{ fontSize: 10 }} /><span style={{ fontSize: 10 }}>{t('dashboard.achievementRevenue')}</span></Space>}
-                    value={achievements.revenueUplift}
-                    prefix="¥"
-                    suffix={
-                      <span style={{ fontSize: 12, color: achievements.revenueUpliftTrend > 0 ? '#16a34a' : '#dc2626' }}>
-                        <ArrowUpOutlined style={{ fontSize: 10 }} /> {achievements.revenueUpliftTrend}%
-                      </span>
-                    }
-                    valueStyle={{ fontSize: 20, color: '#166534', fontWeight: 700 }}
-                  />
-                </Col>
-                <Col>
-                  <Statistic
-                    title={<Space size={2}><CheckCircleOutlined style={{ fontSize: 10 }} /><span style={{ fontSize: 10 }}>{t('dashboard.achievementTasks')}</span></Space>}
-                    value={achievements.tasksProcessed}
-                    suffix={
-                      <span style={{ fontSize: 12, color: '#16a34a' }}>
-                        {achievements.tasksSuccessRate}%
-                      </span>
-                    }
-                    valueStyle={{ fontSize: 20, color: '#166534', fontWeight: 700 }}
-                  />
-                </Col>
-              </Row>
+              <Link to="/agents" style={{ fontSize: 12 }}>{t('dashboardv2.viewAgents')} <RightOutlined style={{ fontSize: 10 }} /></Link>
             </Col>
           </Row>
-          {achievements.topContributor && (
-            <div style={{ marginTop: 10, padding: '6px 10px', background: 'rgba(22,163,74,0.06)', borderRadius: 6, fontSize: 12, color: '#166534' }}>
-              <Space size={4}>
-                <Tag color="green" style={{ fontSize: 10, margin: 0 }}>{t(`agent.${achievements.topContributor.agentType}`)}</Tag>
-                <span>{t(achievements.topContributor.insight)}</span>
-              </Space>
-            </div>
-          )}
         </Card>
       )}
 
-      <OperationsOverview storesData={storesData ?? []} timeRange={timeRange} selectedStoreName={selectedStoreName} />
+      {/* ===== 近期任务（跟随店铺筛选）===== */}
+      {scopedTasks.length > 0 && (
+        <Card
+          title={<><UnorderedListOutlined /> {t('dashboard.recentTasksTitle')}</>}
+          size="small"
+          style={{ marginBottom: 16 }}
+          extra={<Link to="/agents" style={{ fontSize: 12 }}>{t('dashboard.agentCenterLink')}</Link>}
+        >
+          <Table
+            rowKey="id"
+            dataSource={scopedTasks}
+            pagination={false}
+            size="small"
+            scroll={{ x: 720 }}
+            columns={[
+              { title: t('dashboard.taskName'), dataIndex: 'title', render: (v: string) => <Typography.Text style={{ fontSize: 12 }}>{v}</Typography.Text> },
+              { title: t('dashboard.colStore'), dataIndex: 'storeId', width: 120, render: (storeId: unknown) => {
+                const store = (storesData ?? []).find((s) => s.id === storeId);
+                return <Typography.Text style={{ fontSize: 12 }} type="secondary">{store?.name ?? '-'}</Typography.Text>;
+              }},
+              { title: 'Agent', dataIndex: 'agentType', width: 120, render: (v: string) => <Tag style={{ fontSize: 12 }}>{t(`agent.${v}`)}</Tag> },
+              { title: t('dashboard.colStatus'), dataIndex: 'status', width: 100, render: (v: string) => {
+                const colorMap: Record<string, string> = { running: 'blue', succeeded: 'green', failed: 'red', waiting_approval: 'orange', queued: 'default' };
+                return <Tag color={colorMap[v]} style={{ fontSize: 12 }}>{t(`status.${v}`)}</Tag>;
+              }},
+              { title: t('dashboard.colCreatedAt'), dataIndex: 'createdAt', width: 130, render: (v: string) => <Typography.Text style={{ fontSize: 12 }} type="secondary">{dayjs(v).format('MM-DD HH:mm')}</Typography.Text> },
+            ]}
+          />
+        </Card>
+      )}
 
       <AutomationOverview />
 
-      <Card size="small" style={{ ...statusBarStyle, marginBottom: 16 }}>
-        <Row align="middle" justify="space-between" gutter={[12, 12]}>
-          <Col>
-            <Space size="middle" wrap>
-              <Badge status={enabledAgentCount === 0 ? 'processing' : 'success'} />
-              <Typography.Text strong style={{ fontSize: 13 }}>
-                {enabledAgentCount === 0 ? '店铺已连接，配置 Agent 后可开始智能运营' : '自动化方案运行正常'}
-              </Typography.Text>
-              <Tag color="green">{storeCount} 家店铺在线</Tag>
-              {trialStatus && trialStatus.planTier !== 'Enterprise' && (
-                <Tag color={trialStatus.usedAgentCalls > trialStatus.agentCallLimit * 0.8 ? 'red' : 'orange'}>
-                  试用剩余 {trialStatus.trialDaysLeft} 天 · 调用 {trialStatus.usedAgentCalls}/{trialStatus.agentCallLimit}
-                </Tag>
-              )}
-            </Space>
+      {/* ===== 系统额度与健康信号（账号级）===== */}
+      {dashboardSummary && (
+        <Row gutter={[16, 16]}>
+          <Col xs={24} lg={12}>
+            <Card title={t('dashboard.quotaUsageShort')} size="small" extra={accountScopeTag}>
+              {dashboardSummary.quotaUsage.map((item) => {
+                const pct = Math.round((item.used / item.limit) * 100);
+                return (
+                  <div key={item.key} style={{ marginBottom: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Typography.Text style={{ fontSize: 12 }}>{t(item.key)}</Typography.Text>
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>{formatNumber(item.used)}/{formatNumber(item.limit)}</Typography.Text>
+                    </div>
+                    <Progress percent={pct} strokeColor={item.color} size="small" />
+                  </div>
+                );
+              })}
+            </Card>
           </Col>
-          <Col>
-            <Space>
-              {trialStatus && trialStatus.planTier !== 'Enterprise' && <Link to="/settings/billing"><Button size="small">查看套餐</Button></Link>}
-              <Link to="/setup"><Button type={setupIncomplete ? 'primary' : 'default'} size="small" icon={<SettingOutlined />}>配置自动化方案</Button></Link>
-            </Space>
+          <Col xs={24} lg={12}>
+            <Card title={t('dashboard.systemHealth')} size="small" extra={accountScopeTag}>
+              {dashboardSummary.healthSignals?.slice(0, 4).map((item) => (
+                <div key={item.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--ark-border-soft)' }}>
+                  <Typography.Text style={{ fontSize: 12 }}>{t(item.key)}</Typography.Text>
+                  <Tag color={item.status === 'healthy' ? 'green' : item.status === 'warning' ? 'orange' : 'red'} style={{ fontSize: 12 }}>
+                    {t(`dashboard.${item.status}`)}
+                  </Tag>
+                </div>
+              ))}
+            </Card>
           </Col>
         </Row>
-      </Card>
+      )}
     </div>
   );
 }
