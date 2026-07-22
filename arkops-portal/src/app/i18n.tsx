@@ -1978,7 +1978,20 @@ const dictionaries = {
     'approval.low': 'Low',
     'approval.medium': 'Medium',
     'approval.high': 'High',
-    'approval.critical': 'Critical'
+    'approval.critical': 'Critical',
+    // WS-E: app shell, navigation & responsive/theme foundation (appended)
+    'shell.back': 'Back',
+    'shell.menuToggle': 'Toggle navigation',
+    'shell.viewAs': 'View as',
+    'shell.viewAsHint': 'Demo control: preview the console under a different role. Not a real permission switch.',
+    'shell.logout': 'Log out',
+    'shell.currentRole': 'Current role',
+    'shell.newMerchant': 'New merchant',
+    'shell.establishedMerchant': 'Established merchant',
+    'shell.tenantOnboarding': 'Tenant: new merchant workspace',
+    'shell.demoScenarioTag': 'Full business scenario demo',
+    'shell.allStores': 'All stores',
+    'shell.storeScope': 'Store scope'
   },
   zh: {
     'nav.dashboard': '经营总览',
@@ -3956,7 +3969,20 @@ const dictionaries = {
     'approval.low': '低',
     'approval.medium': '中',
     'approval.high': '高',
-    'approval.critical': '紧急'
+    'approval.critical': '紧急',
+    // WS-E: app shell, navigation & responsive/theme foundation (appended)
+    'shell.back': '返回',
+    'shell.menuToggle': '展开/收起导航',
+    'shell.viewAs': '演示视角',
+    'shell.viewAsHint': '演示控件：切换角色预览不同权限下的控制台，并非真实权限切换。',
+    'shell.logout': '退出登录',
+    'shell.currentRole': '当前角色',
+    'shell.newMerchant': '新用户',
+    'shell.establishedMerchant': '成熟商家',
+    'shell.tenantOnboarding': '租户：新用户体验空间',
+    'shell.demoScenarioTag': '完整经营场景体验',
+    'shell.allStores': '全部店铺',
+    'shell.storeScope': '店铺范围'
   }
 } as const satisfies Record<Language, Dictionary>;
 

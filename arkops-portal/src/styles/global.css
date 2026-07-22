@@ -72,6 +72,23 @@ body {
   gap: 16px;
 }
 
+.page-header {
+  display: grid;
+  gap: 6px;
+}
+
+.page-title-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.page-header-back {
+  flex: 0 0 auto;
+  margin-top: 4px;
+}
+
 .muted {
   color: var(--ark-muted);
 }
