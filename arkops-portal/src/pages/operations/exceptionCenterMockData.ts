@@ -1,3 +1,5 @@
+import dayjs from 'dayjs';
+
 // ===== 异常类型 =====
 export type ExceptionType = 'review_negative' | 'chat_escalation' | 'ad_low_roi' | 'logistics_stuck' | 'compliance_flag';
 
@@ -18,6 +20,13 @@ export interface ExceptionItem {
   ignored: boolean;
   assignee?: string;
   linkTo?: string; // 深链接到专业处理页面
+  // WS-B (B6): appended — actor/timestamp/note for resolve & ignore semantics
+  resolvedBy?: string;
+  resolvedAt?: string;
+  resolutionNote?: string;
+  ignoredBy?: string;
+  ignoredAt?: string;
+  ignoreNote?: string;
 }
 
 // ===== Agent 操作日志 =====
@@ -34,23 +43,27 @@ export interface AgentLogEntry {
 // ===== 预设负责人列表 =====
 export const ASSIGNEE_OPTIONS = ['张伟', '李娜', '王强', '赵敏', '陈浩'];
 
+// WS-B (B6): timestamps anchored to the real clock so urgency ordering stays live.
+const now = dayjs();
+const at = (hoursAgo: number) => now.subtract(hoursAgo, 'hour').format('YYYY-MM-DD HH:mm');
+
 export const exceptionItems: ExceptionItem[] = [
   {
     id: 'ex_002', type: 'review_negative', title: '恶意差评检测',
-    storeName: '淘宝户外用品店', agentType: '评价管理',
+    storeName: '淘宝户外用品店', agentType: 'review_manager',
     level: 'critical', summary: '折叠露营椅收到 1 星差评，AI 判定疑似同行攻击 (置信度 87%)。',
     detail: '评论内容: "质量极差，跟图片完全不符，千万别买"\n买家历史: 新账号、无购买历史、3 天内 5 条差评\nAI 判定: 同行恶意差评',
     suggestedAction: '提交平台申诉，附 AI 分析报告',
-    createdAt: '2026-06-21 09:15', resolved: false, ignored: false,
+    createdAt: at(2), resolved: false, ignored: false,
     linkTo: '/agents/review_manager',
   },
   {
     id: 'ex_003', type: 'chat_escalation', title: '退款争议升级',
-    storeName: '京东自营店', agentType: '客服消息',
+    storeName: '京东自营店', agentType: 'customer_service',
     level: 'critical', summary: '买家投诉未收到商品，要求全额退款并威胁信用卡拒付。',
     detail: '运单号: 1Z999AA1234567890\n物流状态: 显示已签收但买家否认\n买家情绪: 愤怒，威胁发起 chargeback',
     suggestedAction: '提供签收证明截图，安抚买家情绪，必要时部分退款',
-    createdAt: '2026-06-21 11:00', resolved: false, ignored: false,
+    createdAt: at(1), resolved: false, ignored: false,
     linkTo: '/agents/customer_service',
   },
   {
@@ -59,16 +72,16 @@ export const exceptionItems: ExceptionItem[] = [
     level: 'warning', summary: '广告计划 C-102 连续 3 天 ROI < 1.5，已自动暂停但预算仍消耗 ¥612。',
     detail: '计划: C-102 蓝牙耳机促销\n7 天花费: ¥612，GMV: ¥869，ROI: 1.42\n红线: 1.5\n建议: 更换素材或降低出价',
     suggestedAction: '审核广告素材，决定是否重启或永久关闭',
-    createdAt: '2026-06-21 08:00', resolved: false, ignored: false,
+    createdAt: at(4), resolved: false, ignored: false,
     linkTo: '/agents/ads_optimizer',
   },
   {
     id: 'ex_006', type: 'logistics_stuck', title: '物流包裹滞留',
-    storeName: '拼多多旗舰店', agentType: '售后处理',
+    storeName: '拼多多旗舰店', agentType: 'after_sales',
     level: 'warning', summary: '退货包裹 #RT-2406-0047 在中通转运中心滞留 5 天未更新。',
-    detail: '退货单号: RT-2406-0047\n物流商: 中通快递\n最后更新: 2026-06-16 杭州转运中心\n状态: 运输中（5 天无更新）',
+    detail: '退货单号: RT-2406-0047\n物流商: 中通快递\n最后更新: ' + now.subtract(5, 'day').format('YYYY-MM-DD') + ' 杭州转运中心\n状态: 运输中（5 天无更新）',
     suggestedAction: '联系中通快递查询包裹状态，或发起丢失索赔',
-    createdAt: '2026-06-21 06:30', resolved: false, ignored: false,
+    createdAt: at(6), resolved: false, ignored: false,
     linkTo: '/agents/after_sales',
   },
   {
@@ -77,7 +90,9 @@ export const exceptionItems: ExceptionItem[] = [
     level: 'warning', summary: '蓝牙耳机商品描述含"最强降噪"，被标记为可能违反广告法。',
     detail: '商品: SKU BT-E01 蓝牙耳机 Pro\n问题: 描述含绝对化用语 "最强"\n法规: 广告法第 9 条禁止 "最" 字类绝对化用语',
     suggestedAction: '修改描述为 "高效降噪" 或 "顶级降噪体验"',
-    createdAt: '2026-06-21 05:00', resolved: true, ignored: false,
+    createdAt: at(8), resolved: true, ignored: false,
+    // WS-B (B6): resolved items carry actor + timestamp + note
+    resolvedBy: '运营负责人', resolvedAt: at(5), resolutionNote: '描述已改为"高效降噪"，重新提交审核通过。',
     linkTo: '/agents/risk_control',
   },
 ];

@@ -13,18 +13,18 @@ import {
   UndoOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Button, Space, Tag, Typography } from 'antd';
+import { Button, Space, Tag, Tooltip, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { TableActionGroup } from '../../components/table/TableActionGroup';
 import type { AgentLogEntry, ExceptionItem, ExceptionType } from './exceptionCenterMockData';
 import { LEVEL_COLORS } from './exceptionCenterMockData';
 
-type TFunction = (key: string) => string;
+type TFunction = (key: string, params?: Record<string, string | number>) => string;
 
 interface ExceptionColumnHandlers {
   navigate: (path: string) => void;
-  onIgnore: (id: string) => void;
-  onResolve: (id: string) => void;
+  /** WS-B (B6): resolve/ignore open a confirm-with-note modal instead of acting directly */
+  onRequestResolve: (record: ExceptionItem) => void;
+  onRequestIgnore: (record: ExceptionItem) => void;
   onUnignore: (id: string) => void;
   onView: (record: ExceptionItem) => void;
 }
@@ -52,9 +52,9 @@ export function createExceptionColumns(t: TFunction, handlers: ExceptionColumnHa
       width: 110,
       render: (type: ExceptionType, record: ExceptionItem) => {
         const icons: Record<string, JSX.Element> = {
-          critical: <ExclamationCircleOutlined style={{ color: '#dc2626', fontSize: 14 }} />,
-          warning: <AlertOutlined style={{ color: '#ea580c', fontSize: 14 }} />,
-          info: <BellOutlined style={{ color: '#2563eb', fontSize: 14 }} />,
+          critical: <ExclamationCircleOutlined style={{ color: 'var(--ark-red, #dc2626)', fontSize: 14 }} />,
+          warning: <AlertOutlined style={{ color: 'var(--ark-orange)', fontSize: 14 }} />,
+          info: <BellOutlined style={{ color: 'var(--ark-blue)', fontSize: 14 }} />,
         };
         return (
           <Space size={4}>
@@ -107,19 +107,31 @@ export function createExceptionColumns(t: TFunction, handlers: ExceptionColumnHa
       render: (at: string) => <Typography.Text type="secondary" style={{ fontSize: 11 }}>{at}</Typography.Text>,
     },
     {
+      // WS-B (B6): "去处理" is the primary first action; resolve/ignore are demoted
+      // behind a confirm-with-note step handled by the page.
       title: t('common.actions'),
-      width: 240,
+      width: 250,
       render: (_: unknown, record: ExceptionItem) => (
-        <Space size={0} wrap>
+        <Space size={4} wrap>
+          {record.linkTo && !record.resolved && !record.ignored && (
+            <Button
+              size="small"
+              type="primary"
+              icon={<EyeOutlined />}
+              onClick={() => handlers.navigate(`${record.linkTo}?exc=${record.id}`)}
+            >
+              {t('exc.goHandle')}
+            </Button>
+          )}
           <Button size="small" type="link" onClick={() => handlers.onView(record)} style={{ padding: '0 4px' }}>
             {t('common.view')}
           </Button>
           {!record.resolved && !record.ignored && (
             <>
-              <Button size="small" type="link" icon={<CheckCircleOutlined />} onClick={() => handlers.onResolve(record.id)} style={{ padding: '0 4px' }}>
+              <Button size="small" type="link" icon={<CheckCircleOutlined />} onClick={() => handlers.onRequestResolve(record)} style={{ padding: '0 4px' }}>
                 {t('exc.resolve')}
               </Button>
-              <Button size="small" type="link" icon={<MinusCircleOutlined />} onClick={() => handlers.onIgnore(record.id)} style={{ padding: '0 4px' }}>
+              <Button size="small" type="link" icon={<MinusCircleOutlined />} onClick={() => handlers.onRequestIgnore(record)} style={{ padding: '0 4px' }}>
                 {t('exc.ignore')}
               </Button>
             </>
@@ -129,15 +141,24 @@ export function createExceptionColumns(t: TFunction, handlers: ExceptionColumnHa
               <Button size="small" type="link" icon={<UndoOutlined />} onClick={() => handlers.onUnignore(record.id)} style={{ padding: '0 4px' }}>
                 {t('exc.unignore')}
               </Button>
-              <Tag color="default" style={{ fontSize: 10, margin: 0 }}>{t('exc.ignoredStatus')}</Tag>
+              <Tooltip
+                title={record.ignoredBy && record.ignoredAt
+                  ? t('inbox.excHandledBy', { actor: record.ignoredBy, at: record.ignoredAt.slice(0, 16).replace('T', ' '), action: t('exc.ignore') })
+                  : undefined}
+              >
+                <Tag color="default" style={{ fontSize: 10, margin: 0 }}>{t('exc.ignoredStatus')}</Tag>
+              </Tooltip>
             </>
           )}
-          {record.linkTo && !record.resolved && !record.ignored && (
-            <Button size="small" type="link" icon={<EyeOutlined />} onClick={() => handlers.navigate(`${record.linkTo}?exc=${record.id}`)} style={{ padding: '0 4px' }}>
-              {t('exc.goHandle')}
-            </Button>
+          {record.resolved && (
+            <Tooltip
+              title={record.resolvedBy && record.resolvedAt
+                ? t('inbox.excHandledBy', { actor: record.resolvedBy, at: record.resolvedAt.slice(0, 16).replace('T', ' '), action: t('exc.resolve') })
+                : undefined}
+            >
+              <Tag color="green" style={{ fontSize: 10, margin: 0 }}>{t('exc.resolvedStatus')}</Tag>
+            </Tooltip>
           )}
-          {record.resolved && <Tag color="green" style={{ fontSize: 10, margin: 0 }}>{t('exc.resolvedStatus')}</Tag>}
         </Space>
       ),
     },
