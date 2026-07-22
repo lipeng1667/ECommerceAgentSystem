@@ -2,7 +2,7 @@ import { mockDelay } from './client';
 import { insertFirst, replaceItem } from './mockRepository';
 import { nextId } from './idGenerator';
 import { recordAuditLog } from './auditLogger';
-import type { AllMallId, ApprovalPolicy } from '../types/domain';
+import type { AllMallId, ApprovalPolicy, RiskLevel } from '../types/domain';
 
 const policies: ApprovalPolicy[] = [
   {
@@ -35,6 +35,15 @@ const policies: ApprovalPolicy[] = [
     storeSpecificRules: [],
   },
 ];
+
+/**
+ * WS-B (B4/B5): synchronous policy lookup by risk level, used to derive
+ * approval expiry (requestedAt + timeoutHours), the timeout consequence,
+ * and whether dual approval is required.
+ */
+export function getPolicyForRisk(riskLevel: RiskLevel): ApprovalPolicy | undefined {
+  return policies.find((policy) => policy.riskLevel === riskLevel);
+}
 
 export const approvalPolicyApi = {
   list: (): Promise<ApprovalPolicy[]> => mockDelay([...policies]),

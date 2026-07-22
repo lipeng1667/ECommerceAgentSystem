@@ -92,6 +92,11 @@ export interface Approval {
   status: ApprovalStatus;
   requestedAt: string;
   decidedAt?: string;
+  // WS-B (B3/B4): appended optional fields — structured evidence & decision metadata
+  evidence?: ApprovalEvidenceField[];
+  decisionNote?: string;
+  decidedBy?: string;
+  priorApprovals?: PriorApprovalRecord[];
 }
 
 export type AuditCategory = 'approval' | 'agent_action' | 'human_ops' | 'system_event' | 'store_session' | 'task' | 'agent' | 'exception' | 'store';
@@ -425,3 +430,29 @@ export interface StoreBusinessDetail {
   };
   topProducts: { name: string; gmv: number; orders: number; sku: string }[];
 }
+
+// ===== WS-B: Action Inbox & approval evidence (appended) =====
+
+/**
+ * WS-B (B3): one structured before/after evidence field for an approval.
+ * `beforeNumeric`/`afterNumeric` allow deltas to be computed from data
+ * instead of being hardcoded in the UI; `unit` renders alongside deltas.
+ */
+export interface ApprovalEvidenceField {
+  label: string;
+  before: string;
+  after: string;
+  beforeNumeric?: number;
+  afterNumeric?: number;
+  unit?: string;
+}
+
+/** WS-B (B4): one completed approval step for dual-approval progress. */
+export interface PriorApprovalRecord {
+  approver: string;
+  at: string;
+  note?: string;
+}
+
+/** WS-B (B1): item kinds aggregated by the unified Action Inbox (/inbox). */
+export type InboxItemKind = 'approval' | 'exception' | 'relogin';
