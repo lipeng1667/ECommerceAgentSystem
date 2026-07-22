@@ -73,6 +73,9 @@ export const modelsApi = {
     insertFirst(customModels, model);
     return mockDelay(model);
   },
+  // WS-F: mock API-key verification — succeeds for plausible sk- keys.
+  verifyKey: (apiKey: string): Promise<{ ok: boolean }> =>
+    mockDelay({ ok: apiKey.trim().startsWith('sk-') && apiKey.trim().length >= 12 }, 600),
   removeCustom: (modelId: string): Promise<void> => {
     removeWhere(customModels, (model) => model.id === modelId);
     return mockDelay(undefined);

@@ -2004,7 +2004,19 @@ const dictionaries = {
     'guidev2.legendSeverityDesc': 'Shown in the Exception Center and risk scans. Measures how urgent a detected problem is and decides handling order.',
     'guidev2.legendTrigger': 'Trigger type',
     'guidev2.legendTriggerValues': 'Scheduled / Event / Manual',
-    'guidev2.legendTriggerDesc': 'Shown on Agent task cards. Describes how a task starts — it says nothing about risk or urgency.'
+    'guidev2.legendTriggerDesc': 'Shown on Agent task cards. Describes how a task starts — it says nothing about risk or urgency.',
+    'modelsv2.recommended': 'Recommended',
+    'modelsv2.customBadge': 'Custom',
+    'modelsv2.modelPurpose': 'What it is good at',
+    'modelsv2.agentBindingHint': 'Not sure? Keep "Auto" — the system picks the best model for each task.',
+    'modelsv2.estimatedCost': 'Estimated model cost',
+    'modelsv2.estimatedCostHelper': 'Estimated from public per-model rates; for reference only.',
+    'modelsv2.costAbout': 'approx.',
+    'modelsv2.verifyKey': 'Verify key',
+    'modelsv2.keyVerified': 'Key verified',
+    'modelsv2.keyVerifyFailed': 'Key verification failed. Check the key and try again.',
+    'modelsv2.keyVerifyRequired': 'Verify the API key first',
+    'modelsv2.keyHint': 'Paste the sk- key from your model provider. Only the last 4 characters are stored for display.'
   },
   zh: {
     'nav.dashboard': '经营总览',
@@ -4008,7 +4020,19 @@ const dictionaries = {
     'guidev2.legendSeverityDesc': '出现在异常中心与风险扫描中，衡量已发现问题的紧急程度，决定处理顺序。',
     'guidev2.legendTrigger': '触发方式',
     'guidev2.legendTriggerValues': '定时巡检 / 事件触发 / 手动执行',
-    'guidev2.legendTriggerDesc': '出现在 Agent 任务卡片上，说明任务如何启动，与风险和紧急程度无关。'
+    'guidev2.legendTriggerDesc': '出现在 Agent 任务卡片上，说明任务如何启动，与风险和紧急程度无关。',
+    'modelsv2.recommended': '推荐',
+    'modelsv2.customBadge': '自有',
+    'modelsv2.modelPurpose': '擅长做什么',
+    'modelsv2.agentBindingHint': '不确定选哪个？保持"自动选择"即可，系统会为每类任务挑选最合适的模型。',
+    'modelsv2.estimatedCost': '预估模型成本',
+    'modelsv2.estimatedCostHelper': '按各模型公开价格折算，仅供参考。',
+    'modelsv2.costAbout': '约',
+    'modelsv2.verifyKey': '验证密钥',
+    'modelsv2.keyVerified': '密钥验证通过',
+    'modelsv2.keyVerifyFailed': '密钥验证失败，请检查后重试。',
+    'modelsv2.keyVerifyRequired': '请先验证 API Key',
+    'modelsv2.keyHint': '粘贴模型服务商提供的 sk- 开头密钥，系统仅保存后四位用于展示。'
   }
 } as const satisfies Record<Language, Dictionary>;
 
