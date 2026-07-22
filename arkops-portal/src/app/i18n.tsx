@@ -2016,7 +2016,18 @@ const dictionaries = {
     'modelsv2.keyVerified': 'Key verified',
     'modelsv2.keyVerifyFailed': 'Key verification failed. Check the key and try again.',
     'modelsv2.keyVerifyRequired': 'Verify the API key first',
-    'modelsv2.keyHint': 'Paste the sk- key from your model provider. Only the last 4 characters are stored for display.'
+    'modelsv2.keyHint': 'Paste the sk- key from your model provider. Only the last 4 characters are stored for display.',
+    'billingv2.projectedTotal': 'Projected month-end bill',
+    'billingv2.projectedHelper': 'Linear projection from month-to-date usage',
+    'billingv2.nextBillHelper': 'First day of the next billing cycle',
+    'billingv2.rateCard': 'Overage rates',
+    'billingv2.rateCardDesc': 'Usage beyond your plan allowance is billed at the rates below, so the next bill is predictable.',
+    'billingv2.rateItem': 'Item',
+    'billingv2.includedInPlan': 'Included in plan',
+    'billingv2.overageRate': 'Overage rate',
+    'billingv2.planLimit': 'Plan limit',
+    'billingv2.overLimit': 'Over plan limit',
+    'billingv2.overLimitNote': 'The dashed line marks the plan limit; red bars are months that exceeded it and incurred overage charges.'
   },
   zh: {
     'nav.dashboard': '经营总览',
@@ -4032,7 +4043,18 @@ const dictionaries = {
     'modelsv2.keyVerified': '密钥验证通过',
     'modelsv2.keyVerifyFailed': '密钥验证失败，请检查后重试。',
     'modelsv2.keyVerifyRequired': '请先验证 API Key',
-    'modelsv2.keyHint': '粘贴模型服务商提供的 sk- 开头密钥，系统仅保存后四位用于展示。'
+    'modelsv2.keyHint': '粘贴模型服务商提供的 sk- 开头密钥，系统仅保存后四位用于展示。',
+    'billingv2.projectedTotal': '预计月末账单',
+    'billingv2.projectedHelper': '按本月至今用量线性推算',
+    'billingv2.nextBillHelper': '下一计费周期首日',
+    'billingv2.rateCard': '超额费率',
+    'billingv2.rateCardDesc': '超出套餐包含量的用量按以下费率计费，账单金额可提前预估。',
+    'billingv2.rateItem': '计费项',
+    'billingv2.includedInPlan': '套餐包含',
+    'billingv2.overageRate': '超出后费率',
+    'billingv2.planLimit': '套餐上限',
+    'billingv2.overLimit': '超出套餐上限',
+    'billingv2.overLimitNote': '虚线为套餐上限；红色柱表示超出上限、产生超额费用的月份。'
   }
 } as const satisfies Record<Language, Dictionary>;
 
