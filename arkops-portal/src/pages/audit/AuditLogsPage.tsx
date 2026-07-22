@@ -1,8 +1,9 @@
 import { DownloadOutlined, EyeOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Input, Segmented, Tag } from 'antd';
+import { Button, DatePicker, Input, Segmented, Select, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
+import type { Dayjs } from 'dayjs';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auditLogsApi } from '../../api/auditLogs';
@@ -24,21 +25,56 @@ const categoryColors: Record<AuditCategory, string> = {
   store: 'green',
 };
 
+// WS-F F5: segment → category-set map. Counts and filtering use the SAME sets,
+// so the numbers on the control always match the rows shown.
+type SegmentKey = 'all' | 'approval' | 'agent' | 'human' | 'system';
+const SEGMENT_CATEGORIES: Record<Exclude<SegmentKey, 'all'>, AuditCategory[]> = {
+  approval: ['approval'],
+  agent: ['agent_action', 'agent'],
+  human: ['human_ops', 'task', 'exception', 'store'],
+  system: ['system_event', 'store_session'],
+};
+
+const ALL_CATEGORIES: AuditCategory[] = [
+  'approval', 'agent_action', 'agent', 'human_ops', 'task', 'exception', 'store', 'system_event', 'store_session',
+];
+
 export function AuditLogsPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [keyword, setKeyword] = useState('');
-  const [category, setCategory] = useState<AuditCategory | 'all'>('all');
+  const [segment, setSegment] = useState<SegmentKey>('all');
+  const [rawCategory, setRawCategory] = useState<AuditCategory | undefined>(undefined);
+  const [actor, setActor] = useState<string | undefined>(undefined);
+  const [range, setRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
   const { data = [] } = useQuery({ queryKey: ['audit-logs'], queryFn: auditLogsApi.list });
 
-  const filtered = useMemo(() => {
+  const actors = useMemo(() => Array.from(new Set(data.map((i) => i.actor))).sort(), [data]);
+
+  // Everything except the segment/category axis — segment counts derive from this,
+  // so the numbers stay truthful under keyword/actor/date filtering.
+  const baseFiltered = useMemo(() => {
     let items = data;
-    if (category !== 'all') items = items.filter((i) => i.category === category);
+    if (actor) items = items.filter((i) => i.actor === actor);
+    if (range?.[0]) items = items.filter((i) => !dayjs(i.at).isBefore(range[0]!, 'day'));
+    if (range?.[1]) items = items.filter((i) => !dayjs(i.at).isAfter(range[1]!, 'day'));
     if (keyword) items = items.filter((i) =>
       `${i.actor} ${i.action} ${i.entity} ${i.summary}`.toLowerCase().includes(keyword.toLowerCase())
     );
     return items;
-  }, [data, keyword, category]);
+  }, [data, keyword, actor, range]);
+
+  const filtered = useMemo(() => {
+    let items = baseFiltered;
+    if (segment !== 'all') items = items.filter((i) => SEGMENT_CATEGORIES[segment].includes(i.category));
+    if (rawCategory) items = items.filter((i) => i.category === rawCategory);
+    return items;
+  }, [baseFiltered, segment, rawCategory]);
+
+  const segmentCount = (key: SegmentKey) =>
+    key === 'all' ? baseFiltered.length : baseFiltered.filter((i) => SEGMENT_CATEGORIES[key].includes(i.category)).length;
+
+  const visibleCategories = segment === 'all' ? ALL_CATEGORIES : SEGMENT_CATEGORIES[segment];
 
   const columns: ColumnsType<AuditLog> = [
     {
@@ -74,14 +110,6 @@ export function AuditLogsPage() {
         ) : null,
     },
   ];
-
-  const stats = {
-    all: data.length,
-    approval: data.filter((i) => i.category === 'approval').length,
-    agent_action: data.filter((i) => i.category === 'agent_action').length,
-    human_ops: data.filter((i) => i.category === 'human_ops').length,
-    system_event: data.filter((i) => i.category === 'system_event' || i.category === 'store_session').length,
-  };
 
   const handleExport = () => {
     const headers = [t('audit.time'), t('audit.category'), t('audit.actor'), t('audit.action'), t('audit.entity'), t('audit.summary')];
@@ -122,23 +150,58 @@ export function AuditLogsPage() {
         scroll={{ x: 900 }}
         toolbar={
           <PageFilterBar>
-          <Input.Search
-            placeholder={t('audit.search')}
-            onChange={(event) => setKeyword(event.target.value)}
-            allowClear
-          />
-          <Segmented
-            size="small"
-            value={category}
-            onChange={(v) => setCategory(v as AuditCategory | 'all')}
-            options={[
-              { label: `${t('audit.all')} (${stats.all})`, value: 'all' },
-              { label: `${t('audit.cat_approval')} (${stats.approval})`, value: 'approval' },
-              { label: `${t('audit.cat_agent_action')} (${stats.agent_action})`, value: 'agent_action' },
-              { label: `${t('audit.cat_human_ops')} (${stats.human_ops})`, value: 'human_ops' },
-              { label: `${t('audit.cat_system_event')} (${stats.system_event})`, value: 'system_event' },
-            ]}
-          />
+            <Input.Search
+              placeholder={t('audit.search')}
+              onChange={(event) => setKeyword(event.target.value)}
+              allowClear
+            />
+            <Segmented
+              size="small"
+              value={segment}
+              onChange={(v) => {
+                const next = v as SegmentKey;
+                setSegment(next);
+                // Drop a sub-category selection that the new segment does not contain.
+                if (rawCategory && next !== 'all' && !SEGMENT_CATEGORIES[next].includes(rawCategory)) {
+                  setRawCategory(undefined);
+                }
+              }}
+              options={[
+                { label: `${t('audit.all')} (${segmentCount('all')})`, value: 'all' },
+                { label: `${t('audit.cat_approval')} (${segmentCount('approval')})`, value: 'approval' },
+                { label: `${t('auditv2.groupAgent')} (${segmentCount('agent')})`, value: 'agent' },
+                { label: `${t('auditv2.groupHuman')} (${segmentCount('human')})`, value: 'human' },
+                { label: `${t('auditv2.groupSystem')} (${segmentCount('system')})`, value: 'system' },
+              ]}
+            />
+            <Select
+              size="small"
+              style={{ minWidth: 140 }}
+              allowClear
+              placeholder={t('auditv2.subCategory')}
+              value={rawCategory}
+              onChange={(v) => setRawCategory(v as AuditCategory | undefined)}
+              options={visibleCategories.map((cat) => ({
+                value: cat,
+                label: `${t(`audit.cat_${cat}`)} (${baseFiltered.filter((i) => i.category === cat).length})`,
+              }))}
+            />
+            <Select
+              size="small"
+              style={{ minWidth: 140 }}
+              allowClear
+              showSearch
+              placeholder={t('auditv2.actorFilter')}
+              value={actor}
+              onChange={(v) => setActor(v as string | undefined)}
+              options={actors.map((name) => ({ value: name, label: name }))}
+            />
+            <DatePicker.RangePicker
+              size="small"
+              value={range}
+              onChange={(v) => setRange(v)}
+              allowEmpty={[true, true]}
+            />
           </PageFilterBar>
         }
       />

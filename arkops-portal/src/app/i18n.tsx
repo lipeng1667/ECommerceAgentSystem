@@ -2042,7 +2042,16 @@ const dictionaries = {
     'notify.channelNamePlaceholder': 'Defaults to the channel type name',
     'notify.botWebhookUrl': 'Bot webhook URL',
     'notify.endpointRequired': 'Enter the push endpoint URL',
-    'notify.addChannelHint': 'Demo environment: the channel counts as connected once added and subscribes to "Approval required" by default.'
+    'notify.addChannelHint': 'Demo environment: the channel counts as connected once added and subscribes to "Approval required" by default.',
+    'audit.cat_task': 'Task',
+    'audit.cat_agent': 'Agent config',
+    'audit.cat_exception': 'Exception',
+    'audit.cat_store': 'Store',
+    'auditv2.groupAgent': 'Agent',
+    'auditv2.groupHuman': 'Human',
+    'auditv2.groupSystem': 'System',
+    'auditv2.subCategory': 'Sub-category',
+    'auditv2.actorFilter': 'Actor'
   },
   zh: {
     'nav.dashboard': '经营总览',
@@ -4084,7 +4093,16 @@ const dictionaries = {
     'notify.channelNamePlaceholder': '默认使用通道类型名称',
     'notify.botWebhookUrl': '机器人 Webhook 地址',
     'notify.endpointRequired': '请填写推送地址',
-    'notify.addChannelHint': '演示环境：添加后即视为连接成功，并默认订阅「需要审批」事件。'
+    'notify.addChannelHint': '演示环境：添加后即视为连接成功，并默认订阅「需要审批」事件。',
+    'audit.cat_task': '任务',
+    'audit.cat_agent': 'Agent 配置',
+    'audit.cat_exception': '异常',
+    'audit.cat_store': '店铺',
+    'auditv2.groupAgent': 'Agent',
+    'auditv2.groupHuman': '人工',
+    'auditv2.groupSystem': '系统',
+    'auditv2.subCategory': '细分类别',
+    'auditv2.actorFilter': '操作者'
   }
 } as const satisfies Record<Language, Dictionary>;
 
