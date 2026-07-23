@@ -143,7 +143,6 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
             { title: t('stores.title'), href: '/stores' },
             { title: t('storewizard.advancedTitle') }
           ]}
-          onBack={() => navigate('/stores')}
         />
         <Alert
           type="info"
@@ -452,7 +451,6 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
           { title: t('stores.title'), href: '/stores' },
           { title: store?.name ?? t('stores.detailTitle') }
         ]}
-        onBack={() => navigate('/stores')}
         actions={
           <Button danger icon={<StopOutlined />} disabled={store?.status === 'revoked'} onClick={() => setRevokeModalOpen(true)}>
             {t('stores.revoke')}
@@ -541,10 +539,11 @@ function StoreBusinessOverview({ storeId }: { storeId: AllMallId | undefined }) 
   const gmvChange = detail.gmv.yesterday > 0 ? ((detail.gmv.today - detail.gmv.yesterday) / detail.gmv.yesterday) * 100 : 0;
   const ordersChange = detail.orders.yesterday > 0 ? ((detail.orders.today - detail.orders.yesterday) / detail.orders.yesterday) * 100 : 0;
   const rankColors = ['gold', 'default', 'orange'];
+  const maxTopGmv = Math.max(...detail.topProducts.map((p) => p.gmv), 0);
 
   return (
     <>
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+      <Row gutter={[16, 16]} className="store-kpi-row" style={{ marginBottom: 16 }}>
         <Col xs={12} lg={6}>
           <MetricCard
             className="stat-card stat-card-primary"
@@ -594,8 +593,8 @@ function StoreBusinessOverview({ storeId }: { storeId: AllMallId | undefined }) 
         </Col>
       </Row>
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} lg={14}>
+      <Row gutter={[16, 16]} className="store-overview-row" style={{ marginBottom: 16 }}>
+        <Col xs={24} lg={12}>
           <DetailSection title={<><LineChartOutlined /> {t('storedetail.trendTitle')}</>}>
             <TrendBarChart
               ariaLabel={t('storedetail.trendTitle')}
@@ -620,7 +619,7 @@ function StoreBusinessOverview({ storeId }: { storeId: AllMallId | undefined }) 
             </div>
           </DetailSection>
         </Col>
-        <Col xs={24} lg={10}>
+        <Col xs={24} lg={12}>
           <DetailSection title={<><ThunderboltOutlined /> {t('storedetail.adPanel')}</>}>
             <Row gutter={12} style={{ marginBottom: 12 }}>
               <Col span={12}><Statistic title={t('storedetail.adSpendToday')} value={detail.adMetrics.todaySpend} prefix="¥" /></Col>
@@ -651,7 +650,7 @@ function StoreBusinessOverview({ storeId }: { storeId: AllMallId | undefined }) 
         </Col>
       </Row>
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+      <Row gutter={[16, 16]} className="store-overview-row" style={{ marginBottom: 16 }}>
         <Col xs={24} lg={12}>
           <DescriptionPanel
             title={<><CustomerServiceOutlined /> {t('storedetail.afterSalesPanel')}</>}
@@ -691,16 +690,29 @@ function StoreBusinessOverview({ storeId }: { storeId: AllMallId | undefined }) 
       </Row>
 
       <DetailSection title={<><TrophyOutlined /> {t('storedetail.topProducts')}</>}>
-        <Space direction="vertical" size={8} style={{ width: '100%' }}>
-          {detail.topProducts.map((product, i) => (
-            <div key={product.sku} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <Tag color={rankColors[i] ?? 'default'} style={{ minWidth: 24, textAlign: 'center' }}>{i + 1}</Tag>
-              <Typography.Text style={{ flex: 1 }} ellipsis>{product.name}</Typography.Text>
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>{product.orders} {t('storedetail.productOrders')}</Typography.Text>
-              <Typography.Text strong>¥{product.gmv.toLocaleString()}</Typography.Text>
-            </div>
-          ))}
-        </Space>
+        <div className="top-product-list">
+          {detail.topProducts.map((product, i) => {
+            const gmvShare = maxTopGmv > 0 ? Math.max(6, Math.round((product.gmv / maxTopGmv) * 100)) : 0;
+            return (
+              <div key={product.sku} className="top-product-row">
+                <Tag color={rankColors[i] ?? 'default'} className="top-product-rank">{i + 1}</Tag>
+                <div className="top-product-name">
+                  <Typography.Text ellipsis>{product.name}</Typography.Text>
+                  <Typography.Text type="secondary" className="top-product-sku">{product.sku}</Typography.Text>
+                </div>
+                {/* Proportional GMV bar fills the middle space with real signal
+                    instead of leaving a large empty gap on wide screens. */}
+                <div className="top-product-bar-track">
+                  <div className="top-product-bar" style={{ width: `${gmvShare}%` }} />
+                </div>
+                <Typography.Text type="secondary" className="top-product-orders">
+                  {product.orders} {t('storedetail.productOrders')}
+                </Typography.Text>
+                <Typography.Text strong className="top-product-gmv">¥{product.gmv.toLocaleString()}</Typography.Text>
+              </div>
+            );
+          })}
+        </div>
       </DetailSection>
     </>
   );

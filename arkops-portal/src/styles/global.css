@@ -598,6 +598,92 @@ body {
   font-weight: 600;
 }
 
+/* Store detail — business overview */
+/* Equalize KPI card heights so cards with a helper line match those without. */
+.store-kpi-row .ant-card {
+  height: 100%;
+}
+
+/* Equalize the two-column rows (trend/ad, after-sales/inventory): the antd Col
+   already stretches to equal height, but the inner card is content-height and
+   leaves a gap under the shorter one — make cards fill their column. */
+.store-overview-row > .ant-col {
+  display: flex;
+}
+
+.store-overview-row .ant-card {
+  width: 100%;
+  height: 100%;
+}
+
+.top-product-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.top-product-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.top-product-rank {
+  flex: 0 0 auto;
+  min-width: 24px;
+  margin: 0;
+  text-align: center;
+}
+
+.top-product-name {
+  flex: 0 0 200px;
+  min-width: 0;
+  display: grid;
+  gap: 0;
+}
+
+.top-product-name .ant-typography:first-child {
+  line-height: 1.3;
+}
+
+.top-product-sku {
+  font-size: 11px;
+}
+
+.top-product-bar-track {
+  flex: 1 1 auto;
+  height: 8px;
+  min-width: 0;
+  border-radius: 999px;
+  background: var(--ark-panel-soft);
+  overflow: hidden;
+}
+
+.top-product-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ark-blue);
+}
+
+.top-product-orders {
+  flex: 0 0 auto;
+  width: 68px;
+  text-align: right;
+  font-size: 12px;
+}
+
+.top-product-gmv {
+  flex: 0 0 auto;
+  width: 84px;
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  /* Drop the bar on narrow screens; let the product name take the room. */
+  .top-product-bar-track { display: none; }
+  .top-product-name { flex: 1 1 auto; }
+}
+
 /* Store import & cross-platform migration onboarding */
 .store-onboarding-page {
   width: min(1320px, 100%);

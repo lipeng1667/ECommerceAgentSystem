@@ -1,4 +1,4 @@
-import { CloudSyncOutlined, LoginOutlined, PayCircleOutlined, SettingOutlined, ShoppingCartOutlined, WifiOutlined } from '@ant-design/icons';
+import { CloudSyncOutlined, EyeOutlined, LoginOutlined, PayCircleOutlined, ShoppingCartOutlined, WifiOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Input, Select, Space, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -70,7 +70,7 @@ export function StoreListPage() {
     {
       title: t('stores.todayOrders'),
       key: 'todayOrders',
-      width: 80,
+      width: 116,
       sorter: (a, b) => (businessByStoreId.get(a.id)?.orders.today ?? 0) - (businessByStoreId.get(b.id)?.orders.today ?? 0),
       render: (_: unknown, record: Store) => {
         const orders = businessByStoreId.get(record.id)?.orders.today;
@@ -110,7 +110,7 @@ export function StoreListPage() {
       // shouldn't be a one-click list action.
       title: t('common.actions'),
       key: 'actions',
-      width: 160,
+      width: 220,
       render: (_: unknown, record: Store) => {
         const needsRelogin = record.status === 'login_required' || record.status === 'expired';
         const needsReauth = record.status === 'revoked';
@@ -121,8 +121,8 @@ export function StoreListPage() {
                 {needsReauth ? t('storewizard.reauthorize') : t('stores.reloginNow')}
               </Button>
             )}
-            <Button size="small" icon={<SettingOutlined />} onClick={() => navigate(`/stores/${record.id}`)}>
-              {t('stores.settingsAction')}
+            <Button size="small" icon={<EyeOutlined />} onClick={() => navigate(`/stores/${record.id}`)}>
+              {t('stores.viewAction')}
             </Button>
           </TableActionGroup>
         );
@@ -155,14 +155,13 @@ export function StoreListPage() {
           rowKey="id"
           columns={columns}
           dataSource={filteredData}
-          scroll={{ x: 1250 }}
+          scroll={{ x: 1350 }}
           toolbar={
             <PageFilterBar>
               <Input.Search
                 placeholder={t('stores.searchPlaceholder')}
                 onChange={(e) => setKeyword(e.target.value)}
                 allowClear
-                style={{ width: 220 }}
               />
               <Select
                 placeholder={t('stores.allPlatforms')}
@@ -170,7 +169,6 @@ export function StoreListPage() {
                 value={platformFilter}
                 onChange={setPlatformFilter}
                 options={platformOptions}
-                style={{ width: 160 }}
               />
             </PageFilterBar>
           }
