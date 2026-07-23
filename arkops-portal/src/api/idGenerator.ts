@@ -7,6 +7,8 @@
  *   Stores:        1000 - 1999
  *   Connections:   2000 - 2999
  *   Tasks:         3000 - 3999
+ *   Products:      4000 - 4499
+ *   ProductDrafts: 4500 - 4999
  *   Approvals:     5000 - 5999
  *   AuditLogs:     6000 - 6999
  *   Policies:      8000 - 8999
@@ -16,16 +18,18 @@
  * Created: 2026-07-16
  */
 
-type EntityDomain = 'stores' | 'connections' | 'tasks' | 'approvals' | 'auditLogs' | 'policies' | 'models';
+type EntityDomain = 'stores' | 'connections' | 'tasks' | 'products' | 'productDrafts' | 'approvals' | 'auditLogs' | 'policies' | 'models';
 
 const ID_RANGES: Record<EntityDomain, { base: number; max: number }> = {
-  stores:      { base: 1000, max: 1999 },
-  connections: { base: 2000, max: 2999 },
-  tasks:       { base: 3000, max: 3999 },
-  approvals:   { base: 5000, max: 5999 },
-  auditLogs:   { base: 6000, max: 6999 },
-  policies:    { base: 8000, max: 8999 },
-  models:      { base: 0, max: 0 }, // Uses custom_ prefix
+  stores:        { base: 1000, max: 1999 },
+  connections:   { base: 2000, max: 2999 },
+  tasks:         { base: 3000, max: 3999 },
+  products:      { base: 4000, max: 4499 },
+  productDrafts: { base: 4500, max: 4999 },
+  approvals:     { base: 5000, max: 5999 },
+  auditLogs:     { base: 6000, max: 6999 },
+  policies:      { base: 8000, max: 8999 },
+  models:        { base: 0, max: 0 }, // Uses custom_ prefix
 };
 
 /**

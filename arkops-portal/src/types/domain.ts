@@ -529,3 +529,35 @@ export interface PriorApprovalRecord {
 
 /** WS-B (B1): item kinds aggregated by the unified Action Inbox (/inbox). */
 export type InboxItemKind = 'approval' | 'exception' | 'relogin';
+
+// ===== Products =====
+
+/** Stored lifecycle status; `out_of_stock` is a derived display-only status, never stored (C7). */
+export type ProductStatus = 'active' | 'inactive' | 'draft' | 'pending_review';
+export type ProductDisplayStatus = ProductStatus | 'out_of_stock';
+
+export interface Product {
+  id: AllMallId;
+  storeId: AllMallId;
+  sku: string;
+  name: string;
+  cost: number;
+  sellingPrice: number;
+  stock: number;
+  status: ProductStatus;
+  images?: string[];
+}
+
+/** AI-recognition / manual draft awaiting review before it becomes a live Product. */
+export interface ProductDraft {
+  id: AllMallId;
+  storeId: AllMallId;
+  sku: string;
+  name: string;
+  cost: number;
+  sellingPrice: number;
+  description: string;
+  images: string[];
+  status: 'draft' | 'pending_review';
+  createdAt: string;
+}
