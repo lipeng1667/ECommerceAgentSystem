@@ -81,6 +81,12 @@ npm run build
 npm run preview
 ```
 
+Dark-mode hex audit (finding 5.2, tooling from E7):
+
+```bash
+scripts/check-hex.sh [path ...]   # defaults to src; exits 1 if hardcoded hexes are found outside tokens.css
+```
+
 The dev server runs with:
 
 ```bash
@@ -157,7 +163,8 @@ The dashboard combines the business overview and Agent monitoring into one opera
 
 The dashboard includes:
 
-- GMV, orders, average order value, and store count
+- Single top attention strip linking into the Action Inbox
+- GMV, orders, average order value, and store count (≤4 top KPIs)
 - GMV and order trend chart
 - Advertising ROI panel
 - After-sales metrics
@@ -168,7 +175,6 @@ The dashboard includes:
 - Agent run overview
 - Quota usage
 - Runtime health signals
-- Live event feed
 
 ### Store Management
 
@@ -482,7 +488,6 @@ Use this table as the first stop when a collaborator or AI coding tool needs to 
 | `src/components/EmptyState.tsx` | Shared component | Common empty-state UI. | Empty state style or behavior changes. |
 | `src/components/StoreConnectionEmptyState.tsx` | Shared component | Connect-store empty state used by business pages for first-time merchants. | Pre-connection business-page behavior changes. |
 | `src/components/AgentLiveConsole.tsx` | Shared component | Task-level simulated Agent/runtime execution console. | Agent task live-console behavior changes. |
-| `src/components/DashboardLiveFeed.tsx` | Shared component | Dashboard-level rolling event feed. | Global live-feed behavior changes. |
 | `src/components/metrics/MetricCard.tsx` | Shared component | KPI/stat card wrapper. | Metric card layout changes across pages. |
 | `src/components/charts/TrendBarChart.tsx` | Shared component | Compact multi-bar trend chart. | Reusable trend visualization changes. |
 | `src/components/table/DataTableCard.tsx` | Shared component | Card-wrapped Ant Design table with toolbar/description support. | Table container behavior changes. |
@@ -547,7 +552,6 @@ Current shared component groups:
 - `detail/DescriptionPanel.tsx`: reusable `Descriptions` panel inside `DetailSection`.
 - `agents/AgentTaskCard.tsx`: reusable Agent built-in task cards and grids.
 - `AgentLiveConsole.tsx`: task-level simulated runtime console.
-- `DashboardLiveFeed.tsx`: dashboard-level live event feed.
 
 Guideline:
 
@@ -588,7 +592,6 @@ These files are intentionally feature-rich but are good future refactor candidat
 
 - `src/pages/agents/AgentConfigPage.tsx`: Agent detail orchestration, task modal, recognition flow, and task logs.
 - `src/pages/orders/OrderAutomationPage.tsx`: order mock data, filters, actions, detail modal, and timeline.
-- `src/components/AgentLiveConsole.tsx` and `src/components/DashboardLiveFeed.tsx`: similar live-console behavior with different scopes.
 
 Future extraction ideas:
 
@@ -597,7 +600,6 @@ Future extraction ideas:
 - `OrderMetricsSection`
 - `OrderExceptionModal`
 - `OrderTimeline`
-- `LiveConsoleShell` or `LiveEventStream` if a third live-feed surface is added.
 
 ## AI-Assisted Development Workflow
 
