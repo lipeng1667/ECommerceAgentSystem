@@ -3,4 +3,5 @@ dist/
 *.tsbuildinfo
 vite.config.js
 vite.config.d.ts
+vite.config.ts.timestamp-*.mjs
 .DS_Store

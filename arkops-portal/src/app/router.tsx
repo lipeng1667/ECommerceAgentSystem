@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Navigate, RouterProvider, createBrowserRouter, useLocation } from 'react-router-dom';
 import { Spin } from 'antd';
 import { AppShell } from './layout/AppShell';
+import { FocusedLayout } from './layout/FocusedLayout';
 import { useAuth } from './auth';
 import { RoleGuard } from '../components/RoleGuard';
 import { DashboardSkeleton, AgentListSkeleton, TablePageSkeleton } from '../components/PageSkeleton';
@@ -58,6 +59,19 @@ function ProtectedAppShell() {
   return <AppShell />;
 }
 
+/**
+ * Auth gate for immersive flows: same protection as the app shell, but renders
+ * the distraction-free FocusedLayout instead of the full navigation frame.
+ */
+function ProtectedFocusedLayout() {
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+  return <FocusedLayout />;
+}
+
 function LoginEntry() {
   const { isAuthenticated, user } = useAuth();
   if (isAuthenticated && user) {
@@ -69,6 +83,14 @@ function LoginEntry() {
 const router = createBrowserRouter(
   [
     { path: '/login', element: <LoginEntry /> },
+    // 店铺引导 / 迁移向导 —— 使用聚焦布局，隐藏全局导航，让用户专注单一任务
+    {
+      path: '/stores/onboarding',
+      element: <ProtectedFocusedLayout />,
+      children: [
+        { index: true, element: guarded('/stores', <StoreOnboardingPage />) },
+      ],
+    },
     {
       path: '/',
       element: <ProtectedAppShell />,
@@ -102,7 +124,7 @@ const router = createBrowserRouter(
 
         // 店铺管理
         { path: 'stores', element: guarded('/stores', <StoreListPage />) },
-        { path: 'stores/onboarding', element: guarded('/stores', <StoreOnboardingPage />) },
+        // 注：stores/onboarding 已提升为顶层聚焦路由（见上），此处不再挂载
         { path: 'stores/new', element: guarded('/stores', <StoreDetailPage mode="new" />) },
         { path: 'stores/:storeId', element: guarded('/stores', <StoreDetailPage />) },
 

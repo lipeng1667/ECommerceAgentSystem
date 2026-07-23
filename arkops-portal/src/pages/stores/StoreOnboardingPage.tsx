@@ -1,5 +1,4 @@
 import {
-  ArrowLeftOutlined,
   ArrowRightOutlined,
   CheckCircleFilled,
   CheckOutlined,
@@ -25,6 +24,7 @@ import {
   Divider,
   Input,
   InputNumber,
+  Modal,
   Progress,
   Radio,
   Row,
@@ -114,6 +114,8 @@ interface WizardSavedState {
 }
 
 const WIZARD_STORAGE_KEY = 'allmall-store-wizard';
+/** Session-scoped flag: first-time merchant has seen the welcome dialog this session. */
+const WELCOME_SEEN_KEY = 'allmall-onboarding-welcome-seen';
 
 function loadWizardState(): Partial<WizardSavedState> | null {
   try {
@@ -195,9 +197,9 @@ function PlatformCard({ platform, selected, onClick }: { platform: PlatformOptio
   );
 }
 
-function JourneyChoice({ onSelect }: { onSelect: (journey: Journey) => void }) {
+function JourneyChoice({ onSelect, allowMigrate }: { onSelect: (journey: Journey) => void; allowMigrate: boolean }) {
   return (
-    <div className="onboarding-choice-grid">
+    <div className={`onboarding-choice-grid ${allowMigrate ? '' : 'single'}`}>
       <button type="button" className="onboarding-journey-card import" onClick={() => onSelect('import')}>
         <span className="onboarding-journey-icon"><CloudDownloadOutlined /></span>
         <span>
@@ -209,17 +211,20 @@ function JourneyChoice({ onSelect }: { onSelect: (journey: Journey) => void }) {
           <span className="onboarding-card-link">开始导入 <ArrowRightOutlined /></span>
         </span>
       </button>
-      <button type="button" className="onboarding-journey-card migrate" onClick={() => onSelect('migrate')}>
-        <span className="onboarding-journey-icon"><CopyOutlined /></span>
-        <span>
-          <Tag color="purple">跨平台经营</Tag>
-          <Typography.Title level={3}>复制商品到新平台</Typography.Title>
-          <Typography.Paragraph type="secondary">
-            把已同步的商品智能转换为其他平台格式，审核后一键批量上架。
-          </Typography.Paragraph>
-          <span className="onboarding-card-link">开始迁移 <ArrowRightOutlined /></span>
-        </span>
-      </button>
+      {/* 迁移依赖已同步的商品，对全新商家无意义 —— 首次开店时隐藏，导入完成后再作为二级动作出现 */}
+      {allowMigrate && (
+        <button type="button" className="onboarding-journey-card migrate" onClick={() => onSelect('migrate')}>
+          <span className="onboarding-journey-icon"><CopyOutlined /></span>
+          <span>
+            <Tag color="purple">跨平台经营</Tag>
+            <Typography.Title level={3}>复制商品到新平台</Typography.Title>
+            <Typography.Paragraph type="secondary">
+              把已同步的商品智能转换为其他平台格式，审核后一键批量上架。
+            </Typography.Paragraph>
+            <span className="onboarding-card-link">开始迁移 <ArrowRightOutlined /></span>
+          </span>
+        </button>
+      )}
     </div>
   );
 }
@@ -228,8 +233,10 @@ export function StoreOnboardingPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { updateExperience } = useAuth();
+  const { updateExperience, user } = useAuth();
   const [searchParams] = useSearchParams();
+  // 全新商家（尚未连接任何店铺）只需专注导入，隐藏跨平台迁移这一进阶入口
+  const isFirstTimeMerchant = user?.experience === 'onboarding';
 
   // A5: hydrate once from localStorage so leaving the page never loses progress.
   const [saved] = useState(() => loadWizardState());
@@ -275,6 +282,39 @@ export function StoreOnboardingPage() {
   const [agentMoment, setAgentMoment] = useState<'idle' | 'enabling' | 'running' | 'done'>('idle');
   const [firstApprovalId, setFirstApprovalId] = useState<number | null>(null);
   const [showResume, setShowResume] = useState(() => Boolean(saved?.journey && ((saved.step ?? 0) > 0 || saved.connected)));
+  // 首次商家落地时的一次性欢迎弹窗：说明接下来要做什么，避免登录后直接掉进流程的突兀感。
+  // 恢复进度（断点续传）或已看过则不再弹出。
+  const [showWelcome, setShowWelcome] = useState(() => {
+    if (user?.experience !== 'onboarding') return false;
+    const resuming = Boolean(saved?.journey && ((saved.step ?? 0) > 0 || saved.connected));
+    if (resuming) return false;
+    try {
+      // sessionStorage (not localStorage): greet on each fresh login/session, but
+      // stay quiet across in-tab refreshes. Resets exactly when the session resets.
+      return sessionStorage.getItem(WELCOME_SEEN_KEY) !== 'true';
+    } catch {
+      return true;
+    }
+  });
+
+  const markWelcomeSeen = () => {
+    try {
+      sessionStorage.setItem(WELCOME_SEEN_KEY, 'true');
+    } catch {
+      // ignore
+    }
+  };
+
+  const startFromWelcome = () => {
+    markWelcomeSeen();
+    setShowWelcome(false);
+  };
+
+  const dismissWelcomeLater = () => {
+    markWelcomeSeen();
+    setShowWelcome(false);
+    navigate('/stores');
+  };
 
   const source = platforms.find(item => item.key === sourcePlatform)!;
   const target = platforms.find(item => item.key === targetPlatform)!;
@@ -971,11 +1011,53 @@ export function StoreOnboardingPage() {
 
   return (
     <div className="store-onboarding-page">
-      <div className="onboarding-topbar">
-        <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => journey ? goBack() : navigate('/stores')}>{journey ? '返回上一步' : '返回店铺管理'}</Button>
-        <div className="onboarding-brand-pill"><ThunderboltOutlined /> AllMall 智能开店助手</div>
-        <Button type="text" onClick={() => navigate('/stores')}>稍后继续</Button>
-      </div>
+      <Modal
+        open={showWelcome}
+        onCancel={dismissWelcomeLater}
+        footer={null}
+        width={468}
+        centered
+        maskClosable={false}
+        className="onboarding-welcome-modal"
+      >
+        <div className="onboarding-welcome-modal-body">
+          <span className="onboarding-welcome-modal-icon"><ThunderboltOutlined /></span>
+          <Typography.Title level={3}>欢迎使用 AllMall</Typography.Title>
+          <Typography.Paragraph type="secondary">
+            接下来大约 3 分钟，我们一起把你的生意接入 AllMall。只需三步：
+          </Typography.Paragraph>
+          <div className="onboarding-welcome-steps">
+            <div className="onboarding-welcome-step">
+              <span className="onboarding-welcome-step-index">1</span>
+              <div>
+                <Typography.Text strong>连接店铺</Typography.Text>
+                <Typography.Text type="secondary">安全授权拼多多、淘宝或京东，无需提供密码。</Typography.Text>
+              </div>
+            </div>
+            <div className="onboarding-welcome-step">
+              <span className="onboarding-welcome-step-index">2</span>
+              <div>
+                <Typography.Text strong>同步数据</Typography.Text>
+                <Typography.Text type="secondary">自动导入商品、订单、评价和库存，进度自动保存。</Typography.Text>
+              </div>
+            </div>
+            <div className="onboarding-welcome-step">
+              <span className="onboarding-welcome-step-index">3</span>
+              <div>
+                <Typography.Text strong>开启第一个 Agent</Typography.Text>
+                <Typography.Text type="secondary">试跑一次，结果由你确认后才会生效。</Typography.Text>
+              </div>
+            </div>
+          </div>
+          <div className="onboarding-welcome-trust">
+            <SafetyCertificateOutlined /> 全程只读，任何写入都需要你确认
+          </div>
+          <Button type="primary" size="large" block icon={<RocketOutlined />} onClick={startFromWelcome}>
+            开始连接店铺
+          </Button>
+          <Button type="text" block onClick={dismissWelcomeLater}>稍后再说</Button>
+        </div>
+      </Modal>
 
       {showResume && (
         <Alert
@@ -993,10 +1075,11 @@ export function StoreOnboardingPage() {
         <div className="onboarding-welcome">
           <div className="onboarding-welcome-copy">
             <div className="onboarding-eyebrow"><span /> 你的套餐已生效</div>
-            <Typography.Title>先告诉我们，你现在想完成什么？</Typography.Title>
+            <Typography.Title>{isFirstTimeMerchant ? '先连接你的第一家店铺' : '先告诉我们，你现在想完成什么？'}</Typography.Title>
             <Typography.Paragraph>无需理解复杂配置，跟着步骤完成授权，剩下的交给 AllMall。</Typography.Paragraph>
+            <div className="onboarding-eta"><ThunderboltOutlined /> 预计约 3 分钟 · 共 {importSteps.length} 步 · 进度自动保存</div>
           </div>
-          <JourneyChoice onSelect={selectJourney} />
+          <JourneyChoice onSelect={selectJourney} allowMigrate={!isFirstTimeMerchant} />
           <div className="onboarding-trust-row">
             <span><SafetyCertificateOutlined /> 银行级加密</span>
             <span><LockOutlined /> 导入过程只读</span>
@@ -1011,6 +1094,7 @@ export function StoreOnboardingPage() {
               <Tag color={journey === 'import' ? 'blue' : 'purple'}>{journey === 'import' ? '已有店铺导入' : '跨平台商品迁移'}</Tag>
               <Typography.Title level={4}>{journey === 'import' ? '同步店铺数据' : '复制到新平台'}</Typography.Title>
               <Progress percent={overallProgress} showInfo={false} strokeColor={journey === 'import' ? '#2563eb' : '#7c3aed'} />
+              <div className="onboarding-aside-eta">第 {step + 1} / {steps.length} 步 · 进度自动保存</div>
             </div>
             <Steps direction="vertical" current={step} items={steps} size="small" />
             <div className="onboarding-help-card"><SafetyCertificateOutlined /><div><Typography.Text strong>全程安全可控</Typography.Text><Typography.Text type="secondary">读取自动进行，写入必须确认。</Typography.Text></div></div>
@@ -1024,9 +1108,13 @@ export function StoreOnboardingPage() {
                   继续 <ArrowRightOutlined />
                 </Button>
               )}
-              {/* A7: primary CTA is the dashboard; migration upsell stays secondary above. */}
+              {/* A9/A7: the first-agent card is the star of the finish screen. Once the
+                  agent has run, "进入经营总览" steps down to a secondary escape so the
+                  primary "去第一个审批" CTA in the card stays visually dominant. */}
               {isLastStep && journey === 'import' && (
-                <Button type="primary" size="large" onClick={finishToDashboard}>进入经营总览</Button>
+                <Button type={agentMoment === 'done' ? 'default' : 'primary'} size="large" onClick={finishToDashboard}>
+                  进入经营总览
+                </Button>
               )}
               {isLastStep && journey === 'migrate' && publishProgress === 100 && (
                 <Button type="primary" size="large" onClick={finishMigration}>前往商品管理 <ArrowRightOutlined /></Button>

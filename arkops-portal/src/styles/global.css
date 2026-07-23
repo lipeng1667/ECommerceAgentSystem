@@ -456,6 +456,148 @@ body {
   background: rgba(234, 88, 12, 0.2);
 }
 
+/* Focused, distraction-free shell for immersive flows (onboarding wizard). */
+.focused-layout {
+  min-height: 100vh;
+  background: var(--ark-bg);
+}
+
+.focused-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  padding: 0 clamp(16px, 4vw, 32px);
+  background: var(--ark-panel);
+  border-bottom: 1px solid var(--ark-border-soft);
+  /* antd Layout.Header defaults line-height to 64px; reset so the brand centers. */
+  line-height: normal;
+}
+
+/* Self-contained brand for the focused header — deliberately NOT reusing the
+   sidebar .brand styles (which are 72px tall with their own border). */
+.focused-brand {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.focused-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--ark-blue);
+  color: var(--ark-on-accent);
+  font-weight: 800;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.focused-brand-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.25;
+}
+
+.focused-brand-name {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ark-ink);
+}
+
+.focused-brand-sub {
+  font-size: 11px;
+  color: var(--ark-muted);
+}
+
+.focused-content {
+  padding: 24px clamp(12px, 4vw, 40px) 48px;
+}
+
+/* Inside the focused shell the wizard card no longer competes with a global
+   header + sider, so it can breathe a little more and drop the extra chrome. */
+.focused-content .store-onboarding-page {
+  min-height: calc(100vh - 60px - 72px);
+}
+
+@media (max-width: 767px) {
+  .focused-header { height: 56px; }
+  .focused-content { padding: 12px; }
+}
+
+/* First-run welcome dialog shown before the wizard begins. */
+.onboarding-welcome-modal-body {
+  text-align: center;
+  padding: 4px 4px 2px;
+}
+
+.onboarding-welcome-modal-body h3.ant-typography {
+  margin: 14px 0 6px;
+}
+
+.onboarding-welcome-modal-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  font-size: 26px;
+  color: var(--ark-blue);
+  background: color-mix(in srgb, var(--ark-blue) 12%, transparent);
+}
+
+.onboarding-welcome-steps {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0 16px;
+  text-align: left;
+}
+
+.onboarding-welcome-step {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.onboarding-welcome-step > div {
+  display: grid;
+  gap: 2px;
+}
+
+.onboarding-welcome-step .ant-typography-secondary {
+  font-size: 12px;
+}
+
+.onboarding-welcome-step-index {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ark-blue) 10%, transparent);
+  color: var(--ark-blue);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.onboarding-welcome-trust {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--ark-panel-soft);
+  color: var(--ark-green);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 /* Store import & cross-platform migration onboarding */
 .store-onboarding-page {
   width: min(1320px, 100%);
@@ -539,6 +681,33 @@ body {
   gap: 20px;
   max-width: 980px;
   margin: 0 auto;
+}
+
+/* First-time merchant: only the import journey is shown — center it. */
+.onboarding-choice-grid.single {
+  grid-template-columns: minmax(0, 560px);
+  justify-content: center;
+}
+
+/* Expectation anchor on the welcome screen (time / step count / auto-save). */
+.onboarding-eta {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  margin-top: 18px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ark-blue) 8%, transparent);
+  color: var(--ark-blue);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Compact step/auto-save hint under the wizard sidebar progress bar. */
+.onboarding-aside-eta {
+  margin-top: 8px;
+  color: var(--ark-muted);
+  font-size: 11px;
 }
 
 .onboarding-journey-card {
