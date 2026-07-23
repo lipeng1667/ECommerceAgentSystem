@@ -1,28 +1,38 @@
 import {
   ApiOutlined,
   CustomerServiceOutlined,
+  LineChartOutlined,
   LinkOutlined,
+  PayCircleOutlined,
   PlusOutlined,
   SettingOutlined,
   ShopOutlined,
   ShoppingCartOutlined,
+  StarOutlined,
   StopOutlined,
   ThunderboltOutlined,
+  TrophyOutlined,
   WalletOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Button, Card, Checkbox, Col, Form, Input, Modal, Row, Select, Space, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Checkbox, Col, Form, Input, Modal, Progress, Row, Select, Space, Statistic, Table, Tabs, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { storeBusinessApi } from '../../api/storeBusiness';
 import { storesApi } from '../../api/stores';
 import { useI18n } from '../../app/i18n';
+import { TrendBarChart } from '../../components/charts/TrendBarChart';
 import { DescriptionPanel } from '../../components/detail/DescriptionPanel';
+import { DetailSection } from '../../components/detail/DetailSection';
+import { MetricCard } from '../../components/metrics/MetricCard';
 import { PageHeader } from '../../components/PageHeader';
 import { StatusBadge } from '../../components/StatusBadge';
-import type { Store, StoreConnection, StoreServiceType } from '../../types/domain';
+import type { AllMallId, Store, StoreConnection, StoreServiceType } from '../../types/domain';
 import { parseAllMallId } from '../../utils/id';
+import { getPlatformName } from '../../utils/storeDisplay';
 
 export function StoreDetailPage({ mode }: { mode?: 'new' }) {
   const { t } = useI18n();
@@ -102,10 +112,10 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
   };
 
   const serviceOptions = [
-    { key: 'advertising', icon: <ThunderboltOutlined />, color: '#2563eb' },
-    { key: 'customer_service', icon: <CustomerServiceOutlined />, color: '#16a34a' },
-    { key: 'logistics', icon: <ShoppingCartOutlined />, color: '#ea580c' },
-    { key: 'finance', icon: <WalletOutlined />, color: '#7c3aed' },
+    { key: 'advertising', icon: <ThunderboltOutlined />, color: 'var(--ark-blue)' },
+    { key: 'customer_service', icon: <CustomerServiceOutlined />, color: 'var(--ark-green)' },
+    { key: 'logistics', icon: <ShoppingCartOutlined />, color: 'var(--ark-orange)' },
+    { key: 'finance', icon: <WalletOutlined />, color: 'var(--ark-purple)' },
   ];
 
   // 平台 → 地区和币种映射
@@ -175,7 +185,7 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
             {authMethods.filter((m) => m.platforms.includes(platform)).map((m) => (
               <Col xs={24} sm={12} key={m.value}>
                 <Card hoverable size="small"
-                  style={{ border: authMethod === m.value ? '2px solid #2563eb' : '1px solid #e8e8e8', cursor: 'pointer' }}
+                  style={{ border: authMethod === m.value ? '2px solid var(--ark-blue)' : '1px solid var(--ark-border)', cursor: 'pointer' }}
                   onClick={() => setAuthMethod(m.value)}>
                   <Typography.Text strong>{m.label}</Typography.Text><br />
                   <Typography.Text type="secondary" style={{ fontSize: 12 }}>{m.desc}</Typography.Text>
@@ -201,7 +211,7 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
 
             {/* 步骤3：授权配置 */}
             <Card title={<><SettingOutlined /> {t('stores.stepConfig')}</>} style={{ marginBottom: 16 }}>
-              <Typography.Title level={5} style={{ marginBottom: 16, paddingBottom: 8, borderBottom: '1px solid #f0f0f0' }}>
+              <Typography.Title level={5} style={{ marginBottom: 16, paddingBottom: 8, borderBottom: '1px solid var(--ark-border-soft)' }}>
                 <LinkOutlined style={{ marginRight: 8 }} />{t('stores.primaryAuth')}
               </Typography.Title>
 
@@ -209,7 +219,7 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
                 <>
                   {/* A3: no raw password collection — login is authorized via the
                       platform's official QR flow after the record is created. */}
-                  <div style={{ padding: 16, background: '#f0f5ff', borderRadius: 8, marginBottom: 16 }}>
+                  <div style={{ padding: 16, background: 'color-mix(in srgb, var(--ark-blue) 6%, var(--ark-panel))', borderRadius: 8, marginBottom: 16 }}>
                     <Typography.Text>{t('storewizard.credentialsSafeNote')}</Typography.Text>
                   </div>
                   <Row gutter={16}>
@@ -275,7 +285,9 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
                           hoverable
                           style={{
                             borderLeft: `4px solid ${svc.color}`,
-                            background: selectedServices.includes(svc.key) ? `${svc.color}08` : '#fff',
+                            background: selectedServices.includes(svc.key)
+                              ? `color-mix(in srgb, ${svc.color} 6%, var(--ark-panel))`
+                              : 'var(--ark-panel)',
                           }}
                         >
                           <Checkbox value={svc.key}>
@@ -366,7 +378,7 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
         title={<><LinkOutlined /> {t('stores.primaryAuth')}</>}
         spacing="bottom"
         items={[
-          { label: t('stores.platform'), value: store?.platform },
+          { label: t('stores.platform'), value: store ? getPlatformName(store.platform) : undefined },
           {
             label: t('stores.authMethod'),
             value: (
@@ -390,7 +402,7 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
         style={{ marginBottom: 16 }}
       >
         {(!store?.connections || store.connections.length === 0) ? (
-          <div style={{ textAlign: 'center', padding: 32, color: '#94a3b8' }}>
+          <div style={{ textAlign: 'center', padding: 32, color: 'var(--ark-muted)' }}>
             <Typography.Paragraph type="secondary">{t('stores.noConnections')}</Typography.Paragraph>
             <Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>{t('stores.noConnectionsHint')}</Typography.Paragraph>
           </div>
@@ -481,7 +493,215 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
           style={{ marginBottom: 16 }}
         />
       )}
-      {settingsTab}
+      {/* Item 4: login_required/expired previously had no recovery action on this
+          page at all (only revoked did) — a dead end for the most common operational
+          issue. Reuses the same reauthorizeMutation with relogin-specific copy. */}
+      {(store?.status === 'login_required' || store?.status === 'expired') && (
+        <Alert
+          type="warning"
+          showIcon
+          message={t('storewizard.reloginAlertTitle')}
+          description={t('storewizard.reloginAlertDesc')}
+          action={
+            <Button type="primary" loading={reauthorizeMutation.isPending} onClick={() => reauthorizeMutation.mutate()}>
+              {t('stores.reloginNow')}
+            </Button>
+          }
+          style={{ marginBottom: 16 }}
+        />
+      )}
+      <Tabs
+        defaultActiveKey="overview"
+        items={[
+          { key: 'overview', label: t('storedetail.overviewTab'), children: <StoreBusinessOverview storeId={parsedStoreId} /> },
+          { key: 'settings', label: t('stores.settings'), children: settingsTab },
+        ]}
+      />
     </div>
+  );
+}
+
+/**
+ * Item 1: store detail "Business Overview" tab, built entirely from the existing
+ * `storeBusinessApi` mock data (GMV/orders trend, ad metrics, after-sales, inventory,
+ * top products) that was fully modeled but unused until now.
+ */
+function StoreBusinessOverview({ storeId }: { storeId: AllMallId | undefined }) {
+  const { t } = useI18n();
+  const { data: detail, isLoading } = useQuery({
+    queryKey: ['storeBusiness', storeId],
+    queryFn: () => storeBusinessApi.getDetail(storeId!),
+    enabled: storeId !== undefined,
+  });
+
+  if (isLoading || !detail) {
+    return <Typography.Text type="secondary">{t('common.loading')}</Typography.Text>;
+  }
+
+  const gmvChange = detail.gmv.yesterday > 0 ? ((detail.gmv.today - detail.gmv.yesterday) / detail.gmv.yesterday) * 100 : 0;
+  const ordersChange = detail.orders.yesterday > 0 ? ((detail.orders.today - detail.orders.yesterday) / detail.orders.yesterday) * 100 : 0;
+  const rankColors = ['gold', 'default', 'orange'];
+
+  return (
+    <>
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col xs={12} lg={6}>
+          <MetricCard
+            className="stat-card stat-card-primary"
+            title={t('stores.todayGmv')}
+            value={detail.gmv.today}
+            prefix="¥"
+            overlayIcon={<PayCircleOutlined />}
+            helper={
+              <Typography.Text type={gmvChange >= 0 ? 'success' : 'danger'}>
+                {gmvChange >= 0 ? '↑' : '↓'} {t('storedetail.vsYesterday', { value: Math.abs(gmvChange).toFixed(1) })}
+              </Typography.Text>
+            }
+          />
+        </Col>
+        <Col xs={12} lg={6}>
+          <MetricCard
+            className="stat-card stat-card-success"
+            title={t('stores.todayOrders')}
+            value={detail.orders.today}
+            overlayIcon={<ShoppingCartOutlined />}
+            helper={
+              <Typography.Text type={ordersChange >= 0 ? 'success' : 'danger'}>
+                {ordersChange >= 0 ? '↑' : '↓'} {t('storedetail.vsYesterday', { value: Math.abs(ordersChange).toFixed(1) })}
+              </Typography.Text>
+            }
+          />
+        </Col>
+        <Col xs={12} lg={6}>
+          <MetricCard
+            className="stat-card stat-card-purple"
+            title={t('storedetail.aov')}
+            value={detail.aov}
+            prefix="¥"
+            precision={1}
+            overlayIcon={<WalletOutlined />}
+          />
+        </Col>
+        <Col xs={12} lg={6}>
+          <MetricCard
+            className="stat-card stat-card-warning"
+            title={t('storedetail.storeRating')}
+            value={detail.afterSales.storeRating}
+            precision={1}
+            suffix="/5"
+            overlayIcon={<StarOutlined />}
+          />
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col xs={24} lg={14}>
+          <DetailSection title={<><LineChartOutlined /> {t('storedetail.trendTitle')}</>}>
+            <TrendBarChart
+              ariaLabel={t('storedetail.trendTitle')}
+              points={detail.gmv.trend.map((point, i) => ({
+                key: point.date,
+                label: point.date,
+                valueLabel: `¥${point.value.toLocaleString()}`,
+                bars: [
+                  { value: point.value, title: `GMV: ¥${point.value.toLocaleString()}`, className: 'trend-bar-gmv', minHeight: 10 },
+                  {
+                    value: detail.orders.trend[i]?.value ?? 0,
+                    title: `${t('stores.todayOrders')}: ${detail.orders.trend[i]?.value ?? 0}`,
+                    className: 'trend-bar-orders',
+                    minHeight: 6,
+                  },
+                ],
+              }))}
+            />
+            <div className="chart-legend">
+              <span><i className="legend-dot legend-gmv" />GMV</span>
+              <span><i className="legend-dot legend-orders" />{t('stores.todayOrders')}</span>
+            </div>
+          </DetailSection>
+        </Col>
+        <Col xs={24} lg={10}>
+          <DetailSection title={<><ThunderboltOutlined /> {t('storedetail.adPanel')}</>}>
+            <Row gutter={12} style={{ marginBottom: 12 }}>
+              <Col span={12}><Statistic title={t('storedetail.adSpendToday')} value={detail.adMetrics.todaySpend} prefix="¥" /></Col>
+              <Col span={12}><Statistic title={t('storedetail.adRoas')} value={detail.adMetrics.roas} precision={2} suffix="×" /></Col>
+              <Col span={12}><Statistic title={t('storedetail.adCpc')} value={detail.adMetrics.cpc} prefix="¥" precision={2} /></Col>
+              <Col span={12}><Statistic title={t('storedetail.adCtr')} value={detail.adMetrics.ctr} suffix="%" precision={1} /></Col>
+            </Row>
+            <Progress
+              percent={Math.min(100, Math.round((detail.adMetrics.todaySpend / detail.adMetrics.budgetLimit) * 100))}
+              size="small"
+              format={(p) => `${p}% ${t('storedetail.adBudgetUsage')}`}
+            />
+            <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: 12, marginBottom: 4 }}>
+              {t('storedetail.campaigns')}
+            </Typography.Paragraph>
+            <Space direction="vertical" size={4} style={{ width: '100%' }}>
+              {detail.adMetrics.campaigns.map((c) => (
+                <div key={c.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                  <Typography.Text ellipsis style={{ maxWidth: 150 }}>{c.name}</Typography.Text>
+                  <Space size={8}>
+                    <Typography.Text type="secondary">¥{c.spend}</Typography.Text>
+                    <Tag color={c.status === 'active' ? 'green' : c.status === 'warning' ? 'orange' : 'default'}>{c.roi.toFixed(1)}×</Tag>
+                  </Space>
+                </div>
+              ))}
+            </Space>
+          </DetailSection>
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col xs={24} lg={12}>
+          <DescriptionPanel
+            title={<><CustomerServiceOutlined /> {t('storedetail.afterSalesPanel')}</>}
+            items={[
+              { label: t('storedetail.returnRate'), value: `${detail.afterSales.returnRate}%` },
+              { label: t('storedetail.returnAmount'), value: `¥${detail.afterSales.returnAmount.toLocaleString()}` },
+              { label: t('storedetail.negativeReviews'), value: detail.afterSales.negativeReviews },
+              { label: t('storedetail.unresolvedReviews'), value: detail.afterSales.unresolvedReviews },
+              { label: t('storedetail.disputes'), value: `${detail.afterSales.disputes.pending} / ${detail.afterSales.disputes.processing}` },
+            ]}
+          />
+        </Col>
+        <Col xs={24} lg={12}>
+          <DetailSection title={<><WarningOutlined /> {t('storedetail.inventoryPanel')}</>}>
+            <Row gutter={12} style={{ marginBottom: detail.inventory.lowStockItems.length ? 12 : 0 }}>
+              <Col span={6}><Statistic title={t('storedetail.totalSkus')} value={detail.inventory.totalSkus} /></Col>
+              <Col span={6}><Statistic title={t('storedetail.lowStock')} value={detail.inventory.lowStockCount} valueStyle={{ color: 'var(--ark-orange)' }} /></Col>
+              <Col span={6}><Statistic title={t('storedetail.outOfStock')} value={detail.inventory.outOfStockCount} valueStyle={{ color: 'var(--ark-red)' }} /></Col>
+              <Col span={6}><Statistic title={t('storedetail.slowMoving')} value={detail.inventory.slowMovingCount} /></Col>
+            </Row>
+            {detail.inventory.lowStockItems.length > 0 && (
+              <Table
+                size="small"
+                pagination={false}
+                rowKey="sku"
+                dataSource={detail.inventory.lowStockItems}
+                columns={[
+                  { title: t('storedetail.lowStockSku'), dataIndex: 'sku', width: 110 },
+                  { title: t('storedetail.lowStockName'), dataIndex: 'name' },
+                  { title: t('storedetail.lowStockStock'), dataIndex: 'stock', width: 70 },
+                  { title: t('storedetail.lowStockSafety'), dataIndex: 'safetyStock', width: 90 },
+                ]}
+              />
+            )}
+          </DetailSection>
+        </Col>
+      </Row>
+
+      <DetailSection title={<><TrophyOutlined /> {t('storedetail.topProducts')}</>}>
+        <Space direction="vertical" size={8} style={{ width: '100%' }}>
+          {detail.topProducts.map((product, i) => (
+            <div key={product.sku} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Tag color={rankColors[i] ?? 'default'} style={{ minWidth: 24, textAlign: 'center' }}>{i + 1}</Tag>
+              <Typography.Text style={{ flex: 1 }} ellipsis>{product.name}</Typography.Text>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>{product.orders} {t('storedetail.productOrders')}</Typography.Text>
+              <Typography.Text strong>¥{product.gmv.toLocaleString()}</Typography.Text>
+            </div>
+          ))}
+        </Space>
+      </DetailSection>
+    </>
   );
 }

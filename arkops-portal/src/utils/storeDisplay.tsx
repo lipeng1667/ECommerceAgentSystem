@@ -19,6 +19,18 @@ import {
 import { Tag } from 'antd';
 import type { StoreStatus } from '../types/domain';
 
+/** Platform code → display name mapping — used in store list/detail pages */
+export const PLATFORM_NAMES: Record<string, string> = {
+  pinduoduo: '拼多多',
+  taobao: '淘宝',
+  jd: '京东',
+};
+
+/** Resolves a platform code to its display name, falling back to the raw code for unknown platforms */
+export function getPlatformName(platform: string): string {
+  return PLATFORM_NAMES[platform] ?? platform;
+}
+
 /** Service type icon mapping — used in store connection lists */
 export const SERVICE_ICONS: Record<string, JSX.Element> = {
   advertising: <ThunderboltOutlined />,
@@ -57,5 +69,5 @@ export function renderSessionTag(status: StoreStatus): JSX.Element {
 
 /** Session health dot color for inline display */
 export function getSessionHealthColor(status: StoreStatus): string {
-  return SESSION_HEALTH_COLOR[status] ?? '#94a3b8';
+  return SESSION_HEALTH_COLOR[status];
 }

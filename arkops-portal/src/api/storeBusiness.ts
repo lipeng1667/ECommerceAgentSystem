@@ -147,6 +147,9 @@ const details: Record<AllMallId, StoreBusinessDetail> = {
 };
 
 export const storeBusinessApi = {
+  /** All known store business records, used to key list-page metrics by store id (item 3). */
+  list: (): Promise<StoreBusinessDetail[]> => mockDelay(Object.values(details)),
+
   getDetail: (storeId: AllMallId): Promise<StoreBusinessDetail | undefined> =>
     mockDelay(details[storeId] ?? {
       storeId,
