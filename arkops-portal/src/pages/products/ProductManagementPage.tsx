@@ -516,8 +516,21 @@ export function ProductManagementPage() {
               items: [
                 { key: 'manual', label: t('products.createManual') },
                 { key: 'recognize', label: t('products.createRecognize') },
+                {
+                  key: 'agent',
+                  icon: <RobotOutlined />,
+                  label: (
+                    <div>
+                      <div>{t('products.createViaAgent')}</div>
+                      <Typography.Text type="secondary" style={{ fontSize: 11 }}>{t('products.createViaAgentHint')}</Typography.Text>
+                    </div>
+                  ),
+                },
               ],
-              onClick: ({ key }) => setCreateModalMode(key as 'manual' | 'recognize'),
+              onClick: ({ key }) => {
+                if (key === 'agent') { navigate('/agents/product_launch'); return; }
+                setCreateModalMode(key as 'manual' | 'recognize');
+              },
             }}
           >
             <Button type="primary" icon={<PlusOutlined />}>{t('products.newProduct')} <DownOutlined /></Button>
@@ -535,22 +548,6 @@ export function ProductManagementPage() {
         stores={stores}
         t={t}
       />
-
-      {/* Agent 联动提示 */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '10px 16px', marginBottom: 16,
-        background: 'color-mix(in srgb, var(--ark-purple) 6%, var(--ark-panel))',
-        borderRadius: 8, border: '1px solid color-mix(in srgb, var(--ark-purple) 24%, var(--ark-border))',
-      }}>
-        <Space>
-          <RobotOutlined style={{ color: 'var(--ark-purple)' }} />
-          <Typography.Text style={{ fontSize: 13 }}>{t('products.agentNote')}</Typography.Text>
-        </Space>
-        <Link to="/agents/product_launch">
-          <Button size="small" icon={<RobotOutlined />}>Agent 详情 →</Button>
-        </Link>
-      </div>
 
       <Row gutter={[16, 16]} className="store-kpi-row" style={{ marginBottom: 24 }}>
         <Col xs={12} sm={6}>
