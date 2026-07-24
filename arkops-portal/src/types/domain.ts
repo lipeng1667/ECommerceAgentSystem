@@ -605,3 +605,76 @@ export interface ProductMergeSuggestion {
   matchFactors: string[];
   createdAt: string;
 }
+
+// ===== Smart Sync (Products) — one-way platform → AllMall read-only pull =====
+//
+// The system proactively syncs, reconciles, and pre-computes recommendations in the
+// background; the merchant reviews a results digest and confirms (mostly one-click)
+// instead of operating step by step. Sync only pulls; listing/price pushes back to a
+// platform go only through the existing publish flow (list-to-store, edit listing).
+//
+// Two tiers: Tier 0/1 changes are low-risk and applied automatically (price/stock
+// updates, delists, and ≥95%-confidence/same-SPU matches); Tier 2 changes need a human
+// call and surface as Action Inbox decisions with an AI-recommended default.
+
+export type SyncRunStatus = 'idle' | 'running' | 'success' | 'failed';
+
+/** A low-risk change the sync engine applied automatically, with no review needed (Tier 0/1). */
+export interface AutoSyncChange {
+  id: AllMallId;
+  type: 'price_update' | 'stock_update' | 'delist' | 'auto_merge';
+  productId: AllMallId;
+  storeId?: AllMallId;
+  summary: string;
+  at: string;
+}
+
+/** The kinds of decisions a sync pass can leave pending for a human (Tier 2). 'store_relogin' is represented by the existing relogin inbox item, not a stored record here. */
+export type SyncDecisionType = 'new_product' | 'merge_suggestion' | 'field_conflict' | 'store_relogin';
+
+/** One store's health as of the last sync pass — derived, not stored redundantly. */
+export interface StoreSyncHealth {
+  storeId: AllMallId;
+  lastSyncedAt: string | null;
+  needsRelogin: boolean;
+  /** Connected but hasn't synced recently. */
+  stale: boolean;
+}
+
+/** The digest of one sync pass — what the merchant reviews instead of operating step by step. */
+export interface SyncResult {
+  startedAt: string;
+  lastSyncedAt: string;
+  status: SyncRunStatus;
+  autoApplied: AutoSyncChange[];
+  pendingDecisionCount: number;
+  perStore: StoreSyncHealth[];
+}
+
+/** A platform listing the sync pass couldn't confidently match to an existing master (Tier 2). */
+export interface NewProductCandidate {
+  id: AllMallId;
+  storeId: AllMallId;
+  platformSkuRef: string;
+  name: string;
+  images: string[];
+  category: string;
+  cost: number;
+  sellingPrice: number;
+  recommendation: 'create_new' | 'likely_duplicate';
+  /** Set when recommendation is 'likely_duplicate'. */
+  possibleDuplicateOfProductId?: AllMallId;
+  createdAt: string;
+}
+
+/** A manually-locked master field the platform tried to change during sync (Tier 2, D6 sub-decision 2). */
+export interface FieldConflict {
+  id: AllMallId;
+  productId: AllMallId;
+  storeId: AllMallId;
+  field: 'name' | 'category' | 'cost' | 'description';
+  yourValue: string;
+  platformValue: string;
+  recommendation: 'keep_yours' | 'accept_platform';
+  createdAt: string;
+}

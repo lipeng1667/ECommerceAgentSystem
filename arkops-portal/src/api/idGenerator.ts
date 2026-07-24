@@ -13,13 +13,18 @@
  *   Approvals:         5000 - 5999
  *   AuditLogs:         6000 - 6999
  *   Policies:          8000 - 8999
+ *   AutoSyncChanges:      9000 - 9299
+ *   NewProductCandidates: 9300 - 9599
+ *   FieldConflicts:       9600 - 9899
  *   Custom Models:  custom_<timestamp>
  *
  * Author: AI Optimization
  * Created: 2026-07-16
  */
 
-type EntityDomain = 'stores' | 'connections' | 'tasks' | 'products' | 'productListings' | 'productMergeSuggestions' | 'approvals' | 'auditLogs' | 'policies' | 'models';
+type EntityDomain =
+  | 'stores' | 'connections' | 'tasks' | 'products' | 'productListings' | 'productMergeSuggestions'
+  | 'approvals' | 'auditLogs' | 'policies' | 'autoSyncChanges' | 'newProductCandidates' | 'fieldConflicts' | 'models';
 
 const ID_RANGES: Record<EntityDomain, { base: number; max: number }> = {
   stores:                  { base: 1000, max: 1999 },
@@ -31,6 +36,9 @@ const ID_RANGES: Record<EntityDomain, { base: number; max: number }> = {
   approvals:               { base: 5000, max: 5999 },
   auditLogs:               { base: 6000, max: 6999 },
   policies:                { base: 8000, max: 8999 },
+  autoSyncChanges:         { base: 9000, max: 9299 },
+  newProductCandidates:    { base: 9300, max: 9599 },
+  fieldConflicts:          { base: 9600, max: 9899 },
   models:                  { base: 0, max: 0 }, // Uses custom_ prefix
 };
 
