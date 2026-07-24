@@ -361,6 +361,26 @@ export const syncApi = {
    */
   runSync: (): Promise<SyncResult> => {
     const startedAt = new Date().toISOString();
+
+    // A pass needs at least one reachable (connected) store with data to pull from —
+    // fails with the last successful time kept intact, per the "failed-with-retry"
+    // state, rather than pretending nothing changed. Demoable by revoking every store
+    // that has listings (e.g. via the store detail page's revoke flow) and re-checking.
+    const reachableStores = stores.filter((s) => s.status === 'connected' && productListings.some((l) => l.storeId === s.id));
+    if (reachableStores.length === 0) {
+      const failedResult: SyncResult = {
+        startedAt,
+        lastSyncedAt: lastSyncResult?.lastSyncedAt ?? startedAt,
+        status: 'failed',
+        autoApplied: [],
+        pendingDecisionCount: countPendingDecisions(),
+        perStore: computeStoreHealth(),
+        errorMessage: '没有可访问的已连接店铺，请检查店铺授权状态后重试',
+      };
+      lastSyncResult = failedResult;
+      return mockDelay(failedResult, 700);
+    }
+
     const autoApplied: AutoSyncChange[] = [];
 
     const logAuto = (change: Omit<AutoSyncChange, 'id' | 'at'>) => {

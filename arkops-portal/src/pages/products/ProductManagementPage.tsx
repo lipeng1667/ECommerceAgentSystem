@@ -1,5 +1,6 @@
 import {
   CheckCircleOutlined,
+  CloseCircleOutlined,
   DownOutlined,
   EditOutlined,
   PlusOutlined,
@@ -10,7 +11,7 @@ import {
   WarningOutlined
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, Col, Dropdown, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Tabs, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Col, Dropdown, Form, Input, InputNumber, Modal, Popconfirm, Progress, Row, Select, Space, Tabs, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useMemo, useState } from 'react';
@@ -175,7 +176,7 @@ const AUTO_CHANGE_TYPE_COLOR: Record<AutoSyncChange['type'], string> = {
  * current?" uncertainty a silent sync leaves behind.
  */
 function SyncDigestCard({
-  result, log, expanded, onToggleExpanded, onRecheck, rechecking, t,
+  result, log, expanded, onToggleExpanded, onRecheck, rechecking, stores, t,
 }: {
   result: SyncResult | null | undefined;
   log: AutoSyncChange[];
@@ -183,18 +184,31 @@ function SyncDigestCard({
   onToggleExpanded: () => void;
   onRecheck: () => void;
   rechecking: boolean;
+  stores: Store[];
   t: TranslateFn;
 }) {
   const hasRun = !!result;
+  const failed = result?.status === 'failed';
   const autoCount = result?.autoApplied.length ?? 0;
   const pendingCount = result?.pendingDecisionCount ?? 0;
-  const feedback = !hasRun
-    ? t('products.syncNeverRun')
-    : autoCount > 0
-      ? t('products.syncFoundSummary', { auto: autoCount, pending: pendingCount })
-      : pendingCount > 0
-        ? t('products.syncUpToDateWithPending', { pending: pendingCount })
-        : t('products.syncUpToDateClean');
+  // First-ever sync is a bigger deal than a routine re-check — a distinct progress
+  // treatment instead of just a small button spinner.
+  const firstSyncInProgress = rechecking && !hasRun;
+
+  const feedback = failed
+    ? t('products.syncFailed', { error: result!.errorMessage ?? '' })
+    : !hasRun
+      ? t('products.syncNeverRun')
+      : autoCount > 0
+        ? t('products.syncFoundSummary', { auto: autoCount, pending: pendingCount })
+        : pendingCount > 0
+          ? t('products.syncUpToDateWithPending', { pending: pendingCount })
+          : t('products.syncUpToDateClean');
+
+  // Stale-or-offline (amber): independent of whether the last pass found changes —
+  // a store can be unreachable at any time. Reuses store status a merchant already
+  // knows from the store list rather than inventing a parallel health indicator.
+  const troubledStores = (result?.perStore ?? []).filter((s) => s.needsRelogin || s.stale);
 
   return (
     <Card size="small" style={{ marginBottom: 16 }}>
@@ -208,20 +222,37 @@ function SyncDigestCard({
           </Typography.Text>
         </Space>
         <Button size="small" icon={<SyncOutlined spin={rechecking} />} loading={rechecking} onClick={onRecheck}>
-          {t('products.recheckNow')}
+          {failed ? t('products.retryNow') : t('products.recheckNow')}
         </Button>
       </div>
+      {firstSyncInProgress && <Progress percent={70} status="active" showInfo={false} size="small" style={{ marginTop: 8 }} />}
       <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
         <Space size={6}>
-          {hasRun && autoCount === 0 && pendingCount === 0 && <CheckCircleOutlined style={{ color: 'var(--ark-green)' }} />}
-          <Typography.Text style={{ fontSize: 13 }}>{feedback}</Typography.Text>
+          {failed && <CloseCircleOutlined style={{ color: 'var(--ark-red)' }} />}
+          {!failed && hasRun && autoCount === 0 && pendingCount === 0 && <CheckCircleOutlined style={{ color: 'var(--ark-green)' }} />}
+          <Typography.Text type={failed ? 'danger' : undefined} style={{ fontSize: 13 }}>{feedback}</Typography.Text>
         </Space>
-        {pendingCount > 0 && (
+        {!failed && pendingCount > 0 && (
           <Link to="/inbox">
             <Button size="small" type="link">{t('products.goToInboxAction')}</Button>
           </Link>
         )}
       </div>
+      {troubledStores.length > 0 && (
+        <Alert
+          type="warning"
+          showIcon
+          icon={<WarningOutlined />}
+          style={{ marginTop: 8, padding: '4px 10px' }}
+          message={
+            <Typography.Text style={{ fontSize: 12 }}>
+              {t('products.staleStoresWarning', {
+                stores: troubledStores.map((s) => stores.find((store) => store.id === s.storeId)?.name ?? '').filter(Boolean).join('、'),
+              })}
+            </Typography.Text>
+          }
+        />
+      )}
       {log.length > 0 && (
         <div style={{ marginTop: 8 }}>
           <Button type="link" size="small" style={{ padding: 0 }} icon={expanded ? <DownOutlined /> : <RightOutlined />} onClick={onToggleExpanded}>
@@ -320,7 +351,11 @@ export function ProductManagementPage() {
       queryClient.invalidateQueries({ queryKey: ['productMergeSuggestions'] });
       queryClient.invalidateQueries({ queryKey: ['fieldConflicts'] });
       // Always give feedback either way — resolves "am I current?" (Node 4).
-      message.success(result.autoApplied.length > 0 ? t('products.syncFoundChanges', { count: result.autoApplied.length }) : t('products.syncUpToDate'));
+      if (result.status === 'failed') {
+        message.error(t('products.syncFailed', { error: result.errorMessage ?? '' }));
+      } else {
+        message.success(result.autoApplied.length > 0 ? t('products.syncFoundChanges', { count: result.autoApplied.length }) : t('products.syncUpToDate'));
+      }
     }
   });
   const mergeMutation = useMutation({
@@ -497,6 +532,7 @@ export function ProductManagementPage() {
         onToggleExpanded={() => setLogExpanded((prev) => !prev)}
         onRecheck={() => syncMutation.mutate()}
         rechecking={syncMutation.isPending}
+        stores={stores}
         t={t}
       />
 

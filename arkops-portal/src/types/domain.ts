@@ -649,11 +649,14 @@ export interface StoreSyncHealth {
 /** The digest of one sync pass — what the merchant reviews instead of operating step by step. */
 export interface SyncResult {
   startedAt: string;
+  /** Timestamp of the last *successful* pass — kept as-is (not overwritten) on failure. */
   lastSyncedAt: string;
   status: SyncRunStatus;
   autoApplied: AutoSyncChange[];
   pendingDecisionCount: number;
   perStore: StoreSyncHealth[];
+  /** Set when status is 'failed'. */
+  errorMessage?: string;
 }
 
 /** A platform listing the sync pass couldn't confidently match to an existing master (Tier 2). */
