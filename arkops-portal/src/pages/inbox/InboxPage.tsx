@@ -29,6 +29,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Badge, Button, Card, List, Popconfirm, Segmented, Space, Tag, Typography, message } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { approvalsApi } from '../../api/approvals';
 import { exceptionsApi } from '../../api/exceptions';
@@ -99,6 +100,40 @@ const KIND_TAG_COLORS: Record<InboxItemKind, string> = {
   product_merge: 'gold',
   product_conflict: 'volcano'
 };
+
+type TranslateFn = ReturnType<typeof useI18n>['t'];
+
+/**
+ * Field-conflict comparison (Node 7): platform value vs. your (locked) value, side by
+ * side, with the recommended option highlighted — a basic version now; reconciling
+ * several conflicting fields on one product into a single decision surface is deferred.
+ */
+function FieldConflictComparison({ conflict, t }: { conflict: FieldConflict; t: TranslateFn }) {
+  const highlightStyle = (isRecommended: boolean): CSSProperties => ({
+    padding: '2px 8px',
+    borderRadius: 4,
+    fontSize: 12,
+    background: isRecommended ? 'color-mix(in srgb, var(--ark-green) 12%, var(--ark-panel))' : 'var(--ark-panel-soft)',
+    border: `1px solid ${isRecommended ? 'var(--ark-green)' : 'var(--ark-border-soft)'}`,
+  });
+
+  return (
+    <div style={{ marginBottom: 4 }}>
+      <Typography.Text type="secondary" style={{ fontSize: 12 }}>{t(FIELD_LABEL_KEYS[conflict.field])}：</Typography.Text>
+      <Space size={8} wrap style={{ marginTop: 2 }}>
+        <div>
+          <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('inbox.yourValueLabel')}</Typography.Text>
+          <span style={highlightStyle(conflict.recommendation === 'keep_yours')}>{conflict.yourValue}</span>
+        </div>
+        <Typography.Text type="secondary" style={{ fontSize: 11 }}>vs</Typography.Text>
+        <div>
+          <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('inbox.platformValueLabel')}</Typography.Text>
+          <span style={highlightStyle(conflict.recommendation === 'accept_platform')}>{conflict.platformValue}</span>
+        </div>
+      </Space>
+    </div>
+  );
+}
 
 function isValidFilter(value: string | null): value is InboxFilter {
   return (
@@ -584,13 +619,17 @@ export function InboxPage() {
                           <Typography.Text strong>{entry.title}</Typography.Text>
                         )}
                       </div>
-                      <Typography.Paragraph
-                        type="secondary"
-                        style={{ marginBottom: 4, fontSize: 12 }}
-                        ellipsis={{ rows: 2 }}
-                      >
-                        {entry.summary}
-                      </Typography.Paragraph>
+                      {entry.kind === 'product_conflict' && entry.fieldConflict ? (
+                        <FieldConflictComparison conflict={entry.fieldConflict} t={t} />
+                      ) : (
+                        <Typography.Paragraph
+                          type="secondary"
+                          style={{ marginBottom: 4, fontSize: 12 }}
+                          ellipsis={{ rows: 2 }}
+                        >
+                          {entry.summary}
+                        </Typography.Paragraph>
+                      )}
                       <Typography.Text type="secondary" style={{ fontSize: 11 }}>
                         {entry.storeName}
                         {entry.approval ? ` · ${t(`agent.${entry.approval.agentType}`)}` : ''}
