@@ -22,7 +22,7 @@
  */
 import { stores } from './mockData';
 import { mockDelay } from './client';
-import { appendItem, removeWhere, replaceItem } from './mockRepository';
+import { appendItem, insertFirst, removeWhere, replaceItem } from './mockRepository';
 import { nextId } from './idGenerator';
 import { recordAuditLog } from './auditLogger';
 import type {
@@ -315,6 +315,23 @@ const newProductCandidates: NewProductCandidate[] = [];
 const fieldConflicts: FieldConflict[] = [];
 let lastSyncResult: SyncResult | null = null;
 
+/**
+ * Persistent transparency log across every sync pass (not just the latest), so the
+ * "auto-handled" summary has real history to expand into on first page load rather than
+ * only showing something after the merchant clicks re-check. Newest first, capped.
+ */
+const autoChangeLog: AutoSyncChange[] = [
+  {
+    id: 9002, type: 'price_update', productId: 4007, storeId: 1003,
+    summary: '定制手机壳：售价 ¥13.99 → ¥12.99（京东自营店）', at: '2026-07-23 16:10',
+  },
+  {
+    id: 9001, type: 'delist', productId: 4005, storeId: 1001,
+    summary: 'LED 露营灯：平台已下架（拼多多旗舰店），建议核实原因', at: '2026-06-30 10:00',
+  },
+];
+const AUTO_CHANGE_LOG_LIMIT = 50;
+
 /** Connected but hasn't synced in this long counts as stale (perStore health). */
 const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
@@ -343,6 +360,9 @@ function countPendingDecisions(): number {
 export const syncApi = {
   getLastResult: (): Promise<SyncResult | null> => mockDelay(lastSyncResult, 60),
 
+  /** Full auto-handled history (newest first, capped) — the expandable transparency log. */
+  getAutoChangeLog: (): Promise<AutoSyncChange[]> => mockDelay([...autoChangeLog], 60),
+
   /**
    * Simulates one sync pass. Every rule checks before applying, so a pass that finds
    * nothing new correctly reports "up to date" rather than re-firing the same change —
@@ -354,7 +374,11 @@ export const syncApi = {
     const autoApplied: AutoSyncChange[] = [];
 
     const logAuto = (change: Omit<AutoSyncChange, 'id' | 'at'>) => {
-      autoApplied.push({ ...change, id: nextId('autoSyncChanges', autoApplied.length), at: startedAt });
+      const entry: AutoSyncChange = { ...change, id: nextId('autoSyncChanges', autoChangeLog.length), at: startedAt };
+      autoApplied.push(entry);
+      // Newest first; capped so the log can't grow unbounded across many sync passes.
+      insertFirst(autoChangeLog, entry);
+      if (autoChangeLog.length > AUTO_CHANGE_LOG_LIMIT) autoChangeLog.length = AUTO_CHANGE_LOG_LIMIT;
       logProductAction(change.productId, '自动同步', change.summary);
     };
 
