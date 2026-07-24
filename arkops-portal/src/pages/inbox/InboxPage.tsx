@@ -32,6 +32,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { approvalsApi } from '../../api/approvals';
 import { exceptionsApi } from '../../api/exceptions';
 import type { ExceptionItem } from '../../api/exceptions';
+import { productListingsApi, productsApi } from '../../api/products';
 import { storesApi } from '../../api/stores';
 import { useAuth } from '../../app/auth';
 import { useI18n } from '../../app/i18n';
@@ -47,7 +48,7 @@ import {
   getApprovalUrgency,
   timeoutConsequenceKey
 } from './urgency';
-import type { Approval, InboxItemKind, Store } from '../../types/domain';
+import type { Approval, InboxItemKind, ProductListing, Store } from '../../types/domain';
 
 type InboxFilter = 'all' | InboxItemKind;
 
@@ -63,16 +64,18 @@ interface InboxEntry {
   approval?: Approval;
   exception?: ExceptionItem;
   store?: Store;
+  listing?: ProductListing;
 }
 
 const KIND_TAG_COLORS: Record<InboxItemKind, string> = {
   approval: 'blue',
   exception: 'orange',
-  relogin: 'red'
+  relogin: 'red',
+  product_draft: 'purple'
 };
 
 function isValidFilter(value: string | null): value is InboxFilter {
-  return value === 'all' || value === 'approval' || value === 'exception' || value === 'relogin';
+  return value === 'all' || value === 'approval' || value === 'exception' || value === 'relogin' || value === 'product_draft';
 }
 
 export function InboxPage() {
@@ -93,6 +96,8 @@ export function InboxPage() {
   const { data: approvals = [] } = useQuery({ queryKey: ['approvals'], queryFn: approvalsApi.list });
   const { data: exceptions = [] } = useQuery({ queryKey: ['exceptions'], queryFn: exceptionsApi.list });
   const { data: stores = [] } = useQuery({ queryKey: ['stores'], queryFn: storesApi.list });
+  const { data: productListings = [] } = useQuery({ queryKey: ['productListings'], queryFn: productListingsApi.list });
+  const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: productsApi.list });
 
   const decide = useMutation({
     mutationFn: ({ approvalId, status, note }: { approvalId: number; status: ApprovalDecision; note?: string }) =>
@@ -160,6 +165,26 @@ export function InboxPage() {
       });
     }
 
+    // D6/§3.14.9: draft/pending_review product listings fold into the inbox — informational,
+    // low urgency (they don't block anything), sorted with everything else by recency.
+    const productById = new Map(products.map((p) => [p.id, p]));
+    for (const listing of productListings) {
+      if (listing.status !== 'draft' && listing.status !== 'pending_review') continue;
+      const product = productById.get(listing.productId);
+      if (!product) continue;
+      const storeName = stores.find((s) => s.id === listing.storeId)?.name ?? '';
+      list.push({
+        key: `product_draft-${listing.id}`,
+        kind: 'product_draft',
+        title: product.name,
+        summary: t(`inbox.productDraftSummary_${listing.status}`, { store: storeName }),
+        storeName,
+        urgencyRank: 3,
+        createdAt: listing.lastSyncedAt,
+        listing
+      });
+    }
+
     return list.sort((a, b) => {
       if (a.urgencyRank !== b.urgencyRank) return a.urgencyRank - b.urgencyRank;
       const remainingA = a.approval ? getApprovalUrgency(a.approval, clock)?.remainingMs : undefined;
@@ -169,10 +194,10 @@ export function InboxPage() {
       if (remainingB !== undefined) return 1;
       return dayjs(b.createdAt ?? 0).valueOf() - dayjs(a.createdAt ?? 0).valueOf();
     });
-  }, [approvals, exceptions, stores, clock, t]);
+  }, [approvals, exceptions, stores, productListings, products, clock, t]);
 
   const counts = useMemo(() => {
-    const byKind: Record<InboxItemKind, number> = { approval: 0, exception: 0, relogin: 0 };
+    const byKind: Record<InboxItemKind, number> = { approval: 0, exception: 0, relogin: 0, product_draft: 0 };
     for (const entry of entries) byKind[entry.kind] += 1;
     return { ...byKind, all: entries.length };
   }, [entries]);
@@ -247,6 +272,18 @@ export function InboxPage() {
         </Button>
       );
     }
+    if (entry.kind === 'product_draft' && entry.listing) {
+      return (
+        <Button
+          size="small"
+          type="primary"
+          icon={<EyeOutlined />}
+          onClick={() => navigate(`/products/${entry.listing!.productId}`)}
+        >
+          {t('inbox.goToListing')}
+        </Button>
+      );
+    }
     return null;
   };
 
@@ -274,7 +311,8 @@ export function InboxPage() {
             { value: 'all', label: `${t('inbox.filterAll')} (${counts.all})` },
             { value: 'approval', label: `${t('inbox.filterApprovals')} (${counts.approval})` },
             { value: 'exception', label: `${t('inbox.filterExceptions')} (${counts.exception})` },
-            { value: 'relogin', label: `${t('inbox.filterRelogin')} (${counts.relogin})` }
+            { value: 'relogin', label: `${t('inbox.filterRelogin')} (${counts.relogin})` },
+            { value: 'product_draft', label: `${t('inbox.filterProductDrafts')} (${counts.product_draft})` }
           ]}
         />
         {visibleEntries.length === 0 ? (

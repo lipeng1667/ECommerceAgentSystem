@@ -1,10 +1,10 @@
-import { EditOutlined, RobotOutlined, SyncOutlined, WarningOutlined } from '@ant-design/icons';
+import { DownOutlined, EditOutlined, PlusOutlined, RobotOutlined, SyncOutlined, WarningOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, Col, Form, Input, InputNumber, Modal, Row, Select, Space, Tag, Typography, message } from 'antd';
+import { Button, Card, Col, Dropdown, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Tabs, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { mergeSuggestionsApi, productListingsApi, productsApi } from '../../api/products';
 import { storesApi } from '../../api/stores';
 import { useAuth } from '../../app/auth';
@@ -18,8 +18,9 @@ import { ListingMatrix } from '../../components/products/ListingMatrix';
 import { StoreConnectionEmptyState } from '../../components/StoreConnectionEmptyState';
 import { DataTableCard } from '../../components/table/DataTableCard';
 import { TableActionGroup } from '../../components/table/TableActionGroup';
+import { CreateProductModal } from './CreateProductModal';
 import { ListToStoreModal } from './ListToStoreModal';
-import type { AllMallId, AttributeProvenance, ListingStatus, Product, ProductListing, Store } from '../../types/domain';
+import type { AllMallId, AttributeProvenance, ListingStatus, Product, ProductListing, ProductMergeSuggestion, Store } from '../../types/domain';
 
 type TranslateFn = ReturnType<typeof useI18n>['t'];
 
@@ -51,6 +52,102 @@ export function ProvenanceTag({ provenance, stores, t }: { provenance: Attribute
   }
   const storeName = stores.find((s) => s.id === provenance.storeId)?.name ?? '';
   return <Tag color="purple" style={{ fontSize: 11 }}>{t('products.provenanceAi', { store: storeName })}</Tag>;
+}
+
+/** One side of a merge-suggestion comparison card (§3.14.8). */
+function MergeCandidate({ product, listings, stores }: { product: Product; listings: ProductListing[]; stores: Store[] }) {
+  const storeNames = listings.map((l) => stores.find((s) => s.id === l.storeId)?.name).filter(Boolean).join('、');
+  return (
+    <Space align="start">
+      <img src={product.images[0]} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
+      <div>
+        <Typography.Text strong>{product.name}</Typography.Text>
+        <br />
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>{product.spuCode} · {priceRangeText(listings)}</Typography.Text>
+        <br />
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>{storeNames}</Typography.Text>
+      </div>
+    </Space>
+  );
+}
+
+/** "待归并" tab (§3.14.8): side-by-side candidate comparison for the 60–95% confidence band. */
+function MergeQueueTab({
+  suggestions, products, listingsByProduct, stores, onMerge, onDismiss, merging, dismissing, t,
+}: {
+  suggestions: ProductMergeSuggestion[];
+  products: Product[];
+  listingsByProduct: Map<AllMallId, ProductListing[]>;
+  stores: Store[];
+  onMerge: (id: AllMallId) => void;
+  onDismiss: (id: AllMallId) => void;
+  merging: boolean;
+  dismissing: boolean;
+  t: TranslateFn;
+}) {
+  const productById = new Map(products.map((p) => [p.id, p]));
+
+  if (suggestions.length === 0) {
+    return <Typography.Paragraph type="secondary" style={{ padding: 24, textAlign: 'center' }}>{t('products.noMergeSuggestions')}</Typography.Paragraph>;
+  }
+
+  return (
+    <Space direction="vertical" size={12} style={{ width: '100%' }}>
+      {suggestions.map((suggestion) => {
+        const productA = productById.get(suggestion.productAId);
+        const productB = productById.get(suggestion.productBId);
+        if (!productA || !productB) return null;
+        return (
+          <Card key={suggestion.id} size="small">
+            <Row gutter={16} align="middle">
+              <Col flex="1 1 260px"><MergeCandidate product={productA} listings={listingsByProduct.get(productA.id) ?? []} stores={stores} /></Col>
+              <Col flex="0 0 100px" style={{ textAlign: 'center' }}>
+                <Tag color={suggestion.confidence >= 80 ? 'orange' : 'gold'}>{t('listing.categoryMatchConfidence', { value: suggestion.confidence })}</Tag>
+              </Col>
+              <Col flex="1 1 260px"><MergeCandidate product={productB} listings={listingsByProduct.get(productB.id) ?? []} stores={stores} /></Col>
+              <Col flex="0 0 auto">
+                <Space>
+                  <Popconfirm title={t('products.mergeConfirm')} onConfirm={() => onMerge(suggestion.id)} okText={t('common.confirm')} cancelText={t('common.cancel')}>
+                    <Button type="primary" loading={merging}>{t('products.merge')}</Button>
+                  </Popconfirm>
+                  <Button onClick={() => onDismiss(suggestion.id)} loading={dismissing}>{t('products.dismiss')}</Button>
+                </Space>
+              </Col>
+            </Row>
+            <Space size={4} wrap style={{ marginTop: 12 }}>
+              {suggestion.matchFactors.map((factor) => <Tag key={factor} style={{ fontSize: 11 }}>{factor}</Tag>)}
+            </Space>
+          </Card>
+        );
+      })}
+    </Space>
+  );
+}
+
+/** "草稿" tab (§3.14.9): read-only — action happens in the unified Action Inbox or the listing matrix. */
+function DraftsTab({ listings, products, stores, t }: { listings: ProductListing[]; products: Product[]; stores: Store[]; t: TranslateFn }) {
+  const productById = new Map(products.map((p) => [p.id, p]));
+  const storeById = new Map(stores.map((s) => [s.id, s]));
+
+  const columns: ColumnsType<ProductListing> = [
+    { title: t('products.product'), key: 'product', render: (_: unknown, l: ProductListing) => {
+      const product = productById.get(l.productId);
+      return product ? <Link to={`/products/${product.id}`}>{product.name}</Link> : '-';
+    } },
+    { title: t('products.store'), key: 'store', render: (_: unknown, l: ProductListing) => storeById.get(l.storeId)?.name ?? '-' },
+    { title: t('products.status'), key: 'status', render: (_: unknown, l: ProductListing) => <Tag color="gold">{t(`listing.${l.status}`)}</Tag> },
+    { title: t('products.price'), key: 'price', align: 'right', render: (_: unknown, l: ProductListing) => `¥${l.sellingPrice.toFixed(2)}` },
+    { title: t('listing.lastSynced'), key: 'sync', render: (_: unknown, l: ProductListing) => dayjs(l.lastSyncedAt).format('YYYY-MM-DD HH:mm') },
+  ];
+
+  return (
+    <>
+      <Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
+        {t('products.draftsReadOnlyNote')} <Link to="/inbox">{t('products.goToInbox')}</Link>
+      </Typography.Paragraph>
+      <DataTableCard<ProductListing> rowKey="id" columns={columns} dataSource={listings} pagination={false} />
+    </>
+  );
 }
 
 export function ProductManagementPage() {
@@ -87,6 +184,9 @@ export function ProductManagementPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editForm] = Form.useForm();
   const [listToStoreTarget, setListToStoreTarget] = useState<{ product: Product; storeId?: AllMallId } | null>(null);
+  const [activeTab, setActiveTab] = useState('products');
+  const [createModalMode, setCreateModalMode] = useState<'manual' | 'recognize' | null>(null);
+  const navigate = useNavigate();
 
   const invalidateListings = () => queryClient.invalidateQueries({ queryKey: ['productListings'] });
 
@@ -115,6 +215,22 @@ export function ProductManagementPage() {
   const syncMutation = useMutation({
     mutationFn: () => productListingsApi.syncAll(),
     onSuccess: () => { invalidateListings(); message.success(t('products.syncDone')); }
+  });
+  const mergeMutation = useMutation({
+    mutationFn: (id: AllMallId) => mergeSuggestionsApi.merge(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      invalidateListings();
+      queryClient.invalidateQueries({ queryKey: ['productMergeSuggestions'] });
+      message.success(t('products.merged'));
+    }
+  });
+  const dismissMutation = useMutation({
+    mutationFn: (id: AllMallId) => mergeSuggestionsApi.dismiss(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['productMergeSuggestions'] });
+      message.success(t('products.dismissed'));
+    }
   });
 
   const matchesKeyword = (product: Product, productListings: ProductListing[]) => {
@@ -251,7 +367,23 @@ export function ProductManagementPage() {
 
   return (
     <div className="page-stack">
-      <PageHeader title={t('products.title')} description={t('products.description')} />
+      <PageHeader
+        title={t('products.title')}
+        description={t('products.description')}
+        actions={
+          <Dropdown
+            menu={{
+              items: [
+                { key: 'manual', label: t('products.createManual') },
+                { key: 'recognize', label: t('products.createRecognize') },
+              ],
+              onClick: ({ key }) => setCreateModalMode(key as 'manual' | 'recognize'),
+            }}
+          >
+            <Button type="primary" icon={<PlusOutlined />}>{t('products.newProduct')} <DownOutlined /></Button>
+          </Dropdown>
+        }
+      />
 
       {/* 同步条（§3.14.5，对标店铺连接同步） */}
       <div style={{
@@ -315,62 +447,107 @@ export function ProductManagementPage() {
           </div>
         </Col>
         <Col xs={12} sm={6}>
-          <MetricCard
-            className="stat-card stat-card-purple"
-            title={t('products.toHandle')}
-            value={mergeCount + draftListingsCount}
-            helper={t('products.toHandleMeta', { merge: mergeCount, drafts: draftListingsCount })}
-          />
+          <div onClick={() => setActiveTab(mergeCount > 0 ? 'merge' : 'drafts')} style={{ cursor: 'pointer' }}>
+            <MetricCard
+              className="stat-card stat-card-purple"
+              title={t('products.toHandle')}
+              value={mergeCount + draftListingsCount}
+              helper={t('products.toHandleMeta', { merge: mergeCount, drafts: draftListingsCount })}
+            />
+          </div>
         </Col>
       </Row>
 
-      <PageFilterBar>
-        <Input.Search placeholder={t('products.searchPlaceholder')} onChange={(e) => setKeyword(e.target.value)} allowClear />
-        <Select
-          value={storeFilter}
-          onChange={(v) => { setStoreFilter(v); if (v === 'all') setListedToggle('any'); }}
-          options={[{ value: 'all', label: t('products.allStores') }, ...stores.map((s) => ({ value: s.id, label: s.name }))]}
-        />
-        <Select
-          value={listedToggle}
-          onChange={setListedToggle}
-          disabled={storeFilter === 'all'}
-          options={[
-            { value: 'any', label: t('products.listedToggleAny') },
-            { value: 'listed', label: t('products.listedToggleListed') },
-            { value: 'not_listed', label: t('products.listedToggleNotListed') },
-          ]}
-        />
-        <Select
-          value={statusFilter}
-          onChange={setStatusFilter}
-          options={[
-            { value: 'all', label: t('products.statusFilterAll') },
-            { value: 'listed', label: t('listing.listed') },
-            { value: 'draft', label: t('listing.draft') },
-            { value: 'pending_review', label: t('listing.pending_review') },
-            { value: 'delisted', label: t('listing.delisted') },
-          ]}
-        />
-        <Select
-          value={stockFilter}
-          onChange={setStockFilter}
-          options={[
-            { value: 'all', label: t('products.stockAll') },
-            { value: 'healthy', label: t('products.stockHealthy') },
-            { value: 'low', label: t('products.stockLow') },
-            { value: 'out', label: t('products.stockOut') },
-          ]}
-        />
-      </PageFilterBar>
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={[
+          {
+            key: 'products',
+            label: t('products.tabAll'),
+            children: (
+              <>
+                <PageFilterBar>
+                  <Input.Search placeholder={t('products.searchPlaceholder')} onChange={(e) => setKeyword(e.target.value)} allowClear />
+                  <Select
+                    value={storeFilter}
+                    onChange={(v) => { setStoreFilter(v); if (v === 'all') setListedToggle('any'); }}
+                    options={[{ value: 'all', label: t('products.allStores') }, ...stores.map((s) => ({ value: s.id, label: s.name }))]}
+                  />
+                  <Select
+                    value={listedToggle}
+                    onChange={setListedToggle}
+                    disabled={storeFilter === 'all'}
+                    options={[
+                      { value: 'any', label: t('products.listedToggleAny') },
+                      { value: 'listed', label: t('products.listedToggleListed') },
+                      { value: 'not_listed', label: t('products.listedToggleNotListed') },
+                    ]}
+                  />
+                  <Select
+                    value={statusFilter}
+                    onChange={setStatusFilter}
+                    options={[
+                      { value: 'all', label: t('products.statusFilterAll') },
+                      { value: 'listed', label: t('listing.listed') },
+                      { value: 'draft', label: t('listing.draft') },
+                      { value: 'pending_review', label: t('listing.pending_review') },
+                      { value: 'delisted', label: t('listing.delisted') },
+                    ]}
+                  />
+                  <Select
+                    value={stockFilter}
+                    onChange={setStockFilter}
+                    options={[
+                      { value: 'all', label: t('products.stockAll') },
+                      { value: 'healthy', label: t('products.stockHealthy') },
+                      { value: 'low', label: t('products.stockLow') },
+                      { value: 'out', label: t('products.stockOut') },
+                    ]}
+                  />
+                </PageFilterBar>
 
-      <DataTableCard<Product>
-        rowKey="id"
-        columns={columns}
-        dataSource={filteredProducts}
-        pagination={{ pageSize: 10, showSizeChanger: true, pageSizeOptions: [10, 20, 50] }}
-        expandable={{ expandedRowRender, rowExpandable: () => true }}
-        scroll={{ x: 1200 }}
+                <DataTableCard<Product>
+                  rowKey="id"
+                  columns={columns}
+                  dataSource={filteredProducts}
+                  pagination={{ pageSize: 10, showSizeChanger: true, pageSizeOptions: [10, 20, 50] }}
+                  expandable={{ expandedRowRender, rowExpandable: () => true }}
+                  scroll={{ x: 1200 }}
+                />
+              </>
+            ),
+          },
+          {
+            key: 'merge',
+            label: `${t('products.tabMerge')} (${mergeCount})`,
+            children: (
+              <MergeQueueTab
+                suggestions={mergeSuggestions}
+                products={products}
+                listingsByProduct={listingsByProduct}
+                stores={stores}
+                onMerge={(id) => mergeMutation.mutate(id)}
+                onDismiss={(id) => dismissMutation.mutate(id)}
+                merging={mergeMutation.isPending}
+                dismissing={dismissMutation.isPending}
+                t={t}
+              />
+            ),
+          },
+          {
+            key: 'drafts',
+            label: `${t('products.tabDrafts')} (${draftListingsCount})`,
+            children: (
+              <DraftsTab
+                listings={listings.filter((l) => l.status === 'draft' || l.status === 'pending_review')}
+                products={products}
+                stores={stores}
+                t={t}
+              />
+            ),
+          },
+        ]}
       />
 
       <Modal
@@ -422,6 +599,16 @@ export function ProductManagementPage() {
         initialStoreId={listToStoreTarget?.storeId}
         onClose={() => setListToStoreTarget(null)}
       />
+
+      {createModalMode && (
+        <CreateProductModal
+          open={!!createModalMode}
+          mode={createModalMode}
+          stores={stores}
+          onClose={() => setCreateModalMode(null)}
+          onCreated={(product) => navigate(`/products/${product.id}`)}
+        />
+      )}
     </div>
   );
 }

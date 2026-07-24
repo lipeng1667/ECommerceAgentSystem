@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Col, Form, Input, InputNumber, Modal, Progress, Radio, Row, Select, Space, Statistic, Tabs, Tag, Typography, message } from 'antd';
+import { Alert, Button, Col, Form, Input, InputNumber, Modal, Progress, Radio, Row, Select, Space, Statistic, Tabs, Tag, Typography, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { mergeSuggestionsApi, productListingsApi, productsApi } from '../../api/products';
 import { storesApi } from '../../api/stores';
@@ -112,6 +112,16 @@ export function ProductDetailPage() {
         <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 12 }}>
           {t('products.hasSuggestionHint')}
         </Typography.Paragraph>
+      )}
+      {listings.length === 0 && (
+        <Alert
+          type="info"
+          showIcon
+          message={t('products.zeroListingTitle')}
+          description={t('products.zeroListingDesc')}
+          action={<Button type="primary" icon={<PlusOutlined />} onClick={() => setListToStoreTarget({})}>{t('products.listToStore')}</Button>}
+          style={{ marginBottom: 16 }}
+        />
       )}
       <div style={{ marginBottom: 12, textAlign: 'right' }}>
         <Button size="small" type="primary" icon={<PlusOutlined />} disabled={availableStores.length === 0} onClick={() => setListToStoreTarget({})}>

@@ -528,7 +528,8 @@ export interface PriorApprovalRecord {
 }
 
 /** WS-B (B1): item kinds aggregated by the unified Action Inbox (/inbox). */
-export type InboxItemKind = 'approval' | 'exception' | 'relogin';
+/** 'product_draft' added in D6/§3.14.9: draft/pending_review product listings fold into the inbox. */
+export type InboxItemKind = 'approval' | 'exception' | 'relogin' | 'product_draft';
 
 // ===== Products (D6: SPU + per-store Listing, product-design.md §3.14) =====
 //
