@@ -22,17 +22,18 @@ import {
   CheckOutlined,
   CloseOutlined,
   EyeOutlined,
-  LoginOutlined
+  LoginOutlined,
+  ThunderboltOutlined
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Badge, Button, Card, List, Segmented, Space, Tag, Typography, message } from 'antd';
+import { Badge, Button, Card, List, Popconfirm, Segmented, Space, Tag, Typography, message } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { approvalsApi } from '../../api/approvals';
 import { exceptionsApi } from '../../api/exceptions';
 import type { ExceptionItem } from '../../api/exceptions';
-import { productListingsApi, productsApi } from '../../api/products';
+import { fieldConflictsApi, mergeSuggestionsApi, newProductCandidatesApi, productListingsApi, productsApi } from '../../api/products';
 import { storesApi } from '../../api/stores';
 import { useAuth } from '../../app/auth';
 import { useI18n } from '../../app/i18n';
@@ -48,7 +49,16 @@ import {
   getApprovalUrgency,
   timeoutConsequenceKey
 } from './urgency';
-import type { Approval, InboxItemKind, ProductListing, Store } from '../../types/domain';
+import type {
+  Approval,
+  FieldConflict,
+  InboxItemKind,
+  NewProductCandidate,
+  Product,
+  ProductListing,
+  ProductMergeSuggestion,
+  Store
+} from '../../types/domain';
 
 type InboxFilter = 'all' | InboxItemKind;
 
@@ -65,17 +75,36 @@ interface InboxEntry {
   exception?: ExceptionItem;
   store?: Store;
   listing?: ProductListing;
+  newProductCandidate?: NewProductCandidate;
+  mergeSuggestion?: ProductMergeSuggestion;
+  fieldConflict?: FieldConflict;
+  /** Whether this entry's recommended action is safe to include in "accept all recommended". */
+  batchable: boolean;
 }
+
+/** Field-conflict labels use the short form (products.descriptionLabel), not the page subtitle (products.description). */
+const FIELD_LABEL_KEYS: Record<FieldConflict['field'], string> = {
+  name: 'products.name',
+  category: 'products.category',
+  cost: 'products.cost',
+  description: 'products.descriptionLabel'
+};
 
 const KIND_TAG_COLORS: Record<InboxItemKind, string> = {
   approval: 'blue',
   exception: 'orange',
   relogin: 'red',
-  product_draft: 'purple'
+  product_draft: 'purple',
+  product_new: 'cyan',
+  product_merge: 'gold',
+  product_conflict: 'volcano'
 };
 
 function isValidFilter(value: string | null): value is InboxFilter {
-  return value === 'all' || value === 'approval' || value === 'exception' || value === 'relogin' || value === 'product_draft';
+  return (
+    value === 'all' || value === 'approval' || value === 'exception' || value === 'relogin' ||
+    value === 'product_draft' || value === 'product_new' || value === 'product_merge' || value === 'product_conflict'
+  );
 }
 
 export function InboxPage() {
@@ -98,6 +127,9 @@ export function InboxPage() {
   const { data: stores = [] } = useQuery({ queryKey: ['stores'], queryFn: storesApi.list });
   const { data: productListings = [] } = useQuery({ queryKey: ['productListings'], queryFn: productListingsApi.list });
   const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: productsApi.list });
+  const { data: newProductCandidates = [] } = useQuery({ queryKey: ['newProductCandidates'], queryFn: newProductCandidatesApi.list });
+  const { data: mergeSuggestions = [] } = useQuery({ queryKey: ['productMergeSuggestions'], queryFn: mergeSuggestionsApi.list });
+  const { data: fieldConflicts = [] } = useQuery({ queryKey: ['fieldConflicts'], queryFn: fieldConflictsApi.list });
 
   const decide = useMutation({
     mutationFn: ({ approvalId, status, note }: { approvalId: number; status: ApprovalDecision; note?: string }) =>
@@ -119,6 +151,49 @@ export function InboxPage() {
     }
   });
 
+  // Smart Sync Tier 2 decisions (Node 3): one-click accept/dismiss inline in the inbox,
+  // reusing the same mutations the Products page's merge queue and detail page use.
+  const acceptNewProductMutation = useMutation({
+    mutationFn: (id: number) => newProductCandidatesApi.accept(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['newProductCandidates'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['productListings'] });
+      message.success(t('inbox.newProductAccepted'));
+    }
+  });
+  const dismissNewProductMutation = useMutation({
+    mutationFn: (id: number) => newProductCandidatesApi.dismiss(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['newProductCandidates'] });
+      message.success(t('inbox.dismissed'));
+    }
+  });
+  const mergeProductsMutation = useMutation({
+    mutationFn: (id: number) => mergeSuggestionsApi.merge(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['productMergeSuggestions'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['productListings'] });
+      message.success(t('inbox.merged'));
+    }
+  });
+  const dismissMergeMutation = useMutation({
+    mutationFn: (id: number) => mergeSuggestionsApi.dismiss(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['productMergeSuggestions'] });
+      message.success(t('inbox.dismissed'));
+    }
+  });
+  const resolveFieldConflictMutation = useMutation({
+    mutationFn: (input: { id: number; decision: 'keep_yours' | 'accept_platform' }) => fieldConflictsApi.resolve(input.id, input.decision),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fieldConflicts'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      message.success(t('inbox.conflictResolved'));
+    }
+  });
+
   const entries = useMemo<InboxEntry[]>(() => {
     const list: InboxEntry[] = [];
 
@@ -133,7 +208,8 @@ export function InboxPage() {
         storeName: approval.storeName,
         urgencyRank: urgency ? (urgency.tone === 'critical' ? 0 : urgency.tone === 'warning' ? 1 : 2) : 2,
         createdAt: approval.requestedAt,
-        approval
+        approval,
+        batchable: false
       });
     }
 
@@ -147,7 +223,8 @@ export function InboxPage() {
         storeName: exception.storeName,
         urgencyRank: exception.level === 'critical' ? 0 : exception.level === 'warning' ? 1 : 2,
         createdAt: exception.createdAt,
-        exception
+        exception,
+        batchable: false
       });
     }
 
@@ -161,7 +238,8 @@ export function InboxPage() {
         storeName: store.name,
         urgencyRank: 0,
         createdAt: store.lastVerifiedAt,
-        store
+        store,
+        batchable: false
       });
     }
 
@@ -181,7 +259,67 @@ export function InboxPage() {
         storeName,
         urgencyRank: 3,
         createdAt: listing.lastSyncedAt,
-        listing
+        listing,
+        batchable: false
+      });
+    }
+
+    // Smart Sync Tier 2 (Node 3): possibly-new products, merge suggestions, and locked-
+    // field conflicts all surface here too, each with a one-click accept for the AI
+    // recommendation. Only unambiguous recommendations are "batchable" — a candidate
+    // the AI itself flagged as a likely duplicate needs a person to look, not a
+    // silent default, so it's excluded from "accept all recommended".
+    for (const candidate of newProductCandidates) {
+      const storeName = stores.find((s) => s.id === candidate.storeId)?.name ?? '';
+      const duplicateOf = candidate.possibleDuplicateOfProductId != null
+        ? products.find((p) => p.id === candidate.possibleDuplicateOfProductId)
+        : undefined;
+      list.push({
+        key: `product_new-${candidate.id}`,
+        kind: 'product_new',
+        title: candidate.name,
+        summary: candidate.recommendation === 'create_new'
+          ? t('inbox.newProductSummaryCreate')
+          : t('inbox.newProductSummaryDuplicate', { product: duplicateOf?.name ?? '' }),
+        storeName,
+        urgencyRank: 2,
+        createdAt: candidate.createdAt,
+        newProductCandidate: candidate,
+        batchable: candidate.recommendation === 'create_new'
+      });
+    }
+
+    for (const suggestion of mergeSuggestions) {
+      const productA = productById.get(suggestion.productAId);
+      const productB = productById.get(suggestion.productBId);
+      if (!productA || !productB) continue;
+      list.push({
+        key: `product_merge-${suggestion.id}`,
+        kind: 'product_merge',
+        title: t('inbox.mergeTitle', { a: productA.name, b: productB.name }),
+        summary: t('inbox.mergeSummary', { value: suggestion.confidence }),
+        storeName: '',
+        urgencyRank: 2,
+        createdAt: suggestion.createdAt,
+        mergeSuggestion: suggestion,
+        batchable: true
+      });
+    }
+
+    for (const conflict of fieldConflicts) {
+      const product = productById.get(conflict.productId);
+      if (!product) continue;
+      const storeName = stores.find((s) => s.id === conflict.storeId)?.name ?? '';
+      list.push({
+        key: `product_conflict-${conflict.id}`,
+        kind: 'product_conflict',
+        title: t('inbox.conflictTitle', { product: product.name }),
+        summary: t('inbox.conflictSummary', { field: t(FIELD_LABEL_KEYS[conflict.field]), yours: conflict.yourValue, platform: conflict.platformValue }),
+        storeName,
+        urgencyRank: 1,
+        createdAt: conflict.createdAt,
+        fieldConflict: conflict,
+        batchable: true
       });
     }
 
@@ -194,15 +332,33 @@ export function InboxPage() {
       if (remainingB !== undefined) return 1;
       return dayjs(b.createdAt ?? 0).valueOf() - dayjs(a.createdAt ?? 0).valueOf();
     });
-  }, [approvals, exceptions, stores, productListings, products, clock, t]);
+  }, [approvals, exceptions, stores, productListings, products, newProductCandidates, mergeSuggestions, fieldConflicts, clock, t]);
 
   const counts = useMemo(() => {
-    const byKind: Record<InboxItemKind, number> = { approval: 0, exception: 0, relogin: 0, product_draft: 0 };
+    const byKind: Record<InboxItemKind, number> = {
+      approval: 0, exception: 0, relogin: 0, product_draft: 0, product_new: 0, product_merge: 0, product_conflict: 0
+    };
     for (const entry of entries) byKind[entry.kind] += 1;
     return { ...byKind, all: entries.length };
   }, [entries]);
 
   const visibleEntries = filter === 'all' ? entries : entries.filter((entry) => entry.kind === filter);
+  const batchableEntries = visibleEntries.filter((entry) => entry.batchable);
+  const batchAccepting = acceptNewProductMutation.isPending || mergeProductsMutation.isPending || resolveFieldConflictMutation.isPending;
+
+  const handleBatchAccept = async () => {
+    const targets = [...batchableEntries];
+    for (const entry of targets) {
+      if (entry.kind === 'product_new' && entry.newProductCandidate) {
+        await acceptNewProductMutation.mutateAsync(entry.newProductCandidate.id);
+      } else if (entry.kind === 'product_merge' && entry.mergeSuggestion) {
+        await mergeProductsMutation.mutateAsync(entry.mergeSuggestion.id);
+      } else if (entry.kind === 'product_conflict' && entry.fieldConflict) {
+        await resolveFieldConflictMutation.mutateAsync({ id: entry.fieldConflict.id, decision: 'keep_yours' });
+      }
+    }
+    message.success(t('inbox.batchAcceptDone', { count: targets.length }));
+  };
 
   if (user?.experience === 'onboarding') {
     return (
@@ -284,6 +440,68 @@ export function InboxPage() {
         </Button>
       );
     }
+    if (entry.kind === 'product_new' && entry.newProductCandidate) {
+      const candidate = entry.newProductCandidate;
+      return (
+        <Space size={4} wrap>
+          <Button
+            size="small"
+            type="primary"
+            icon={<CheckOutlined />}
+            loading={acceptNewProductMutation.isPending}
+            onClick={() => acceptNewProductMutation.mutate(candidate.id)}
+          >
+            {candidate.recommendation === 'create_new' ? t('inbox.acceptRecommended') : t('inbox.createAnyway')}
+          </Button>
+          <Button
+            size="small"
+            icon={<CloseOutlined />}
+            loading={dismissNewProductMutation.isPending}
+            onClick={() => dismissNewProductMutation.mutate(candidate.id)}
+          >
+            {t('inbox.dismiss')}
+          </Button>
+        </Space>
+      );
+    }
+    if (entry.kind === 'product_merge' && entry.mergeSuggestion) {
+      const suggestion = entry.mergeSuggestion;
+      return (
+        <Space size={4} wrap>
+          <Popconfirm title={t('products.mergeConfirm')} onConfirm={() => mergeProductsMutation.mutate(suggestion.id)} okText={t('common.confirm')} cancelText={t('common.cancel')}>
+            <Button size="small" type="primary" icon={<CheckOutlined />} loading={mergeProductsMutation.isPending}>
+              {t('inbox.acceptRecommended')}
+            </Button>
+          </Popconfirm>
+          <Button size="small" icon={<CloseOutlined />} loading={dismissMergeMutation.isPending} onClick={() => dismissMergeMutation.mutate(suggestion.id)}>
+            {t('inbox.dismiss')}
+          </Button>
+        </Space>
+      );
+    }
+    if (entry.kind === 'product_conflict' && entry.fieldConflict) {
+      const conflict = entry.fieldConflict;
+      return (
+        <Space size={4} wrap>
+          <Button
+            size="small"
+            type="primary"
+            icon={<CheckOutlined />}
+            loading={resolveFieldConflictMutation.isPending}
+            onClick={() => resolveFieldConflictMutation.mutate({ id: conflict.id, decision: 'keep_yours' })}
+          >
+            {t('inbox.keepYours')}
+          </Button>
+          <Button
+            size="small"
+            loading={resolveFieldConflictMutation.isPending}
+            onClick={() => resolveFieldConflictMutation.mutate({ id: conflict.id, decision: 'accept_platform' })}
+          >
+            {t('inbox.acceptPlatform')}
+          </Button>
+        </Space>
+      );
+    }
     return null;
   };
 
@@ -297,6 +515,15 @@ export function InboxPage() {
           </Space>
         }
         description={t('inbox.description')}
+        actions={
+          batchableEntries.length > 0 ? (
+            <Popconfirm title={t('inbox.batchAcceptConfirm', { count: batchableEntries.length })} onConfirm={handleBatchAccept} okText={t('common.confirm')} cancelText={t('common.cancel')}>
+              <Button type="primary" icon={<ThunderboltOutlined />} loading={batchAccepting}>
+                {t('inbox.batchAccept', { count: batchableEntries.length })}
+              </Button>
+            </Popconfirm>
+          ) : undefined
+        }
       />
 
       <Card size="small">
@@ -312,7 +539,10 @@ export function InboxPage() {
             { value: 'approval', label: `${t('inbox.filterApprovals')} (${counts.approval})` },
             { value: 'exception', label: `${t('inbox.filterExceptions')} (${counts.exception})` },
             { value: 'relogin', label: `${t('inbox.filterRelogin')} (${counts.relogin})` },
-            { value: 'product_draft', label: `${t('inbox.filterProductDrafts')} (${counts.product_draft})` }
+            { value: 'product_draft', label: `${t('inbox.filterProductDrafts')} (${counts.product_draft})` },
+            { value: 'product_new', label: `${t('inbox.filterProductNew')} (${counts.product_new})` },
+            { value: 'product_merge', label: `${t('inbox.filterProductMerge')} (${counts.product_merge})` },
+            { value: 'product_conflict', label: `${t('inbox.filterProductConflict')} (${counts.product_conflict})` }
           ]}
         />
         {visibleEntries.length === 0 ? (
