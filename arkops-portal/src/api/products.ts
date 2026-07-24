@@ -181,7 +181,7 @@ export const productsApi = {
       ...input,
       createdBy: 'manual',
       provenance: { name: MANUAL, images: MANUAL, category: MANUAL, cost: MANUAL, description: MANUAL },
-      createdAt: new Date().toLocaleString(),
+      createdAt: new Date().toISOString(),
     };
     appendItem(products, product);
     logProductAction(product.id, '创建商品', `创建商品主体: ${product.name}`);
@@ -228,7 +228,7 @@ export const productListingsApi = {
       id: nextId('productListings', productListings.length),
       ...input,
       status: 'draft',
-      lastSyncedAt: new Date().toLocaleString(),
+      lastSyncedAt: new Date().toISOString(),
     };
     appendItem(productListings, listing);
     logProductAction(listing.id, '铺货到店铺', `新增店铺铺货草稿 (店铺 ${input.storeId})`);
@@ -251,6 +251,16 @@ export const productListingsApi = {
     const target = productListings.find((l) => l.id === id);
     removeWhere(productListings, (l) => l.id === id);
     if (target) logProductAction(id, '移除铺货', `移除铺货记录 (店铺 ${target.storeId})`);
+    return mockDelay(undefined);
+  },
+
+  /** Sync strip "立即同步" (§3.14.5): refreshes every listing's lastSyncedAt to now. */
+  syncAll: (): Promise<void> => {
+    const now = new Date().toISOString();
+    productListings.forEach((listing, i) => {
+      productListings.splice(i, 1, { ...listing, lastSyncedAt: now });
+    });
+    recordAuditLog({ actor: '当前用户', action: '同步商品', entity: '商品', entityId: 'all', summary: '手动触发商品铺货同步', category: 'human_ops' });
     return mockDelay(undefined);
   },
 };

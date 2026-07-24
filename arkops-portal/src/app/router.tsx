@@ -22,6 +22,7 @@ const MembersSettingsPage = lazy(() => import('../pages/settings/MembersSettings
 const ModelListPage = lazy(() => import('../pages/models/ModelListPage').then((module) => ({ default: module.ModelListPage })));
 const NotificationsSettingsPage = lazy(() => import('../pages/settings/NotificationsSettingsPage').then((module) => ({ default: module.NotificationsSettingsPage })));
 const OrderAutomationPage = lazy(() => import('../pages/orders/OrderAutomationPage').then((module) => ({ default: module.OrderAutomationPage })));
+const ProductDetailPage = lazy(() => import('../pages/products/ProductDetailPage').then((module) => ({ default: module.ProductDetailPage })));
 const ProductManagementPage = lazy(() => import('../pages/products/ProductManagementPage').then((module) => ({ default: module.ProductManagementPage })));
 const StoreDetailPage = lazy(() => import('../pages/stores/StoreDetailPage').then((module) => ({ default: module.StoreDetailPage })));
 const StoreListPage = lazy(() => import('../pages/stores/StoreListPage').then((module) => ({ default: module.StoreListPage })));
@@ -110,6 +111,7 @@ const router = createBrowserRouter(
 
         // 商品管理
         { path: 'products', element: guarded('/products', <ProductManagementPage />, tableFallback) },
+        { path: 'products/:productId', element: guarded('/products', <ProductDetailPage />) },
 
         // Agent 中心
         { path: 'agents', element: guarded('/agents', <AgentListPage />, agentListFallback) },

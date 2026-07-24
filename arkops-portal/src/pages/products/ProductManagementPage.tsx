@@ -1,7 +1,8 @@
-import { EditOutlined, RobotOutlined, WarningOutlined } from '@ant-design/icons';
+import { EditOutlined, RobotOutlined, SyncOutlined, WarningOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, Col, Form, Input, InputNumber, Modal, Row, Select, Space, Table, Tag, Typography, message } from 'antd';
+import { Button, Col, Form, Input, InputNumber, Modal, Row, Select, Space, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import dayjs from 'dayjs';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { mergeSuggestionsApi, productListingsApi, productsApi } from '../../api/products';
@@ -13,11 +14,12 @@ import { PageFilterBar } from '../../components/filters/PageFilterBar';
 import { MetricCard } from '../../components/metrics/MetricCard';
 import { PageHeader } from '../../components/PageHeader';
 import { ListingDistribution } from '../../components/products/ListingDistribution';
+import { ListingMatrix } from '../../components/products/ListingMatrix';
 import { StoreConnectionEmptyState } from '../../components/StoreConnectionEmptyState';
 import { DataTableCard } from '../../components/table/DataTableCard';
 import { TableActionGroup } from '../../components/table/TableActionGroup';
+import { ListToStoreModal } from './ListToStoreModal';
 import type { AllMallId, AttributeProvenance, ListingStatus, Product, ProductListing, Store } from '../../types/domain';
-import { listingAvailableStock } from '../../types/domain';
 
 type TranslateFn = ReturnType<typeof useI18n>['t'];
 
@@ -28,9 +30,7 @@ type StockFilter = 'all' | 'healthy' | 'low' | 'out';
 /** "Listed on / not listed on [store]" — the gap-finder toggle (§3.14.2). Only active with a specific storeFilter. */
 type ListedToggle = 'any' | 'listed' | 'not_listed';
 
-const LISTING_STATUS_COLOR: Record<ListingStatus, string> = { listed: 'green', draft: 'gold', pending_review: 'gold', delisted: 'red' };
-
-function productStockLevel(product: Product): 'healthy' | 'low' | 'out' {
+export function productStockLevel(product: Product): 'healthy' | 'low' | 'out' {
   if (product.totalStock <= 0) return 'out';
   if (product.totalStock < LOW_STOCK_THRESHOLD) return 'low';
   return 'healthy';
@@ -45,7 +45,7 @@ function priceRangeText(listings: ProductListing[]): string {
 }
 
 /** D6 sub-decision 2: shows where a master attribute's value came from, and whether it's locked from sync. */
-function ProvenanceTag({ provenance, stores, t }: { provenance: AttributeProvenance; stores: Store[]; t: TranslateFn }) {
+export function ProvenanceTag({ provenance, stores, t }: { provenance: AttributeProvenance; stores: Store[]; t: TranslateFn }) {
   if (provenance.source === 'manual') {
     return <Tag style={{ fontSize: 11 }}>{t('products.provenanceManual')}</Tag>;
   }
@@ -86,6 +86,9 @@ export function ProductManagementPage() {
 
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editForm] = Form.useForm();
+  const [listToStoreTarget, setListToStoreTarget] = useState<{ product: Product; storeId?: AllMallId } | null>(null);
+
+  const invalidateListings = () => queryClient.invalidateQueries({ queryKey: ['productListings'] });
 
   const updateProductMutation = useMutation({
     mutationFn: (input: { id: AllMallId; patch: Partial<Pick<Product, 'name' | 'category' | 'cost' | 'description' | 'totalStock'>> }) =>
@@ -96,6 +99,22 @@ export function ProductManagementPage() {
       setEditingProduct(null);
       editForm.resetFields();
     }
+  });
+  const submitForReviewMutation = useMutation({
+    mutationFn: (id: AllMallId) => productListingsApi.updateStatus(id, 'pending_review'),
+    onSuccess: () => { invalidateListings(); message.success(t('listing.submittedForReview')); }
+  });
+  const publishMutation = useMutation({
+    mutationFn: (id: AllMallId) => productListingsApi.updateStatus(id, 'listed'),
+    onSuccess: () => { invalidateListings(); message.success(t('listing.published')); }
+  });
+  const delistMutation = useMutation({
+    mutationFn: (id: AllMallId) => productListingsApi.updateStatus(id, 'delisted'),
+    onSuccess: () => { invalidateListings(); message.success(t('listing.delisted')); }
+  });
+  const syncMutation = useMutation({
+    mutationFn: () => productListingsApi.syncAll(),
+    onSuccess: () => { invalidateListings(); message.success(t('products.syncDone')); }
   });
 
   const matchesKeyword = (product: Product, productListings: ProductListing[]) => {
@@ -136,6 +155,9 @@ export function ProductManagementPage() {
   const draftListingsCount = listings.filter((l) => l.status === 'draft' || l.status === 'pending_review').length;
   const mergeCount = mergeSuggestions.length;
 
+  // Sync strip (§3.14.5): last-synced = most recent listing sync; pending = draft/pending_review listings.
+  const lastSyncedAt = listings.reduce<string | null>((latest, l) => (!latest || l.lastSyncedAt > latest ? l.lastSyncedAt : latest), null);
+
   const openEditProduct = (product: Product) => {
     setEditingProduct(product);
     editForm.setFieldsValue({
@@ -152,10 +174,10 @@ export function ProductManagementPage() {
     });
   };
 
-  // P1 will replace this with the full "list to store" wizard (reusing the migration
-  // flow's step pattern: category mapping + suggested price + inventory mode + content
-  // adaptation). P0 only ships the read model (table, chips, matrix), so this is a stub.
-  const handleListToStore = () => message.info(t('products.listToStoreComingSoon'));
+  const availableStoresFor = (product: Product): Store[] => {
+    const listedStoreIds = new Set((listingsByProduct.get(product.id) ?? []).map((l) => l.storeId));
+    return stores.filter((s) => !listedStoreIds.has(s.id));
+  };
 
   const columns: ColumnsType<Product> = [
     {
@@ -164,7 +186,7 @@ export function ProductManagementPage() {
         <Space align="start">
           <img src={record.images[0]} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
           <div style={{ minWidth: 0 }}>
-            <Typography.Text strong ellipsis>{record.name}</Typography.Text>
+            <Link to={`/products/${record.id}`}><Typography.Text strong ellipsis>{record.name}</Typography.Text></Link>
             <br />
             <Space size={4}>
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>{record.spuCode}</Typography.Text>
@@ -197,38 +219,26 @@ export function ProductManagementPage() {
       title: t('common.actions'), key: 'actions', width: 190,
       render: (_: unknown, record: Product) => (
         <TableActionGroup>
-          <Button size="small" onClick={handleListToStore}>{t('products.listToStore')}</Button>
+          <Button size="small" disabled={availableStoresFor(record).length === 0} onClick={() => setListToStoreTarget({ product: record })}>
+            {t('products.listToStore')}
+          </Button>
           <Button size="small" icon={<EditOutlined />} onClick={() => openEditProduct(record)}>{t('common.edit')}</Button>
         </TableActionGroup>
       )
     },
   ];
 
-  const expandedRowRender = (record: Product) => {
-    const productListings = listingsByProduct.get(record.id) ?? [];
-    const rows = stores.map((store) => ({ store, listing: productListings.find((l) => l.storeId === store.id) }));
-    const matrixColumns: ColumnsType<{ store: Store; listing?: ProductListing }> = [
-      { title: t('products.store'), key: 'store', render: (_: unknown, row) => row.store.name },
-      {
-        title: t('products.status'), key: 'status',
-        render: (_: unknown, row) => row.listing
-          ? <Tag color={LISTING_STATUS_COLOR[row.listing.status]}>{t(`listing.${row.listing.status}`)}</Tag>
-          : <Tag>{t('listing.notListed')}</Tag>
-      },
-      { title: t('products.price'), key: 'price', align: 'right', render: (_: unknown, row) => row.listing ? `¥${row.listing.sellingPrice.toFixed(2)}` : '-' },
-      {
-        title: t('products.stock'), key: 'stock', align: 'right',
-        render: (_: unknown, row) => row.listing ? `${listingAvailableStock(record, row.listing)} (${t(`listing.mode_${row.listing.inventoryMode}`)})` : '-'
-      },
-      { title: t('listing.platformSku'), key: 'sku', render: (_: unknown, row) => row.listing?.platformSkuRef ?? '-' },
-      { title: t('listing.lastSynced'), key: 'sync', render: (_: unknown, row) => row.listing?.lastSyncedAt ?? '-' },
-      {
-        title: t('common.actions'), key: 'actions',
-        render: (_: unknown, row) => row.listing ? null : <Button size="small" type="link" onClick={handleListToStore}>{t('listing.listToThisStore')}</Button>
-      },
-    ];
-    return <Table<{ store: Store; listing?: ProductListing }> rowKey={(row) => row.store.id} size="small" pagination={false} columns={matrixColumns} dataSource={rows} />;
-  };
+  const expandedRowRender = (record: Product) => (
+    <ListingMatrix
+      product={record}
+      stores={stores}
+      listings={listingsByProduct.get(record.id) ?? []}
+      onListToStore={(storeId) => setListToStoreTarget({ product: record, storeId })}
+      onSubmitForReview={(id) => submitForReviewMutation.mutate(id)}
+      onPublish={(id) => publishMutation.mutate(id)}
+      onDelist={(id) => delistMutation.mutate(id)}
+    />
+  );
 
   if (user?.experience === 'onboarding') {
     return (
@@ -242,6 +252,27 @@ export function ProductManagementPage() {
   return (
     <div className="page-stack">
       <PageHeader title={t('products.title')} description={t('products.description')} />
+
+      {/* 同步条（§3.14.5，对标店铺连接同步） */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '8px 16px', marginBottom: 12,
+        background: 'var(--ark-panel-soft)', borderRadius: 8, border: '1px solid var(--ark-border-soft)',
+      }}>
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+          {lastSyncedAt ? t('products.lastSynced', { time: dayjs(lastSyncedAt).format('YYYY-MM-DD HH:mm') }) : t('products.neverSynced')}
+          {' · '}
+          {t('products.pendingChanges', { count: draftListingsCount })}
+        </Typography.Text>
+        <Space>
+          <Button size="small" icon={<SyncOutlined spin={syncMutation.isPending} />} loading={syncMutation.isPending} onClick={() => syncMutation.mutate()}>
+            {t('products.syncNow')}
+          </Button>
+          <Link to="/stores/onboarding?journey=import">
+            <Button size="small" type="link">{t('products.manageStoreSync')}</Button>
+          </Link>
+        </Space>
+      </div>
 
       {/* Agent 联动提示 */}
       <div style={{
@@ -382,6 +413,15 @@ export function ProductManagementPage() {
           </Form>
         )}
       </Modal>
+
+      <ListToStoreModal
+        open={!!listToStoreTarget}
+        product={listToStoreTarget?.product ?? null}
+        listings={listToStoreTarget ? (listingsByProduct.get(listToStoreTarget.product.id) ?? []) : []}
+        availableStores={listToStoreTarget ? availableStoresFor(listToStoreTarget.product) : []}
+        initialStoreId={listToStoreTarget?.storeId}
+        onClose={() => setListToStoreTarget(null)}
+      />
     </div>
   );
 }
