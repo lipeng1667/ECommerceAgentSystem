@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { Alert, Button, Col, Form, Input, InputNumber, Modal, Progress, Radio, Row, Select, Space, Statistic, Tabs, Tag, Typography, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { mergeSuggestionsApi, productListingsApi, productsApi } from '../../api/products';
@@ -18,7 +18,6 @@ import { ProvenanceTag } from './ProductManagementPage';
 
 export function ProductDetailPage() {
   const { t } = useI18n();
-  const navigate = useNavigate();
   const { productId } = useParams();
   const parsedId = parseAllMallId(productId);
   const queryClient = useQueryClient();
@@ -69,7 +68,7 @@ export function ProductDetailPage() {
   if (!product) {
     return (
       <div className="page-stack">
-        <PageHeader title={t('products.detailTitle')} breadcrumb={[{ title: t('products.title'), href: '/products' }]} onBack={() => navigate('/products')} />
+        <PageHeader title={t('products.detailTitle')} breadcrumb={[{ title: t('products.title'), href: '/products' }]} />
       </div>
     );
   }
@@ -226,7 +225,6 @@ export function ProductDetailPage() {
         title={product.name}
         description={t('products.detailDescription')}
         breadcrumb={[{ title: t('products.title'), href: '/products' }, { title: product.name }]}
-        onBack={() => navigate('/products')}
       />
       <Tabs
         defaultActiveKey="distribution"

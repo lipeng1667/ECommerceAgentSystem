@@ -15,6 +15,7 @@ import { MetricCard } from '../../components/metrics/MetricCard';
 import { PageHeader } from '../../components/PageHeader';
 import { ListingDistribution } from '../../components/products/ListingDistribution';
 import { ListingMatrix } from '../../components/products/ListingMatrix';
+import { ProductThumb } from '../../components/products/ProductThumb';
 import { StoreConnectionEmptyState } from '../../components/StoreConnectionEmptyState';
 import { DataTableCard } from '../../components/table/DataTableCard';
 import { TableActionGroup } from '../../components/table/TableActionGroup';
@@ -59,7 +60,7 @@ function MergeCandidate({ product, listings, stores }: { product: Product; listi
   const storeNames = listings.map((l) => stores.find((s) => s.id === l.storeId)?.name).filter(Boolean).join('、');
   return (
     <Space align="start">
-      <img src={product.images[0]} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
+      <ProductThumb src={product.images[0]} size={48} />
       <div>
         <Typography.Text strong>{product.name}</Typography.Text>
         <br />
@@ -300,7 +301,7 @@ export function ProductManagementPage() {
       title: t('products.product'), key: 'product', width: 260,
       render: (_: unknown, record: Product) => (
         <Space align="start">
-          <img src={record.images[0]} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
+          <ProductThumb src={record.images[0]} size={40} />
           <div style={{ minWidth: 0 }}>
             <Link to={`/products/${record.id}`}><Typography.Text strong ellipsis>{record.name}</Typography.Text></Link>
             <br />
@@ -422,7 +423,7 @@ export function ProductManagementPage() {
         </Link>
       </div>
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+      <Row gutter={[16, 16]} className="store-kpi-row" style={{ marginBottom: 24 }}>
         <Col xs={12} sm={6}>
           <MetricCard className="stat-card stat-card-primary" title={t('products.totalProducts')} value={totalProducts} />
         </Col>
