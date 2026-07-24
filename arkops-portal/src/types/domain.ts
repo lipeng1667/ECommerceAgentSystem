@@ -530,34 +530,77 @@ export interface PriorApprovalRecord {
 /** WS-B (B1): item kinds aggregated by the unified Action Inbox (/inbox). */
 export type InboxItemKind = 'approval' | 'exception' | 'relogin';
 
-// ===== Products =====
+// ===== Products (D6: SPU + per-store Listing, product-design.md §3.14) =====
+//
+// A row in the product list is a merchant-owned master product (SPU), unique across
+// stores. The store is an *attribute* of the product — how/where it's listed — not the
+// primary grouping. A master may exist with zero listings (create first, list later).
+// "Not listed on store X" is derived (merchant's stores − stores with a listing), never
+// stored redundantly.
 
-/** Stored lifecycle status; `out_of_stock` is a derived display-only status, never stored (C7). */
-export type ProductStatus = 'active' | 'inactive' | 'draft' | 'pending_review';
-export type ProductDisplayStatus = ProductStatus | 'out_of_stock';
+export type ListingStatus = 'listed' | 'draft' | 'pending_review' | 'delisted';
+export type InventoryMode = 'shared' | 'independent';
+/** Provenance of a master attribute value: seeded from a store's sync, or user-edited (locked from sync overwrite). */
+export type AttributeProvenance = { source: 'ai'; storeId: AllMallId } | { source: 'manual' };
 
-export interface Product {
-  id: AllMallId;
-  storeId: AllMallId;
-  sku: string;
-  name: string;
-  cost: number;
-  sellingPrice: number;
-  stock: number;
-  status: ProductStatus;
-  images?: string[];
+/** Per-field provenance for the master attributes that can be AI-seeded then user-locked (D6 sub-decision 2). */
+export interface ProductProvenance {
+  name: AttributeProvenance;
+  images: AttributeProvenance;
+  category: AttributeProvenance;
+  cost: AttributeProvenance;
+  description: AttributeProvenance;
 }
 
-/** AI-recognition / manual draft awaiting review before it becomes a live Product. */
-export interface ProductDraft {
+/** Master product (SPU) — merchant-owned, unique across stores. May have zero listings. */
+export interface Product {
   id: AllMallId;
-  storeId: AllMallId;
-  sku: string;
+  /** Merchant SKU/货号 — the primary merge key for cross-store matching (D6 sub-decision 1). */
+  spuCode: string;
   name: string;
-  cost: number;
-  sellingPrice: number;
-  description: string;
   images: string[];
-  status: 'draft' | 'pending_review';
+  category: string;
+  cost: number;
+  description: string;
+  /** Shared total stock pool the master holds; listings draw from or carve out of it. */
+  totalStock: number;
+  /** Store whose values seeded the master attributes; snapshotted default = highest GMV, user-overridable. */
+  primaryStoreId: AllMallId;
+  provenance: ProductProvenance;
+  createdBy: 'ai' | 'manual';
+  createdAt: string;
+}
+
+/** A product's presence on one store — the "shelf listing", not the product itself. */
+export interface ProductListing {
+  id: AllMallId;
+  productId: AllMallId;
+  storeId: AllMallId;
+  /** External platform product/SKU reference — not an AllMall-owned id. */
+  platformSkuRef: string;
+  sellingPrice: number;
+  status: ListingStatus;
+  inventoryMode: InventoryMode;
+  /** Only meaningful when inventoryMode === 'independent': a fixed slice carved from the product's totalStock. */
+  allocation?: number;
+  /** Only meaningful when inventoryMode === 'shared': reserved from the shared pool, never sold. */
+  safetyStock?: number;
+  lastSyncedAt: string;
+}
+
+/** Derived, never stored: available-to-sell units for one listing (D6 sub-decision 3). */
+export function listingAvailableStock(product: Product, listing: ProductListing): number {
+  if (listing.inventoryMode === 'independent') return listing.allocation ?? 0;
+  return Math.max(0, product.totalStock - (listing.safetyStock ?? 0));
+}
+
+/** A "possible duplicate" match between two masters awaiting human review (60–95% confidence band, D6 sub-decision 1). */
+export interface ProductMergeSuggestion {
+  id: AllMallId;
+  productAId: AllMallId;
+  productBId: AllMallId;
+  confidence: number;
+  /** Which signals contributed to the match, for the reviewer to judge (e.g. "标题相似度 92%"). */
+  matchFactors: string[];
   createdAt: string;
 }
