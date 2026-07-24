@@ -266,16 +266,6 @@ export const productListingsApi = {
     if (target) logProductAction(id, '移除铺货', `移除铺货记录 (店铺 ${target.storeId})`);
     return mockDelay(undefined);
   },
-
-  /** Sync strip "立即同步" (§3.14.5): refreshes every listing's lastSyncedAt to now. */
-  syncAll: (): Promise<void> => {
-    const now = new Date().toISOString();
-    productListings.forEach((listing, i) => {
-      productListings.splice(i, 1, { ...listing, lastSyncedAt: now });
-    });
-    recordAuditLog({ actor: '当前用户', action: '同步商品', entity: '商品', entityId: 'all', summary: '手动触发商品铺货同步', category: 'human_ops' });
-    return mockDelay(undefined);
-  },
 };
 
 export const mergeSuggestionsApi = {

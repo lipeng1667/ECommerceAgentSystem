@@ -1,11 +1,21 @@
-import { DownOutlined, EditOutlined, PlusOutlined, RobotOutlined, SyncOutlined, WarningOutlined } from '@ant-design/icons';
+import {
+  CheckCircleOutlined,
+  DownOutlined,
+  EditOutlined,
+  PlusOutlined,
+  RightOutlined,
+  RobotOutlined,
+  SyncOutlined,
+  ThunderboltOutlined,
+  WarningOutlined
+} from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, Col, Dropdown, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Tabs, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { mergeSuggestionsApi, productListingsApi, productsApi } from '../../api/products';
+import { mergeSuggestionsApi, productListingsApi, productsApi, syncApi } from '../../api/products';
 import { storesApi } from '../../api/stores';
 import { useAuth } from '../../app/auth';
 import { useI18n } from '../../app/i18n';
@@ -21,7 +31,7 @@ import { DataTableCard } from '../../components/table/DataTableCard';
 import { TableActionGroup } from '../../components/table/TableActionGroup';
 import { CreateProductModal } from './CreateProductModal';
 import { ListToStoreModal } from './ListToStoreModal';
-import type { AllMallId, AttributeProvenance, ListingStatus, Product, ProductListing, ProductMergeSuggestion, Store } from '../../types/domain';
+import type { AllMallId, AttributeProvenance, AutoSyncChange, ListingStatus, Product, ProductListing, ProductMergeSuggestion, Store, SyncResult } from '../../types/domain';
 
 type TranslateFn = ReturnType<typeof useI18n>['t'];
 
@@ -151,6 +161,89 @@ function DraftsTab({ listings, products, stores, t }: { listings: ProductListing
   );
 }
 
+const AUTO_CHANGE_TYPE_COLOR: Record<AutoSyncChange['type'], string> = {
+  price_update: 'blue',
+  stock_update: 'green',
+  delist: 'red',
+  auto_merge: 'purple',
+};
+
+/**
+ * Smart Sync digest card (Node 4): replaces the passive sync strip. The merchant
+ * reviews a results summary and confirms — instead of operating step by step — and
+ * always gets feedback either way ("N found" or "up to date"), resolving the "am I
+ * current?" uncertainty a silent sync leaves behind.
+ */
+function SyncDigestCard({
+  result, log, expanded, onToggleExpanded, onRecheck, rechecking, t,
+}: {
+  result: SyncResult | null | undefined;
+  log: AutoSyncChange[];
+  expanded: boolean;
+  onToggleExpanded: () => void;
+  onRecheck: () => void;
+  rechecking: boolean;
+  t: TranslateFn;
+}) {
+  const hasRun = !!result;
+  const autoCount = result?.autoApplied.length ?? 0;
+  const pendingCount = result?.pendingDecisionCount ?? 0;
+  const feedback = !hasRun
+    ? t('products.syncNeverRun')
+    : autoCount > 0
+      ? t('products.syncFoundSummary', { auto: autoCount, pending: pendingCount })
+      : pendingCount > 0
+        ? t('products.syncUpToDateWithPending', { pending: pendingCount })
+        : t('products.syncUpToDateClean');
+
+  return (
+    <Card size="small" style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+        <Space size={8}>
+          <ThunderboltOutlined style={{ color: 'var(--ark-purple)' }} />
+          <Typography.Text strong>{t('products.syncDigestTitle')}</Typography.Text>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            {hasRun ? t('products.lastSynced', { time: dayjs(result!.lastSyncedAt).format('YYYY-MM-DD HH:mm') }) : t('products.neverSynced')}
+            {' · '}{t('products.syncCadence')}
+          </Typography.Text>
+        </Space>
+        <Button size="small" icon={<SyncOutlined spin={rechecking} />} loading={rechecking} onClick={onRecheck}>
+          {t('products.recheckNow')}
+        </Button>
+      </div>
+      <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+        <Space size={6}>
+          {hasRun && autoCount === 0 && pendingCount === 0 && <CheckCircleOutlined style={{ color: 'var(--ark-green)' }} />}
+          <Typography.Text style={{ fontSize: 13 }}>{feedback}</Typography.Text>
+        </Space>
+        {pendingCount > 0 && (
+          <Link to="/inbox">
+            <Button size="small" type="link">{t('products.goToInboxAction')}</Button>
+          </Link>
+        )}
+      </div>
+      {log.length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          <Button type="link" size="small" style={{ padding: 0 }} icon={expanded ? <DownOutlined /> : <RightOutlined />} onClick={onToggleExpanded}>
+            {t('products.autoHandledLog', { count: log.length })}
+          </Button>
+          {expanded && (
+            <div style={{ marginTop: 8, paddingLeft: 8, borderLeft: '2px solid var(--ark-border-soft)' }}>
+              {log.map((entry) => (
+                <div key={entry.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                  <Tag color={AUTO_CHANGE_TYPE_COLOR[entry.type]} style={{ fontSize: 11, flexShrink: 0 }}>{t(`products.autoChangeType_${entry.type}`)}</Tag>
+                  <Typography.Text style={{ fontSize: 12, flex: 1 }}>{entry.summary}</Typography.Text>
+                  <Typography.Text type="secondary" style={{ fontSize: 11, flexShrink: 0 }}>{dayjs(entry.at).format('MM-DD HH:mm')}</Typography.Text>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export function ProductManagementPage() {
   const { t } = useI18n();
   const { user } = useAuth();
@@ -161,6 +254,8 @@ export function ProductManagementPage() {
   const { data: listings = [] } = useQuery({ queryKey: ['productListings'], queryFn: productListingsApi.list });
   const { data: stores = [] } = useQuery({ queryKey: ['stores'], queryFn: storesApi.list });
   const { data: mergeSuggestions = [] } = useQuery({ queryKey: ['productMergeSuggestions'], queryFn: mergeSuggestionsApi.list });
+  const { data: syncResult } = useQuery({ queryKey: ['syncResult'], queryFn: syncApi.getLastResult });
+  const { data: autoChangeLog = [] } = useQuery({ queryKey: ['autoChangeLog'], queryFn: syncApi.getAutoChangeLog });
 
   const listingsByProduct = useMemo(() => {
     const map = new Map<AllMallId, ProductListing[]>();
@@ -187,6 +282,7 @@ export function ProductManagementPage() {
   const [listToStoreTarget, setListToStoreTarget] = useState<{ product: Product; storeId?: AllMallId } | null>(null);
   const [activeTab, setActiveTab] = useState('products');
   const [createModalMode, setCreateModalMode] = useState<'manual' | 'recognize' | null>(null);
+  const [logExpanded, setLogExpanded] = useState(false);
   const navigate = useNavigate();
 
   const invalidateListings = () => queryClient.invalidateQueries({ queryKey: ['productListings'] });
@@ -214,8 +310,18 @@ export function ProductManagementPage() {
     onSuccess: () => { invalidateListings(); message.success(t('listing.delisted')); }
   });
   const syncMutation = useMutation({
-    mutationFn: () => productListingsApi.syncAll(),
-    onSuccess: () => { invalidateListings(); message.success(t('products.syncDone')); }
+    mutationFn: () => syncApi.runSync(),
+    onSuccess: (result) => {
+      invalidateListings();
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['syncResult'] });
+      queryClient.invalidateQueries({ queryKey: ['autoChangeLog'] });
+      queryClient.invalidateQueries({ queryKey: ['newProductCandidates'] });
+      queryClient.invalidateQueries({ queryKey: ['productMergeSuggestions'] });
+      queryClient.invalidateQueries({ queryKey: ['fieldConflicts'] });
+      // Always give feedback either way — resolves "am I current?" (Node 4).
+      message.success(result.autoApplied.length > 0 ? t('products.syncFoundChanges', { count: result.autoApplied.length }) : t('products.syncUpToDate'));
+    }
   });
   const mergeMutation = useMutation({
     mutationFn: (id: AllMallId) => mergeSuggestionsApi.merge(id),
@@ -272,8 +378,6 @@ export function ProductManagementPage() {
   const draftListingsCount = listings.filter((l) => l.status === 'draft' || l.status === 'pending_review').length;
   const mergeCount = mergeSuggestions.length;
 
-  // Sync strip (§3.14.5): last-synced = most recent listing sync; pending = draft/pending_review listings.
-  const lastSyncedAt = listings.reduce<string | null>((latest, l) => (!latest || l.lastSyncedAt > latest ? l.lastSyncedAt : latest), null);
 
   const openEditProduct = (product: Product) => {
     setEditingProduct(product);
@@ -386,26 +490,15 @@ export function ProductManagementPage() {
         }
       />
 
-      {/* 同步条（§3.14.5，对标店铺连接同步） */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '8px 16px', marginBottom: 12,
-        background: 'var(--ark-panel-soft)', borderRadius: 8, border: '1px solid var(--ark-border-soft)',
-      }}>
-        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          {lastSyncedAt ? t('products.lastSynced', { time: dayjs(lastSyncedAt).format('YYYY-MM-DD HH:mm') }) : t('products.neverSynced')}
-          {' · '}
-          {t('products.pendingChanges', { count: draftListingsCount })}
-        </Typography.Text>
-        <Space>
-          <Button size="small" icon={<SyncOutlined spin={syncMutation.isPending} />} loading={syncMutation.isPending} onClick={() => syncMutation.mutate()}>
-            {t('products.syncNow')}
-          </Button>
-          <Link to="/stores/onboarding?journey=import">
-            <Button size="small" type="link">{t('products.manageStoreSync')}</Button>
-          </Link>
-        </Space>
-      </div>
+      <SyncDigestCard
+        result={syncResult}
+        log={autoChangeLog}
+        expanded={logExpanded}
+        onToggleExpanded={() => setLogExpanded((prev) => !prev)}
+        onRecheck={() => syncMutation.mutate()}
+        rechecking={syncMutation.isPending}
+        t={t}
+      />
 
       {/* Agent 联动提示 */}
       <div style={{
