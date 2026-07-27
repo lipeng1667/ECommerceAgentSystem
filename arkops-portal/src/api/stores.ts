@@ -17,6 +17,9 @@ function logStoreAction(storeId: AllMallId, action: string, summary: string): vo
   });
 }
 
+/** How long a freshly established store session is assumed to stay valid (D7.3). */
+const SESSION_VALID_DAYS = 30;
+
 export const storesApi = {
   list: () => mockDelay([...stores]),
 
@@ -121,6 +124,26 @@ export const storesApi = {
     }));
     if (store) {
       logStoreAction(storeId, '更新状态', `店铺状态更新为 ${status}`);
+    }
+    return mockDelay(store);
+  },
+
+  /**
+   * D7.3: re-login / renew a store session. Unlike `updateStatus`, this also refreshes
+   * the verification time and pushes out the predicted expiry, so the store leaves both
+   * the reactive re-login list and the proactive expiry warning.
+   */
+  renewSession: (storeId: AllMallId) => {
+    const renewedAt = new Date();
+    const expiresAt = new Date(renewedAt.getTime() + SESSION_VALID_DAYS * 24 * 60 * 60 * 1000);
+    const store = replaceItem(stores, (item) => item.id === storeId, (item) => ({
+      ...item,
+      status: 'connected' as const,
+      lastVerifiedAt: renewedAt.toISOString(),
+      authExpiresAt: expiresAt.toISOString(),
+    }));
+    if (store) {
+      logStoreAction(storeId, '续期会话', `店铺会话已续期，有效期至 ${expiresAt.toISOString()}`);
     }
     return mockDelay(store);
   },

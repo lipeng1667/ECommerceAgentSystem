@@ -42,6 +42,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { PageHeader } from '../../components/PageHeader';
 import { StatusBadge } from '../../components/StatusBadge';
 import { StoreConnectionEmptyState } from '../../components/StoreConnectionEmptyState';
+import { getExpiringInDays } from '../../utils/storeDisplay';
 import { ApprovalDecisionModal, type ApprovalDecision } from '../approvals/ApprovalDecisionModal';
 import {
   URGENCY_COLORS,
@@ -79,6 +80,12 @@ interface InboxEntry {
   newProductCandidate?: NewProductCandidate;
   mergeSuggestion?: ProductMergeSuggestion;
   fieldConflict?: FieldConflict;
+  /**
+   * D7.3: set on proactive session-expiry warnings — the store is still connected, but
+   * its authorization expires within the warning window. Distinguishes "act before it
+   * breaks" from the reactive "already broken" re-login items.
+   */
+  expiresInDays?: number;
   /** Whether this entry's recommended action is safe to include in "accept all recommended". */
   batchable: boolean;
 }
@@ -264,18 +271,41 @@ export function InboxPage() {
     }
 
     for (const store of stores) {
-      if (store.status !== 'login_required' && store.status !== 'expired') continue;
-      list.push({
-        key: `relogin-${store.id}`,
-        kind: 'relogin',
-        title: t('inbox.reloginTitle', { store: store.name }),
-        summary: t('inbox.reloginSummary'),
-        storeName: store.name,
-        urgencyRank: 0,
-        createdAt: store.lastVerifiedAt,
-        store,
-        batchable: false
-      });
+      if (store.status === 'login_required' || store.status === 'expired') {
+        list.push({
+          key: `relogin-${store.id}`,
+          kind: 'relogin',
+          title: t('inbox.reloginTitle', { store: store.name }),
+          summary: t('inbox.reloginSummary'),
+          storeName: store.name,
+          urgencyRank: 0,
+          createdAt: store.lastVerifiedAt,
+          store,
+          batchable: false
+        });
+        continue;
+      }
+      // D7.3: proactive expiry warning — a still-connected store whose authorization
+      // runs out within the warning window becomes a "renew now" item before anything
+      // breaks. Lower urgency than an already-expired session: nothing is paused yet.
+      const expiringInDays = getExpiringInDays(store, clock);
+      if (expiringInDays !== undefined) {
+        list.push({
+          key: `relogin-expiring-${store.id}`,
+          kind: 'relogin',
+          title: t('inbox.expiringTitle', { store: store.name }),
+          summary: t('inbox.expiringSummary', {
+            days: expiringInDays,
+            date: dayjs(store.authExpiresAt).format('MM-DD HH:mm')
+          }),
+          storeName: store.name,
+          urgencyRank: 2,
+          createdAt: store.lastVerifiedAt,
+          store,
+          expiresInDays: expiringInDays,
+          batchable: false
+        });
+      }
     }
 
     // D6/§3.14.9: draft/pending_review product listings fold into the inbox — informational,
@@ -378,6 +408,11 @@ export function InboxPage() {
   }, [entries]);
 
   const visibleEntries = filter === 'all' ? entries : entries.filter((entry) => entry.kind === filter);
+  // D7.3: ordered store ids for guided sequential re-login — already-expired stores
+  // first (they block agents now), then the proactive expiry warnings.
+  const reloginQueue = visibleEntries
+    .filter((entry) => entry.kind === 'relogin' && entry.store)
+    .map((entry) => entry.store!.id);
   const batchableEntries = visibleEntries.filter((entry) => entry.batchable);
   const batchAccepting = acceptNewProductMutation.isPending || mergeProductsMutation.isPending || resolveFieldConflictMutation.isPending;
 
@@ -454,14 +489,16 @@ export function InboxPage() {
       );
     }
     if (entry.kind === 'relogin' && entry.store) {
+      const isProactive = entry.expiresInDays !== undefined;
       return (
         <Button
           size="small"
           type="primary"
+          ghost={isProactive}
           icon={<LoginOutlined />}
           onClick={() => navigate(`/stores/${entry.store!.id}`)}
         >
-          {t('inbox.goRelogin')}
+          {isProactive ? t('inbox.renewNow') : t('inbox.goRelogin')}
         </Button>
       );
     }
@@ -554,21 +591,16 @@ export function InboxPage() {
         description={t('inbox.description')}
         actions={
           <Space>
-            {/* D7.3: batch re-login entry — when the relogin filter is active and
-                there are stores needing re-login, offer a "go handle one by one" CTA
-                that opens the health-summary sidebar and guides sequential action. */}
-            {filter === 'relogin' && visibleEntries.length > 0 && (
+            {/* D7.3: guided sequential re-login — hands the whole set of stores to the
+                store detail page as an ordered queue, so finishing one store offers the
+                next instead of dropping the user back to a list. */}
+            {filter === 'relogin' && reloginQueue.length > 1 && (
               <Button
                 type="primary"
                 icon={<LoginOutlined />}
-                onClick={() => {
-                  // Jump to the first store that needs re-login; the health
-                  // summary bar on the store list will show remaining count.
-                  const first = visibleEntries[0]?.store;
-                  if (first) navigate(`/stores/${first.id}`);
-                }}
+                onClick={() => navigate(`/stores/${reloginQueue[0]}?reloginQueue=${reloginQueue.join(',')}`)}
               >
-                {t('inbox.batchReloginCta', { count: visibleEntries.length })}
+                {t('inbox.batchReloginCta', { count: reloginQueue.length })}
               </Button>
             )}
             {batchableEntries.length > 0 ? (
@@ -629,7 +661,11 @@ export function InboxPage() {
                             {t(`exc.${entry.exception.level}`)}
                           </Tag>
                         )}
-                        {entry.kind === 'relogin' && <AlertOutlined style={{ color: 'var(--ark-red, #dc2626)' }} />}
+                        {entry.kind === 'relogin' && (
+                          entry.expiresInDays === undefined
+                            ? <AlertOutlined style={{ color: 'var(--ark-red, #dc2626)' }} />
+                            : <Tag color="orange" style={{ margin: 0 }}>{t('inbox.expiringTag', { days: entry.expiresInDays })}</Tag>
+                        )}
                       </Space>
                       <div>
                         {entry.kind === 'approval' && entry.approval ? (

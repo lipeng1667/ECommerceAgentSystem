@@ -17,7 +17,26 @@ import {
   WalletOutlined,
 } from '@ant-design/icons';
 import { Tag } from 'antd';
-import type { StoreStatus } from '../types/domain';
+import dayjs from 'dayjs';
+import type { Store, StoreStatus } from '../types/domain';
+
+/** Days before predicted expiry at which a connected store starts warning (D7.3). */
+export const EXPIRY_WARNING_DAYS = 3;
+
+/**
+ * Days until a connected store's authorization expires, when it is close enough to warn
+ * about. Returns `undefined` when the store is not connected, has no predicted expiry,
+ * already expired, or is still outside the warning window — so callers can treat a
+ * defined result as "show the proactive expiry warning" (D7.3).
+ */
+export function getExpiringInDays(store: Pick<Store, 'status' | 'authExpiresAt'>, now = dayjs()): number | undefined {
+  if (store.status !== 'connected' || !store.authExpiresAt) return undefined;
+  const expiresAt = dayjs(store.authExpiresAt);
+  if (!expiresAt.isAfter(now)) return undefined;
+  // Round up: an authorization with 44 hours left reads as "2 days", not "1".
+  const remainingDays = Math.ceil(expiresAt.diff(now, 'hour', true) / 24);
+  return remainingDays <= EXPIRY_WARNING_DAYS ? Math.max(remainingDays, 1) : undefined;
+}
 
 /** Platform code → display name mapping — used in store list/detail pages */
 export const PLATFORM_NAMES: Record<string, string> = {

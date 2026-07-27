@@ -20,7 +20,7 @@ import { Alert, Button, Card, Checkbox, Col, Form, Input, Modal, Progress, Row, 
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { storeBusinessApi } from '../../api/storeBusiness';
 import { storesApi } from '../../api/stores';
 import { useI18n } from '../../app/i18n';
@@ -32,7 +32,19 @@ import { PageHeader } from '../../components/PageHeader';
 import { StatusBadge } from '../../components/StatusBadge';
 import type { AllMallId, Store, StoreConnection, StoreServiceType } from '../../types/domain';
 import { parseAllMallId } from '../../utils/id';
-import { getPlatformName } from '../../utils/storeDisplay';
+import { getExpiringInDays, getPlatformName } from '../../utils/storeDisplay';
+
+/**
+ * D7.1: system-recommended authorization method per platform. Official OAuth is used
+ * where the platform offers it; otherwise the account + official QR-login flow, which
+ * never collects a raw password. API keys are never recommended — they are a developer
+ * fallback, not the default path for a merchant.
+ */
+const RECOMMENDED_AUTH_METHOD: Record<string, Store['authMethod']> = {
+  pinduoduo: 'credentials',
+  taobao: 'oauth',
+  jd: 'oauth',
+};
 
 export function StoreDetailPage({ mode }: { mode?: 'new' }) {
   const { t } = useI18n();
@@ -41,6 +53,28 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
+  const [searchParams] = useSearchParams();
+
+  // D7.3: guided sequential re-login. The inbox hands over an ordered list of store ids
+  // via `?reloginQueue=`; this page shows the position in that queue and advances to the
+  // next store when this one is done, so "batch" means a real walkthrough.
+  const reloginQueue = (searchParams.get('reloginQueue') ?? '')
+    .split(',')
+    .map((value) => parseAllMallId(value))
+    .filter((value): value is AllMallId => value !== undefined);
+  const queueIndex = parsedStoreId !== undefined ? reloginQueue.indexOf(parsedStoreId) : -1;
+  const queueRemaining = queueIndex >= 0 ? reloginQueue.length - queueIndex - 1 : 0;
+
+  /** Moves to the next store in the guided queue, or back to the inbox when finished. */
+  const goToNextQueuedStore = () => {
+    const next = queueIndex >= 0 ? reloginQueue[queueIndex + 1] : undefined;
+    if (next === undefined) {
+      message.success(t('storewizard.reloginQueueDone'));
+      navigate('/inbox?type=relogin');
+      return;
+    }
+    navigate(`/stores/${next}?reloginQueue=${reloginQueue.join(',')}`);
+  };
 
   const { data: store } = useQuery({
     queryKey: ['store', parsedStoreId],
@@ -71,6 +105,17 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
       queryClient.invalidateQueries({ queryKey: ['stores'] });
     }
   });
+  // D7.3: re-login / renew — refreshes the session and its predicted expiry, then, when
+  // the user arrived from the inbox's guided queue, moves on to the next store.
+  const renewMutation = useMutation({
+    mutationFn: () => storesApi.renewSession(parsedStoreId!),
+    onSuccess: () => {
+      message.success(t('storewizard.sessionRenewed'));
+      queryClient.invalidateQueries({ queryKey: ['store', parsedStoreId] });
+      queryClient.invalidateQueries({ queryKey: ['stores'] });
+      if (reloginQueue.length > 0) goToNextQueuedStore();
+    }
+  });
   const [revokeModalOpen, setRevokeModalOpen] = useState(false);
   const [connectionModalOpen, setConnectionModalOpen] = useState(false);
   const [connectionForm] = Form.useForm();
@@ -85,8 +130,16 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
     }
   });
 
-  const [authMethod, setAuthMethod] = useState<Store['authMethod'] | undefined>();
+  /** D7.3: days until this store's session expires, when close enough to warn about. */
+  const expiringInDays = store ? getExpiringInDays(store) : undefined;
+
   const [platform, setPlatform] = useState<string>('pinduoduo');
+  // D7.1: the system picks the best authorization method per platform (official OAuth /
+  // QR login first) instead of asking the user to choose between three technical paths.
+  // The other methods stay reachable below as the developer fallback.
+  const [authMethod, setAuthMethod] = useState<Store['authMethod'] | undefined>(
+    () => RECOMMENDED_AUTH_METHOD[platform]
+  );
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
 
   // 各平台授权服务名称映射（运营后台 / 投流 / 客服 / 物流 / 财务）
@@ -165,7 +218,8 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
               value={platform}
               onChange={(v) => {
                 setPlatform(v);
-                setAuthMethod(undefined);
+                // D7.1: re-apply the system recommendation for the newly picked platform.
+                setAuthMethod(RECOMMENDED_AUTH_METHOD[v]);
                 const def = platformDefaults[v];
                 if (def) form.setFieldsValue({ region: def.region, currency: def.currency });
               }}
@@ -179,18 +233,30 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
 
         {/* 步骤2：授权方式 */}
         <Card title={t('stores.stepAuth')} style={{ marginBottom: 16 }}>
-          <Typography.Paragraph type="secondary">{t('stores.chooseAuth')}</Typography.Paragraph>
+          {/* D7.1: recommendation first — the system has already chosen; the remaining
+              methods are listed after it for the cases where it does not fit. */}
+          <Typography.Paragraph type="secondary">{t('stores.authRecommendedHint')}</Typography.Paragraph>
           <Row gutter={[12, 12]}>
-            {authMethods.filter((m) => m.platforms.includes(platform)).map((m) => (
-              <Col xs={24} sm={12} key={m.value}>
-                <Card hoverable size="small"
-                  style={{ border: authMethod === m.value ? '2px solid var(--ark-blue)' : '1px solid var(--ark-border)', cursor: 'pointer' }}
-                  onClick={() => setAuthMethod(m.value)}>
-                  <Typography.Text strong>{m.label}</Typography.Text><br />
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>{m.desc}</Typography.Text>
-                </Card>
-              </Col>
-            ))}
+            {authMethods
+              .filter((m) => m.platforms.includes(platform))
+              .sort((a, b) => Number(b.value === RECOMMENDED_AUTH_METHOD[platform]) - Number(a.value === RECOMMENDED_AUTH_METHOD[platform]))
+              .map((m) => {
+                const recommended = m.value === RECOMMENDED_AUTH_METHOD[platform];
+                return (
+                  <Col xs={24} sm={12} key={m.value}>
+                    <Card hoverable size="small"
+                      style={{ border: authMethod === m.value ? '2px solid var(--ark-blue)' : '1px solid var(--ark-border)', cursor: 'pointer' }}
+                      onClick={() => setAuthMethod(m.value)}>
+                      <Space size={6}>
+                        <Typography.Text strong>{m.label}</Typography.Text>
+                        {recommended && <Tag color="blue" style={{ margin: 0 }}>{t('stores.authRecommendedTag')}</Tag>}
+                      </Space>
+                      <br />
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>{m.desc}</Typography.Text>
+                    </Card>
+                  </Col>
+                );
+              })}
           </Row>
         </Card>
 
@@ -491,9 +557,31 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
           style={{ marginBottom: 16 }}
         />
       )}
+      {/* D7.3: position in the guided re-login walkthrough started from the inbox. */}
+      {queueIndex >= 0 && reloginQueue.length > 1 && (
+        <Alert
+          type="info"
+          showIcon
+          message={t('storewizard.reloginQueueTitle', { current: queueIndex + 1, total: reloginQueue.length })}
+          description={t('storewizard.reloginQueueDesc')}
+          action={
+            <Space>
+              <Button size="small" onClick={goToNextQueuedStore}>
+                {queueRemaining > 0
+                  ? t('storewizard.reloginQueueSkip', { remaining: queueRemaining })
+                  : t('storewizard.reloginQueueFinish')}
+              </Button>
+              <Button size="small" type="text" onClick={() => navigate(`/stores/${parsedStoreId}`)}>
+                {t('storewizard.reloginQueueExit')}
+              </Button>
+            </Space>
+          }
+          style={{ marginBottom: 16 }}
+        />
+      )}
       {/* Item 4: login_required/expired previously had no recovery action on this
           page at all (only revoked did) — a dead end for the most common operational
-          issue. Reuses the same reauthorizeMutation with relogin-specific copy. */}
+          issue. D7.3: renewing also refreshes the predicted expiry. */}
       {(store?.status === 'login_required' || store?.status === 'expired') && (
         <Alert
           type="warning"
@@ -501,8 +589,24 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
           message={t('storewizard.reloginAlertTitle')}
           description={t('storewizard.reloginAlertDesc')}
           action={
-            <Button type="primary" loading={reauthorizeMutation.isPending} onClick={() => reauthorizeMutation.mutate()}>
+            <Button type="primary" loading={renewMutation.isPending} onClick={() => renewMutation.mutate()}>
               {t('stores.reloginNow')}
+            </Button>
+          }
+          style={{ marginBottom: 16 }}
+        />
+      )}
+      {/* D7.3: proactive expiry — still connected, but the authorization runs out soon.
+          Acting here is the whole point of the warning: nothing is broken yet. */}
+      {store?.status === 'connected' && expiringInDays !== undefined && (
+        <Alert
+          type="warning"
+          showIcon
+          message={t('storewizard.expiringAlertTitle', { days: expiringInDays })}
+          description={t('storewizard.expiringAlertDesc', { date: dayjs(store.authExpiresAt).format('MM-DD HH:mm') })}
+          action={
+            <Button type="primary" loading={renewMutation.isPending} onClick={() => renewMutation.mutate()}>
+              {t('inbox.renewNow')}
             </Button>
           }
           style={{ marginBottom: 16 }}

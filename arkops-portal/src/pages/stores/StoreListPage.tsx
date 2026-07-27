@@ -15,7 +15,7 @@ import { StoreConnectionEmptyState } from '../../components/StoreConnectionEmpty
 import { DataTableCard } from '../../components/table/DataTableCard';
 import { TableActionGroup } from '../../components/table/TableActionGroup';
 import type { Store } from '../../types/domain';
-import { SERVICE_ICONS, getPlatformName, getSessionHealthColor, renderSessionTag } from '../../utils/storeDisplay';
+import { SERVICE_ICONS, getExpiringInDays, getPlatformName, getSessionHealthColor, renderSessionTag } from '../../utils/storeDisplay';
 
 const SESSION_DOT_COLOR: Record<string, string> = {
   green: 'var(--ark-green)',
@@ -136,13 +136,13 @@ export function StoreListPage() {
       <PageHeader
         title={t('stores.title')}
         description={t('stores.description')}
-          actions={
-            /* D7: single primary CTA — "高级接入" removed from top level and folded
-               into the onboarding wizard's "安全连接" step as a context fallback. */
-            <Button type="primary" icon={<CloudSyncOutlined />} onClick={() => navigate('/stores/onboarding?journey=import')}>
-              {t('storewizard.connectStoreCta')}
-            </Button>
-          }
+        actions={
+          /* D7: single primary CTA — "高级接入" removed from top level and folded
+             into the onboarding wizard's "安全连接" step as a context fallback. */
+          <Button type="primary" icon={<CloudSyncOutlined />} onClick={() => navigate('/stores/onboarding?journey=import')}>
+            {t('storewizard.connectStoreCta')}
+          </Button>
+        }
       />
       {user?.experience === 'onboarding' ? (
         <StoreConnectionEmptyState description="你还没有连接任何店铺。完成授权后，店铺、商品、订单、评价和库存会自动同步到这里。" />
@@ -153,12 +153,8 @@ export function StoreListPage() {
           {data.length > 0 && (() => {
             const online = data.filter((s) => s.status === 'connected').length;
             const needsRelogin = data.filter((s) => s.status === 'login_required' || s.status === 'expired').length;
-            // D7.3: proactive expiry warning — count connected stores whose session will expire within 3 days
-            const expiringSoon = data.filter((s) => {
-              if (s.status !== 'connected' || !s.authExpiresAt) return false;
-              const expiresAt = dayjs(s.authExpiresAt);
-              return expiresAt.isAfter(dayjs()) && expiresAt.diff(dayjs(), 'day') <= 3;
-            }).length;
+            // D7.3: proactive expiry warning — connected stores whose session runs out soon.
+            const expiringSoon = data.filter((s) => getExpiringInDays(s) !== undefined).length;
             const pending = data.filter((s) => s.status === 'pending_login').length;
             const revoked = data.filter((s) => s.status === 'revoked').length;
             return (
@@ -192,10 +188,17 @@ export function StoreListPage() {
                     {needsRelogin} {t('stores.healthNeedsRelogin')} → {t('stores.healthGoHandle')}
                   </Button>
                 )}
-                {expiringSoon > 0 && needsRelogin === 0 && (
-                  <Typography.Text type="warning" style={{ fontSize: 12 }}>
-                    <ClockCircleOutlined /> {expiringSoon} {t('stores.healthExpiringSoon')}
-                  </Typography.Text>
+                {/* Shown alongside the re-login count, not instead of it: "expiring soon"
+                    is a different, still-actionable state and links to the same queue. */}
+                {expiringSoon > 0 && (
+                  <Button
+                    type="link"
+                    icon={<ClockCircleOutlined />}
+                    onClick={() => navigate('/inbox?type=relogin')}
+                    style={{ color: 'var(--ark-orange)', padding: 0, fontSize: 12 }}
+                  >
+                    {expiringSoon} {t('stores.healthExpiringSoon')} → {t('stores.healthGoHandle')}
+                  </Button>
                 )}
                 {pending > 0 && (
                   <Typography.Text type="secondary" style={{ fontSize: 12 }}>
