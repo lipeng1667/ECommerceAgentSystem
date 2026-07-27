@@ -688,3 +688,60 @@ export interface FieldConflict {
   recommendation: 'keep_yours' | 'accept_platform';
   createdAt: string;
 }
+
+// ===== Orders (D8: orders smart flow) =====
+
+export type OrderStatus = 'auto_processing' | 'awaiting_shipment' | 'auto_shipped' | 'auto_completed' | 'exception' | 'fraud_blocked' | 'cancelled';
+
+/** Statuses handled end-to-end by automation (cancellations deliberately excluded). */
+export const AUTO_FLOW_ORDER_STATUSES: OrderStatus[] = ['auto_processing', 'awaiting_shipment', 'auto_shipped', 'auto_completed'];
+export const EXCEPTION_ORDER_STATUSES: OrderStatus[] = ['exception', 'fraud_blocked'];
+
+export type OrderExceptionType = 'address_invalid' | 'fraud_suspected' | 'out_of_stock' | 'payment_failed' | 'buyer_dispute';
+
+/** Priority-based urgency: breached > critical > warning > ok. */
+export type OrderSlaTone = 'ok' | 'warning' | 'critical' | 'breached';
+
+export interface OrderTimelineStep {
+  title: string;
+  at: string; // ISO
+  icon: 'check' | 'shield' | 'truck' | 'sync' | 'warning' | 'stop' | 'close';
+  /** Only set for automation-produced steps. */
+  automated?: boolean;
+  estimated?: string;
+  /** Operator-entered reason recorded with manual interventions. */
+  note?: string;
+}
+
+export interface OrderRecommendation {
+  action: 'apply_address_fix' | 'reallocate_stock' | 'send_payment_reminder' | 'release' | 'cancel_refund';
+  label: string;
+  rationale: string;
+  /** How confident the system is in its recommendation (0-1). Above 0.7 = strong, recommend accepting. */
+  confidence: number;
+  /** Whether this recommendation can be batched with other orders of the same type. */
+  batchable: boolean;
+}
+
+export interface Order {
+  id: AllMallId;
+  orderNo: string; // display string, e.g. #ORD-2406-0820
+  storeId: AllMallId;
+  storeName: string;
+  buyerName: string;
+  items: string;
+  amount: number;
+  status: OrderStatus;
+  trackingNo?: string;
+  logisticsStatus?: string;
+  exceptionType?: OrderExceptionType;
+  exceptionReason?: string;
+  agentAction: string;
+  createdAt: string; // ISO
+  paidAt?: string; // ISO — when payment was confirmed
+  /** Derived from paidAt + platform fulfillment SLA (A1 assumption). */
+  shipDeadlineAt?: string; // ISO
+  timeline: OrderTimelineStep[];
+  /** Recommendation from the mock engine for exceptions; absent for non-exception orders. */
+  recommendation?: OrderRecommendation;
+}
