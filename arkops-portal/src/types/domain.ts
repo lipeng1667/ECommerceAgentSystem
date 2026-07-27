@@ -726,8 +726,8 @@ export interface OrderRecommendation {
 export interface Order {
   id: AllMallId;
   orderNo: string; // display string, e.g. #ORD-2406-0820
+  /** Relationship field; the display name is resolved from the store list. */
   storeId: AllMallId;
-  storeName: string;
   buyerName: string;
   items: string;
   amount: number;

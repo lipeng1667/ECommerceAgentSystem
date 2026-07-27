@@ -5,6 +5,11 @@ import { recordAuditLog } from './auditLogger';
 import type { AllMallId, Order } from '../types/domain';
 import dayjs from 'dayjs';
 
+/**
+ * Every mutation in this module is operator-initiated (a person clicked something),
+ * so it is logged as `human_ops` — the category the audit page filters on to answer
+ * "what did a human change?". Agent-produced steps are not logged here.
+ */
 function logOrderAction(orderId: AllMallId, action: string, summary: string): void {
   recordAuditLog({
     actor: '当前用户',
@@ -12,7 +17,7 @@ function logOrderAction(orderId: AllMallId, action: string, summary: string): vo
     entity: '订单',
     entityId: orderId,
     summary,
-    category: 'agent_action',
+    category: 'human_ops',
   });
 }
 
@@ -64,7 +69,7 @@ export const ordersApi = {
       timeline: [
         ...o.timeline,
         { title: '人工审核通过（放行）', at: now, icon: 'check' as const, note: reason },
-        { title: '进入发货流程', at: '预计 2 小时内', icon: 'sync' as const, estimated: dayjs().add(2, 'hour').format('YYYY-MM-DD HH:mm') },
+        { title: '进入发货流程', at: now, icon: 'sync' as const, estimated: dayjs().add(2, 'hour').format('YYYY-MM-DD HH:mm') },
       ],
     }));
     if (result) logOrderAction(orderId, '放行风控订单', `原因: ${reason}`);
@@ -90,7 +95,7 @@ export const ordersApi = {
         timeline: [
           ...order.timeline,
           { title: label, at: now, icon: 'check' as const, automated: true },
-          { title: '进入发货流程', at: '预计 2 小时内', icon: 'sync' as const, estimated: dayjs().add(2, 'hour').format('YYYY-MM-DD HH:mm') },
+          { title: '进入发货流程', at: now, icon: 'sync' as const, estimated: dayjs().add(2, 'hour').format('YYYY-MM-DD HH:mm') },
         ],
       };
     } else if (action === 'reallocate_stock') {
@@ -118,8 +123,10 @@ export const ordersApi = {
         ],
       };
     } else {
-      // release or cancel_refund — these go through the Tier 3 guarded modals
-      return mockDelay(undefined);
+      // release / cancel_refund are Tier 3: they must go through the guarded modal
+      // that captures a reason. Fail loudly rather than returning undefined, which a
+      // caller cannot tell apart from "order not found".
+      throw new Error(`applyRecommendation: ${action} is a Tier 3 action — use releaseFraud/cancelAndRefund`);
     }
 
     const result = replaceItem(orders, (o) => o.id === orderId, () => updated);
@@ -127,6 +134,3 @@ export const ordersApi = {
     return mockDelay(result);
   },
 };
-
-/** Re-export the mutable array for use when order APIs need raw access (e.g. inbox). */
-export { orders as orderMutableStore };

@@ -61,8 +61,9 @@ import { PageHeader } from '../../components/PageHeader';
 import { StoreConnectionEmptyState } from '../../components/StoreConnectionEmptyState';
 import { DataTableCard } from '../../components/table/DataTableCard';
 import { TableActionGroup } from '../../components/table/TableActionGroup';
-import type { Order, OrderStatus } from '../../types/domain';
+import type { AllMallId, Order, OrderStatus } from '../../types/domain';
 import { AUTO_FLOW_ORDER_STATUSES, EXCEPTION_ORDER_STATUSES } from '../../types/domain';
+import { parseAllMallId } from '../../utils/id';
 
 type TabFilter = 'all' | 'exception' | 'auto';
 type RiskyActionType = 'cancel_refund' | 'fraud_release';
@@ -74,8 +75,10 @@ export function OrderAutomationPage() {
   const [searchParams] = useSearchParams();
   const [tabFilter, setTabFilter] = useState<TabFilter>('all');
   const [searchKw, setSearchKw] = useState('');
-  const [storeFilter, setStoreFilter] = useState<number | undefined>(
-    searchParams.get('store') ? Number(searchParams.get('store')) : undefined
+  // parseAllMallId (not Number) so a non-numeric ?store= yields undefined instead of
+  // NaN, which would match no order and silently empty the table.
+  const [storeFilter, setStoreFilter] = useState<AllMallId | undefined>(
+    () => parseAllMallId(searchParams.get('store') ?? undefined)
   );
   const [dateRange, setDateRange] = useState<[string, string] | null>(null);
   const [detailOrder, setDetailOrder] = useState<Order | null>(null);
@@ -86,7 +89,10 @@ export function OrderAutomationPage() {
   const { data: orders = [] } = useQuery({ queryKey: ['orders'], queryFn: ordersApi.list });
   const { data: stores = [] } = useQuery({ queryKey: ['stores'], queryFn: storesApi.list });
 
+  // Single source for store display names: the store list. `Order` carries only
+  // storeId, so the page can never drift from what /stores shows.
   const storeNamesById = useMemo(() => new Map(stores.map((s) => [s.id, s.name])), [stores]);
+  const storeNameOf = (order: Order) => storeNamesById.get(order.storeId) ?? '-';
 
   // ---- Mutations -----------------------------------------------------------
   const cancelMutation = useMutation({
@@ -135,7 +141,15 @@ export function OrderAutomationPage() {
       items = items.filter((o) => o.orderNo.toLowerCase().includes(kw) || o.buyerName.toLowerCase().includes(kw) || o.items.toLowerCase().includes(kw) || (o.trackingNo && o.trackingNo.toLowerCase().includes(kw)));
     }
     if (storeFilter != null) items = items.filter((o) => o.storeId === storeFilter);
-    if (dateRange) items = items.filter((o) => o.createdAt >= dateRange[0] && o.createdAt <= dateRange[1]);
+    if (dateRange) {
+      // createdAt is an ISO instant; compare on the local calendar day the picker
+      // works in. A raw string compare would drop same-day orders (ISO carries a
+      // time component) and could shift the day for early-morning local orders.
+      items = items.filter((o) => {
+        const day = dayjs(o.createdAt).format('YYYY-MM-DD');
+        return day >= dateRange[0] && day <= dateRange[1];
+      });
+    }
     return items;
   }, [orders, searchKw, storeFilter, dateRange]);
 
@@ -258,7 +272,7 @@ export function OrderAutomationPage() {
             <Alert type={pendingAction.type === 'cancel_refund' ? 'warning' : 'info'} showIcon style={{ marginBottom: 12 }} message={pendingAction.type === 'cancel_refund' ? t('ordersv2.cancelRefundWarning') : t('ordersv2.releaseWarning')} />
             <Descriptions column={2} size="small" style={{ marginBottom: 12 }} title={t('ordersv2.confirmEvidence')}>
               <Descriptions.Item label={t('order.orderNo')}>{pendingAction.order.orderNo}</Descriptions.Item>
-              <Descriptions.Item label={t('order.store')}>{pendingAction.order.storeName}</Descriptions.Item>
+              <Descriptions.Item label={t('order.store')}>{storeNameOf(pendingAction.order)}</Descriptions.Item>
               <Descriptions.Item label={t('order.buyer')}>{pendingAction.order.buyerName}</Descriptions.Item>
               <Descriptions.Item label={t('order.amount')}><Typography.Text strong>¥{pendingAction.order.amount.toFixed(2)}</Typography.Text></Descriptions.Item>
               <Descriptions.Item label={t('order.items')} span={2}>{pendingAction.order.items}</Descriptions.Item>
@@ -302,7 +316,7 @@ export function OrderAutomationPage() {
         {detailOrder && (
           <>
             <Descriptions column={2} size="small" style={{ marginBottom: 16 }}>
-              <Descriptions.Item label={t('order.store')}>{detailOrder.storeName}</Descriptions.Item>
+              <Descriptions.Item label={t('order.store')}>{storeNameOf(detailOrder)}</Descriptions.Item>
               <Descriptions.Item label={t('order.status')}><Tag color={statusColors[detailOrder.status]}>{t(`order.status_${detailOrder.status}`)}</Tag></Descriptions.Item>
               <Descriptions.Item label={t('order.buyer')}>{detailOrder.buyerName}</Descriptions.Item>
               <Descriptions.Item label={t('order.amount')}><Typography.Text strong>¥{detailOrder.amount.toFixed(2)}</Typography.Text></Descriptions.Item>
@@ -314,7 +328,9 @@ export function OrderAutomationPage() {
               <>
                 <Divider />
                 <Typography.Title level={5} style={{ color: 'var(--ark-red)' }}><ExclamationCircleOutlined /> {t('order.exceptionReason')}</Typography.Title>
-                <Card size="small" style={{ background: 'var(--ark-red-soft)', border: '1px solid var(--ark-red-light)' }}>
+                {/* color-mix over the red token — the repo has no --ark-red-soft/-light
+                    tokens, and referencing missing vars silently drops the tint. */}
+                <Card size="small" style={{ background: 'color-mix(in srgb, var(--ark-red) 8%, var(--ark-panel))', border: '1px solid color-mix(in srgb, var(--ark-red) 35%, var(--ark-panel))' }}>
                   <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0, fontSize: 12 }}>{detailOrder.exceptionReason}</pre>
                 </Card>
               </>
