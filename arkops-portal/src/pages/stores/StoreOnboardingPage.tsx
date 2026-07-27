@@ -646,6 +646,16 @@ export function StoreOnboardingPage() {
             <Button type="primary" size="large" block loading={connecting} disabled={connected} onClick={connectStore} style={{ marginTop: 24 }}>
               {connected ? '已安全连接' : authError ? t('storewizard.retryAuth') : `打开${source.name}并授权`}
             </Button>
+            {/* D7: API path demoted to a context fallback — only visible when
+                OAuth/scan isn't applicable, matching "无法扫码?" pattern. */}
+            <div style={{ textAlign: 'center', marginTop: 8 }}>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {t('storewizard.cannotScan')}
+                <Button type="link" size="small" onClick={() => navigate('/stores/new')}>
+                  {t('storewizard.apiFallback')}
+                </Button>
+              </Typography.Text>
+            </div>
           </Card>
           {authError && (
             <Alert

@@ -135,18 +135,13 @@ export function StoreListPage() {
       <PageHeader
         title={t('stores.title')}
         description={t('stores.description')}
-        actions={
-          <Space>
-            {/* A3: the guided wizard is the single add-store entry; the legacy
-                API form is demoted to an "advanced" branch. */}
-            <Button type="text" onClick={() => navigate('/stores/new')}>
-              {t('storewizard.advancedEntry')}
-            </Button>
+          actions={
+            /* D7: single primary CTA — "高级接入" removed from top level and folded
+               into the onboarding wizard's "安全连接" step as a context fallback. */
             <Button type="primary" icon={<CloudSyncOutlined />} onClick={() => navigate('/stores/onboarding?journey=import')}>
               {t('storewizard.connectStoreCta')}
             </Button>
-          </Space>
-        }
+          }
       />
       {user?.experience === 'onboarding' ? (
         <StoreConnectionEmptyState description="你还没有连接任何店铺。完成授权后，店铺、商品、订单、评价和库存会自动同步到这里。" />
