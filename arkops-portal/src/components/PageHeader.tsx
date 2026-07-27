@@ -15,6 +15,8 @@
  * - 2026-07-03: Added ownership and function documentation for AI-assisted collaboration.
  * - 2026-07-22: WS-E — added optional `breadcrumb` and `onBack` props so detail pages
  *   (approvals, stores, agents) can expose a navigation trail and back affordance.
+ * - 2026-07-27: actions are wrapped in `.page-title-actions` so they align with the
+ *   title line instead of floating above it.
  */
 import { memo, type ReactNode } from 'react';
 import { ArrowLeftOutlined } from '@ant-design/icons';
@@ -91,7 +93,7 @@ export const PageHeader = memo(function PageHeader({
             {description ? <Typography.Text type="secondary">{description}</Typography.Text> : null}
           </div>
         </div>
-        {actions}
+        {actions ? <div className="page-title-actions">{actions}</div> : null}
       </div>
     </div>
   );

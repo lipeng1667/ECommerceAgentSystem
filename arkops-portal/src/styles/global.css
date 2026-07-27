@@ -246,6 +246,13 @@ body {
   gap: 18px;
 }
 
+/* Grid items default to min-width:auto, so a wide table stretched the whole column and
+   with it the page header — pushing the right-aligned actions past the viewport. Let
+   items shrink and keep the horizontal scrolling inside the table itself. */
+.page-stack > * {
+  min-width: 0;
+}
+
 .page-title-row {
   display: flex;
   align-items: flex-start;
@@ -265,9 +272,29 @@ body {
   min-width: 0;
 }
 
+/* Ant Design gives h2 a ~25px top margin, which pushed the title down while the
+   actions stayed at the top of the row — the two read as separate rows. Drop it so
+   the title and its actions share one line. */
+.page-title-main h2.ant-typography {
+  margin-top: 0;
+}
+
+/* Centers the actions against the title's first line (line-height 38px) rather than
+   the whole left block, so they stay aligned whether or not a description is present. */
+.page-title-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  /* Shrinkable, like the bare action node was before it gained this wrapper. */
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 38px;
+}
+
 .page-header-back {
   flex: 0 0 auto;
-  margin-top: 4px;
+  margin-top: 3px;
 }
 
 .muted {
@@ -2358,5 +2385,13 @@ body {
   .page-title-row {
     align-items: flex-start;
     gap: 12px;
+    /* Too narrow to keep title and actions on one line: let the actions drop below
+       instead of being squeezed off the right edge. */
+    flex-wrap: wrap;
+  }
+
+  .page-title-actions {
+    min-height: 0;
+    justify-content: flex-start;
   }
 }
