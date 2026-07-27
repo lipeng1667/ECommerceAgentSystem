@@ -389,7 +389,9 @@ export function InboxPage() {
       } else if (entry.kind === 'product_merge' && entry.mergeSuggestion) {
         await mergeProductsMutation.mutateAsync(entry.mergeSuggestion.id);
       } else if (entry.kind === 'product_conflict' && entry.fieldConflict) {
-        await resolveFieldConflictMutation.mutateAsync({ id: entry.fieldConflict.id, decision: 'keep_yours' });
+        // Apply each conflict's own recommendation, not a blanket keep_yours — otherwise
+        // "accept all recommended" would silently reject platform values it recommended.
+        await resolveFieldConflictMutation.mutateAsync({ id: entry.fieldConflict.id, decision: entry.fieldConflict.recommendation });
       }
     }
     message.success(t('inbox.batchAcceptDone', { count: targets.length }));
@@ -551,13 +553,32 @@ export function InboxPage() {
         }
         description={t('inbox.description')}
         actions={
-          batchableEntries.length > 0 ? (
-            <Popconfirm title={t('inbox.batchAcceptConfirm', { count: batchableEntries.length })} onConfirm={handleBatchAccept} okText={t('common.confirm')} cancelText={t('common.cancel')}>
-              <Button type="primary" icon={<ThunderboltOutlined />} loading={batchAccepting}>
-                {t('inbox.batchAccept', { count: batchableEntries.length })}
+          <Space>
+            {/* D7.3: batch re-login entry — when the relogin filter is active and
+                there are stores needing re-login, offer a "go handle one by one" CTA
+                that opens the health-summary sidebar and guides sequential action. */}
+            {filter === 'relogin' && visibleEntries.length > 0 && (
+              <Button
+                type="primary"
+                icon={<LoginOutlined />}
+                onClick={() => {
+                  // Jump to the first store that needs re-login; the health
+                  // summary bar on the store list will show remaining count.
+                  const first = visibleEntries[0]?.store;
+                  if (first) navigate(`/stores/${first.id}`);
+                }}
+              >
+                {t('inbox.batchReloginCta', { count: visibleEntries.length })}
               </Button>
-            </Popconfirm>
-          ) : undefined
+            )}
+            {batchableEntries.length > 0 ? (
+              <Popconfirm title={t('inbox.batchAcceptConfirm', { count: batchableEntries.length })} onConfirm={handleBatchAccept} okText={t('common.confirm')} cancelText={t('common.cancel')}>
+                <Button type="primary" icon={<ThunderboltOutlined />} loading={batchAccepting}>
+                  {t('inbox.batchAccept', { count: batchableEntries.length })}
+                </Button>
+              </Popconfirm>
+            ) : undefined}
+          </Space>
         }
       />
 
