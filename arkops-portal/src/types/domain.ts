@@ -43,6 +43,8 @@ export interface Store {
   region?: string;
   currency?: string;
   lastVerifiedAt?: string;
+  /** Predicted session expiry time — shown in proactive expiry warnings (D7.3). */
+  authExpiresAt?: string;
   createdAt: string;
   recentTaskIds: AllMallId[];
   connections: StoreConnection[];

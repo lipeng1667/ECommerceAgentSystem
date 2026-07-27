@@ -1,4 +1,4 @@
-import { CheckCircleOutlined, CloudSyncOutlined, ExclamationCircleOutlined, EyeOutlined, LoginOutlined, PayCircleOutlined, ShopOutlined, ShoppingCartOutlined, WifiOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, ClockCircleOutlined, CloudSyncOutlined, ExclamationCircleOutlined, EyeOutlined, LoginOutlined, PayCircleOutlined, ShopOutlined, ShoppingCartOutlined, WifiOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Card, Input, Select, Space, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -153,6 +153,12 @@ export function StoreListPage() {
           {data.length > 0 && (() => {
             const online = data.filter((s) => s.status === 'connected').length;
             const needsRelogin = data.filter((s) => s.status === 'login_required' || s.status === 'expired').length;
+            // D7.3: proactive expiry warning — count connected stores whose session will expire within 3 days
+            const expiringSoon = data.filter((s) => {
+              if (s.status !== 'connected' || !s.authExpiresAt) return false;
+              const expiresAt = dayjs(s.authExpiresAt);
+              return expiresAt.isAfter(dayjs()) && expiresAt.diff(dayjs(), 'day') <= 3;
+            }).length;
             const pending = data.filter((s) => s.status === 'pending_login').length;
             const revoked = data.filter((s) => s.status === 'revoked').length;
             return (
@@ -186,6 +192,11 @@ export function StoreListPage() {
                     {needsRelogin} {t('stores.healthNeedsRelogin')} → {t('stores.healthGoHandle')}
                   </Button>
                 )}
+                {expiringSoon > 0 && needsRelogin === 0 && (
+                  <Typography.Text type="warning" style={{ fontSize: 12 }}>
+                    <ClockCircleOutlined /> {expiringSoon} {t('stores.healthExpiringSoon')}
+                  </Typography.Text>
+                )}
                 {pending > 0 && (
                   <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                     {pending} {t('stores.healthPending')}
@@ -197,7 +208,7 @@ export function StoreListPage() {
                   </Typography.Text>
                 )}
                 <Typography.Text type="secondary" style={{ fontSize: 11, marginLeft: 'auto' }}>
-                  {t('stores.healthLastCheck', { time: dayjs().format('HH:mm') })}
+                  {t('stores.healthAutoCheck')}
                 </Typography.Text>
               </Card>
             );

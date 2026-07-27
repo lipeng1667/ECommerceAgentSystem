@@ -17,6 +17,8 @@ export const stores: Store[] = [
     region: 'CN',
     currency: 'CNY',
     lastVerifiedAt: now.subtract(2, 'hour').toISOString(),
+    // D7.3: predicted expiry — connected but will expire soon, surfaces a proactive warning.
+    authExpiresAt: now.add(2, 'day').toISOString(),
     createdAt: now.subtract(5, 'day').toISOString(),
     recentTaskIds: [3001, 3002],
     connections: [
