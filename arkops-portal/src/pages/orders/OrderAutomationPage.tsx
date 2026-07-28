@@ -70,41 +70,31 @@ import { TableActionGroup } from '../../components/table/TableActionGroup';
 import type { AllMallId, Order, OrderExceptionType, OrderStatus } from '../../types/domain';
 import { AUTO_FLOW_ORDER_STATUSES, EXCEPTION_ORDER_STATUSES } from '../../types/domain';
 import { parseAllMallId } from '../../utils/id';
+import { getSlaState, isOrderActionable } from '../../utils/orderSla';
+import type { SlaState } from '../../utils/orderSla';
 
 type TabFilter = 'all' | 'exception' | 'auto';
 type RiskyActionType = 'cancel_refund' | 'fraud_release';
 type TranslateFn = ReturnType<typeof useI18n>['t'];
 
-/**
- * The shipping deadline only means anything before the parcel leaves: once an order is
- * shipped, completed or cancelled there is nothing left to miss. Scoping it here keeps
- * finished orders from showing a red 已超时 and hijacking the sort order.
- */
-const SLA_TRACKED_STATUSES: OrderStatus[] = ['auto_processing', 'awaiting_shipment', 'exception', 'fraud_blocked'];
-
 /** Exception types offered in the filter — the ones the mock engine can produce. */
 const EXCEPTION_TYPE_OPTIONS: OrderExceptionType[] = ['address_invalid', 'fraud_suspected', 'out_of_stock', 'payment_failed', 'buyer_dispute'];
 
-const SLA_CRITICAL_MS = 2 * 3600_000;
-const SLA_WARNING_MS = 6 * 3600_000;
+interface SlaInfo extends SlaState { label: string }
 
-type SlaTone = 'none' | 'ok' | 'warning' | 'critical' | 'breached';
-interface SlaInfo { remainingMs: number; tone: SlaTone; label: string }
-
+/** Adds the localized countdown label to the shared SLA state. */
 function getSlaForOrder(order: Order, now: dayjs.Dayjs, t: TranslateFn): SlaInfo {
-  if (!order.shipDeadlineAt || !SLA_TRACKED_STATUSES.includes(order.status)) {
-    return { remainingMs: Number.MAX_SAFE_INTEGER, tone: 'none', label: '' };
-  }
-  const remainingMs = dayjs(order.shipDeadlineAt).diff(now);
-  if (remainingMs <= 0) return { remainingMs, tone: 'breached', label: t('ordersv2.slaBreached') };
-  const hours = Math.floor(remainingMs / 3600_000);
-  const minutes = Math.floor((remainingMs % 3600_000) / 60_000);
-  if (remainingMs <= SLA_CRITICAL_MS) return { remainingMs, tone: 'critical', label: t('ordersv2.slaMinutesLeft', { minutes: Math.ceil(remainingMs / 60_000) }) };
-  if (remainingMs <= SLA_WARNING_MS) return { remainingMs, tone: 'warning', label: t('ordersv2.slaHoursLeft', { hours, minutes }) };
-  return { remainingMs, tone: 'ok', label: t('ordersv2.slaHoursLeftShort', { hours }) };
+  const state = getSlaState(order, now);
+  if (state.tone === 'none') return { ...state, label: '' };
+  if (state.tone === 'breached') return { ...state, label: t('ordersv2.slaBreached') };
+  const hours = Math.floor(state.remainingMs / 3600_000);
+  const minutes = Math.floor((state.remainingMs % 3600_000) / 60_000);
+  if (state.tone === 'critical') return { ...state, label: t('ordersv2.slaMinutesLeft', { minutes: Math.ceil(state.remainingMs / 60_000) }) };
+  if (state.tone === 'warning') return { ...state, label: t('ordersv2.slaHoursLeft', { hours, minutes }) };
+  return { ...state, label: t('ordersv2.slaHoursLeftShort', { hours }) };
 }
 
-const SLA_TONE_COLOR: Record<SlaTone, string> = {
+const SLA_TONE_COLOR: Record<SlaState['tone'], string> = {
   breached: 'var(--ark-red)',
   critical: 'var(--ark-orange)',
   warning: 'var(--ark-amber)',
@@ -133,8 +123,10 @@ export function OrderAutomationPage() {
   const [dateRange, setDateRange] = useState<[string, string] | null>(null);
   const [exceptionTypeFilter, setExceptionTypeFilter] = useState<OrderExceptionType | undefined>();
   const [slaFilter, setSlaFilter] = useState<'at_risk' | 'breached' | undefined>();
-  // Deep-link: /orders?order=<id> opens that order's detail modal on mount.
+  // Deep-link: /orders?order=<id> opens that order's detail modal on mount;
+  // /orders?exc=<anything> (used by the exception centre) lands on the exception tab.
   const orderFromUrl = parseAllMallId(searchParams.get('order') ?? undefined);
+  const excFromUrl = searchParams.get('exc');
   const [detailOrder, setDetailOrder] = useState<Order | null>(null);
   const [pendingAction, setPendingAction] = useState<{ type: RiskyActionType; order: Order } | null>(null);
   const [actionReason, setActionReason] = useState('');
@@ -211,10 +203,7 @@ export function OrderAutomationPage() {
     return EXCEPTION_ORDER_STATUSES.includes(o.status) && (tone === 'breached' || tone === 'critical');
   }).length;
   // An exception that is also SLA-critical must not be counted twice.
-  const needsMeCount = baseFiltered.filter((o) => {
-    const tone = slaOf(o).tone;
-    return EXCEPTION_ORDER_STATUSES.includes(o.status) || tone === 'breached' || tone === 'critical';
-  }).length;
+  const needsMeCount = baseFiltered.filter((o) => isOrderActionable(o, clock)).length;
   const filtersActive = !!(searchKw || storeFilter != null || dateRange || exceptionTypeFilter || slaFilter);
   const clearFilters = () => { setSearchKw(''); setStoreFilter(undefined); setDateRange(null); setExceptionTypeFilter(undefined); setSlaFilter(undefined); };
 
@@ -231,8 +220,8 @@ export function OrderAutomationPage() {
   useEffect(() => {
     if (defaultTabApplied.current || orders.length === 0) return;
     defaultTabApplied.current = true;
-    if (orders.some((o) => EXCEPTION_ORDER_STATUSES.includes(o.status))) setTabFilter('exception');
-  }, [orders]);
+    if (excFromUrl || orders.some((o) => EXCEPTION_ORDER_STATUSES.includes(o.status))) setTabFilter('exception');
+  }, [orders, excFromUrl]);
 
   // Deep-link: /orders?order=<id> opens that order's detail modal once data arrives.
   useEffect(() => {

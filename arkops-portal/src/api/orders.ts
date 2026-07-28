@@ -4,6 +4,7 @@ import { stores } from './mockData';
 import { replaceItem } from './mockRepository';
 import { recordAuditLog } from './auditLogger';
 import { AUTO_FLOW_ORDER_STATUSES, EXCEPTION_ORDER_STATUSES } from '../types/domain';
+import { isOrderActionable } from '../utils/orderSla';
 import type { AllMallId, Order, OrderSyncResult } from '../types/domain';
 import dayjs from 'dayjs';
 
@@ -64,6 +65,15 @@ function buildSyncResult(patch: Partial<OrderSyncResult>): OrderSyncResult {
   // Hand back a copy: React Query skips the re-render when a cache write returns the
   // same object reference, which would leave the card showing a stale sync time.
   return { ...syncState, perStore: [...syncState.perStore] };
+}
+
+/**
+ * Orders that need a person right now — exceptions plus anything about to miss (or that
+ * has missed) its shipping deadline. Exported synchronously so the dashboard summary and
+ * the sidebar badge count exactly what the orders page and inbox show.
+ */
+export function countActionableOrders(): number {
+  return orders.filter((order) => isOrderActionable(order)).length;
 }
 
 export const ordersApi = {

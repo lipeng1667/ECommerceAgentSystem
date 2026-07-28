@@ -1,4 +1,5 @@
 import { mockDelay } from './client';
+import { countActionableOrders } from './orders';
 import { approvals, stores, tasks } from './mockData';
 import { exceptionItems } from '../pages/operations/exceptionCenterMockData'; // WS-B (B2)
 import { agentConfigs } from './agentMockData';
@@ -22,9 +23,10 @@ export const dashboardApi = {
     const pendingApprovals = approvals.filter(
       (approval) => approval.status === 'pending'
     ).length;
-    const orderExceptions = tasks.filter(
-      (task) => task.status === 'failed'
-    ).length;
+    // D8/O4: this drives the sidebar 订单管理 badge. It used to count *failed tasks*
+    // (13), which had nothing to do with orders — the badge disagreed with the orders
+    // page and the inbox. Now it is the real count of orders awaiting a person.
+    const orderExceptions = countActionableOrders();
     // WS-B (B2): count real exception-center items (previously counted
     // waiting_approval tasks, which double-counted approvals in badges).
     const exceptionCenterPending = exceptionItems.filter(

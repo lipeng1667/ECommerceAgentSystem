@@ -35,6 +35,7 @@ import { approvalsApi } from '../../api/approvals';
 import { exceptionsApi } from '../../api/exceptions';
 import type { ExceptionItem } from '../../api/exceptions';
 import { fieldConflictsApi, mergeSuggestionsApi, newProductCandidatesApi, productListingsApi, productsApi } from '../../api/products';
+import { ordersApi } from '../../api/orders';
 import { storesApi } from '../../api/stores';
 import { useAuth } from '../../app/auth';
 import { useI18n } from '../../app/i18n';
@@ -43,6 +44,8 @@ import { PageHeader } from '../../components/PageHeader';
 import { StatusBadge } from '../../components/StatusBadge';
 import { StoreConnectionEmptyState } from '../../components/StoreConnectionEmptyState';
 import { getExpiringInDays } from '../../utils/storeDisplay';
+import { getSlaState, isOrderActionable } from '../../utils/orderSla';
+import { EXCEPTION_ORDER_STATUSES } from '../../types/domain';
 import { ApprovalDecisionModal, type ApprovalDecision } from '../approvals/ApprovalDecisionModal';
 import {
   URGENCY_COLORS,
@@ -58,6 +61,7 @@ import type {
   NewProductCandidate,
   Product,
   ProductListing,
+  Order,
   ProductMergeSuggestion,
   Store
 } from '../../types/domain';
@@ -76,6 +80,7 @@ interface InboxEntry {
   approval?: Approval;
   exception?: ExceptionItem;
   store?: Store;
+  order?: Order;
   listing?: ProductListing;
   newProductCandidate?: NewProductCandidate;
   mergeSuggestion?: ProductMergeSuggestion;
@@ -102,6 +107,7 @@ const KIND_TAG_COLORS: Record<InboxItemKind, string> = {
   approval: 'blue',
   exception: 'orange',
   relogin: 'red',
+  order_exception: 'volcano',
   product_draft: 'purple',
   product_new: 'cyan',
   product_merge: 'gold',
@@ -144,7 +150,7 @@ function FieldConflictComparison({ conflict, t }: { conflict: FieldConflict; t: 
 
 function isValidFilter(value: string | null): value is InboxFilter {
   return (
-    value === 'all' || value === 'approval' || value === 'exception' || value === 'relogin' ||
+    value === 'all' || value === 'approval' || value === 'exception' || value === 'relogin' || value === 'order_exception' ||
     value === 'product_draft' || value === 'product_new' || value === 'product_merge' || value === 'product_conflict'
   );
 }
@@ -167,6 +173,7 @@ export function InboxPage() {
   const { data: approvals = [] } = useQuery({ queryKey: ['approvals'], queryFn: approvalsApi.list });
   const { data: exceptions = [] } = useQuery({ queryKey: ['exceptions'], queryFn: exceptionsApi.list });
   const { data: stores = [] } = useQuery({ queryKey: ['stores'], queryFn: storesApi.list });
+  const { data: orders = [] } = useQuery({ queryKey: ['orders'], queryFn: ordersApi.list });
   const { data: productListings = [] } = useQuery({ queryKey: ['productListings'], queryFn: productListingsApi.list });
   const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: productsApi.list });
   const { data: newProductCandidates = [] } = useQuery({ queryKey: ['newProductCandidates'], queryFn: newProductCandidatesApi.list });
@@ -225,6 +232,15 @@ export function InboxPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['productMergeSuggestions'] });
       message.success(t('inbox.dismissed'));
+    }
+  });
+  const applyOrderRecMutation = useMutation({
+    mutationFn: (orderId: number) => ordersApi.applyRecommendation(orderId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['orderSync'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      message.success(t('inbox.orderRecommendationApplied'));
     }
   });
   const resolveFieldConflictMutation = useMutation({
@@ -306,6 +322,45 @@ export function InboxPage() {
           batchable: false
         });
       }
+    }
+
+    // D8/O4: orders that need a person — exceptions, plus orders about to miss (or that
+    // have missed) the platform shipping deadline. Same "needs me" definition the orders
+    // page and the sidebar badge use, so the three can never disagree.
+    for (const order of orders) {
+      if (!isOrderActionable(order, clock)) continue;
+      const sla = getSlaState(order, clock);
+      const storeName = stores.find((s) => s.id === order.storeId)?.name ?? '';
+      const isException = EXCEPTION_ORDER_STATUSES.includes(order.status);
+      const urgent = sla.tone === 'breached' || sla.tone === 'critical';
+      // Tier 2 recommendations can be accepted in bulk; fraud release and cancel/refund
+      // are Tier 3 and must stay one-by-one with a typed reason on the orders page.
+      const tier2 = order.recommendation && order.recommendation.action !== 'release' && order.recommendation.action !== 'cancel_refund'
+        ? order.recommendation
+        : undefined;
+      list.push({
+        key: `order_exception-${order.id}`,
+        kind: 'order_exception',
+        title: isException
+          ? t('inbox.orderExceptionTitle', { order: order.orderNo })
+          : sla.tone === 'breached'
+            ? t('inbox.orderSlaBreachedTitle', { order: order.orderNo })
+            : t('inbox.orderSlaTitle', { order: order.orderNo }),
+        // A Tier 3 exception (fraud, cancel/refund) has no one-click recommendation, so
+        // fall back to why it was flagged rather than to deadline copy that may not apply.
+        summary: tier2
+          ? tier2.rationale
+          : isException
+            ? (order.exceptionReason?.split('\n')[0] ?? t('inbox.orderExceptionFallbackSummary'))
+            : sla.tone === 'breached'
+              ? t('inbox.orderSlaBreachedSummary')
+              : t('inbox.orderSlaSummary'),
+        storeName,
+        urgencyRank: urgent ? 0 : 1,
+        createdAt: order.createdAt,
+        order,
+        batchable: !!tier2?.batchable,
+      });
     }
 
     // D6/§3.14.9: draft/pending_review product listings fold into the inbox — informational,
@@ -401,7 +456,7 @@ export function InboxPage() {
 
   const counts = useMemo(() => {
     const byKind: Record<InboxItemKind, number> = {
-      approval: 0, exception: 0, relogin: 0, product_draft: 0, product_new: 0, product_merge: 0, product_conflict: 0
+      approval: 0, exception: 0, relogin: 0, order_exception: 0, product_draft: 0, product_new: 0, product_merge: 0, product_conflict: 0
     };
     for (const entry of entries) byKind[entry.kind] += 1;
     return { ...byKind, all: entries.length };
@@ -414,7 +469,7 @@ export function InboxPage() {
     .filter((entry) => entry.kind === 'relogin' && entry.store)
     .map((entry) => entry.store!.id);
   const batchableEntries = visibleEntries.filter((entry) => entry.batchable);
-  const batchAccepting = acceptNewProductMutation.isPending || mergeProductsMutation.isPending || resolveFieldConflictMutation.isPending;
+  const batchAccepting = acceptNewProductMutation.isPending || mergeProductsMutation.isPending || resolveFieldConflictMutation.isPending || applyOrderRecMutation.isPending;
 
   const handleBatchAccept = async () => {
     const targets = [...batchableEntries];
@@ -423,6 +478,8 @@ export function InboxPage() {
         await acceptNewProductMutation.mutateAsync(entry.newProductCandidate.id);
       } else if (entry.kind === 'product_merge' && entry.mergeSuggestion) {
         await mergeProductsMutation.mutateAsync(entry.mergeSuggestion.id);
+      } else if (entry.kind === 'order_exception' && entry.order) {
+        await applyOrderRecMutation.mutateAsync(entry.order.id);
       } else if (entry.kind === 'product_conflict' && entry.fieldConflict) {
         // Apply each conflict's own recommendation, not a blanket keep_yours — otherwise
         // "accept all recommended" would silently reject platform values it recommended.
@@ -500,6 +557,35 @@ export function InboxPage() {
         >
           {isProactive ? t('inbox.renewNow') : t('inbox.goRelogin')}
         </Button>
+      );
+    }
+    if (entry.kind === 'order_exception' && entry.order) {
+      const order = entry.order;
+      const tier2 = order.recommendation && order.recommendation.action !== 'release' && order.recommendation.action !== 'cancel_refund'
+        ? order.recommendation
+        : undefined;
+      return (
+        <Space size={4} wrap>
+          {tier2 && (
+            <Button
+              size="small"
+              type="primary"
+              icon={<CheckOutlined />}
+              loading={applyOrderRecMutation.isPending}
+              onClick={() => applyOrderRecMutation.mutate(order.id)}
+            >
+              {t('inbox.acceptRecommended')}
+            </Button>
+          )}
+          <Button
+            size="small"
+            type={tier2 ? 'default' : 'primary'}
+            icon={<EyeOutlined />}
+            onClick={() => navigate(`/orders?order=${order.id}`)}
+          >
+            {t('inbox.goHandle')}
+          </Button>
+        </Space>
       );
     }
     if (entry.kind === 'product_draft' && entry.listing) {
@@ -627,6 +713,7 @@ export function InboxPage() {
             { value: 'approval', label: `${t('inbox.filterApprovals')} (${counts.approval})` },
             { value: 'exception', label: `${t('inbox.filterExceptions')} (${counts.exception})` },
             { value: 'relogin', label: `${t('inbox.filterRelogin')} (${counts.relogin})` },
+            { value: 'order_exception', label: `${t('inbox.filterOrderException')} (${counts.order_exception})` },
             { value: 'product_draft', label: `${t('inbox.filterProductDrafts')} (${counts.product_draft})` },
             { value: 'product_new', label: `${t('inbox.filterProductNew')} (${counts.product_new})` },
             { value: 'product_merge', label: `${t('inbox.filterProductMerge')} (${counts.product_merge})` },
