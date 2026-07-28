@@ -100,6 +100,8 @@ export function OrderAutomationPage() {
     parseAllMallId(searchParams.get('store') ?? undefined)
   );
   const [dateRange, setDateRange] = useState<[string, string] | null>(null);
+  // Deep-link: /orders?order=<id> opens that order's detail modal on mount.
+  const orderFromUrl = parseAllMallId(searchParams.get('order') ?? undefined);
   const [detailOrder, setDetailOrder] = useState<Order | null>(null);
   const [pendingAction, setPendingAction] = useState<{ type: RiskyActionType; order: Order } | null>(null);
   const [actionReason, setActionReason] = useState('');
@@ -167,6 +169,13 @@ export function OrderAutomationPage() {
   useEffect(() => {
     if (exceptionCountBase > 0) setTabFilter('exception');
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Deep-link: /orders?order=<id> opens that order's detail modal once data arrives.
+  useEffect(() => {
+    if (orderFromUrl == null) return;
+    const target = orders.find((o) => o.id === orderFromUrl);
+    if (target) setDetailOrder(target);
+  }, [orders, orderFromUrl]);
 
   const totalCount = orders.length;
   const cancelledCount = orders.filter((o) => o.status === 'cancelled').length;
