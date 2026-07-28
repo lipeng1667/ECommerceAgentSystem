@@ -17,10 +17,11 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   CloseOutlined,
+  DownOutlined,
   ExclamationCircleOutlined,
   EyeOutlined,
-  HistoryOutlined,
   MailOutlined,
+  RightOutlined,
   SearchOutlined,
   SecurityScanOutlined,
   ShoppingCartOutlined,
@@ -53,7 +54,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ordersApi } from '../../api/orders';
 import { storesApi } from '../../api/stores';
@@ -62,31 +63,61 @@ import { useI18n } from '../../app/i18n';
 import { PageFilterBar } from '../../components/filters/PageFilterBar';
 import { MetricCard } from '../../components/metrics/MetricCard';
 import { PageHeader } from '../../components/PageHeader';
+import { EmptyState } from '../../components/EmptyState';
 import { StoreConnectionEmptyState } from '../../components/StoreConnectionEmptyState';
 import { DataTableCard } from '../../components/table/DataTableCard';
 import { TableActionGroup } from '../../components/table/TableActionGroup';
-import type { AllMallId, Order, OrderStatus, OrderTimelineStep } from '../../types/domain';
+import type { AllMallId, Order, OrderExceptionType, OrderStatus } from '../../types/domain';
 import { AUTO_FLOW_ORDER_STATUSES, EXCEPTION_ORDER_STATUSES } from '../../types/domain';
 import { parseAllMallId } from '../../utils/id';
 
 type TabFilter = 'all' | 'exception' | 'auto';
 type RiskyActionType = 'cancel_refund' | 'fraud_release';
+type TranslateFn = ReturnType<typeof useI18n>['t'];
 
-/** A1 assumption: platform SLA in hours. */
-const PLATFORM_SLA_HOURS: Record<string, number> = { pinduoduo: 48, taobao: 48, jd: 24 };
+/**
+ * The shipping deadline only means anything before the parcel leaves: once an order is
+ * shipped, completed or cancelled there is nothing left to miss. Scoping it here keeps
+ * finished orders from showing a red 已超时 and hijacking the sort order.
+ */
+const SLA_TRACKED_STATUSES: OrderStatus[] = ['auto_processing', 'awaiting_shipment', 'exception', 'fraud_blocked'];
 
-interface SlaInfo { remainingMs: number; tone: 'ok' | 'warning' | 'critical' | 'breached'; label: string; sortScore: number }
+/** Exception types offered in the filter — the ones the mock engine can produce. */
+const EXCEPTION_TYPE_OPTIONS: OrderExceptionType[] = ['address_invalid', 'fraud_suspected', 'out_of_stock', 'payment_failed', 'buyer_dispute'];
 
-function getSlaForOrder(order: Order, now: dayjs.Dayjs): SlaInfo {
-  // SLA only applies to orders in the pre-shipment flow
-  if (!order.shipDeadlineAt) return { remainingMs: 0, tone: 'ok', label: '', sortScore: Number.MAX_SAFE_INTEGER };
-  const deadline = dayjs(order.shipDeadlineAt);
-  const remainingMs = deadline.diff(now);
-  const sortScore = remainingMs; // lower = more urgent, breached = negative → sorts first
-  if (remainingMs <= 0) return { remainingMs, tone: 'breached', label: '已超时', sortScore };
-  if (remainingMs <= 2 * 3600000) return { remainingMs, tone: 'critical', label: `距超时 ${Math.ceil(remainingMs / 60000)} 分钟`, sortScore };
-  if (remainingMs <= 6 * 3600000) return { remainingMs, tone: 'warning', label: `距超时 ${Math.ceil(remainingMs / 3600000)} 小时 ${Math.ceil((remainingMs % 3600000) / 60000)} 分`, sortScore };
-  return { remainingMs, tone: 'ok', label: `${Math.ceil(remainingMs / 3600000)} 小时后`, sortScore };
+const SLA_CRITICAL_MS = 2 * 3600_000;
+const SLA_WARNING_MS = 6 * 3600_000;
+
+type SlaTone = 'none' | 'ok' | 'warning' | 'critical' | 'breached';
+interface SlaInfo { remainingMs: number; tone: SlaTone; label: string }
+
+function getSlaForOrder(order: Order, now: dayjs.Dayjs, t: TranslateFn): SlaInfo {
+  if (!order.shipDeadlineAt || !SLA_TRACKED_STATUSES.includes(order.status)) {
+    return { remainingMs: Number.MAX_SAFE_INTEGER, tone: 'none', label: '' };
+  }
+  const remainingMs = dayjs(order.shipDeadlineAt).diff(now);
+  if (remainingMs <= 0) return { remainingMs, tone: 'breached', label: t('ordersv2.slaBreached') };
+  const hours = Math.floor(remainingMs / 3600_000);
+  const minutes = Math.floor((remainingMs % 3600_000) / 60_000);
+  if (remainingMs <= SLA_CRITICAL_MS) return { remainingMs, tone: 'critical', label: t('ordersv2.slaMinutesLeft', { minutes: Math.ceil(remainingMs / 60_000) }) };
+  if (remainingMs <= SLA_WARNING_MS) return { remainingMs, tone: 'warning', label: t('ordersv2.slaHoursLeft', { hours, minutes }) };
+  return { remainingMs, tone: 'ok', label: t('ordersv2.slaHoursLeftShort', { hours }) };
+}
+
+const SLA_TONE_COLOR: Record<SlaTone, string> = {
+  breached: 'var(--ark-red)',
+  critical: 'var(--ark-orange)',
+  warning: 'var(--ark-amber)',
+  ok: 'var(--ark-muted)',
+  none: 'var(--ark-muted)',
+};
+
+/** Needs-me first, then urgency, then newest — the order a merchant works in. */
+function priorityRank(order: Order, sla: SlaInfo): number {
+  if (EXCEPTION_ORDER_STATUSES.includes(order.status)) return 0;
+  if (sla.tone === 'breached' || sla.tone === 'critical') return 1;
+  if (sla.tone === 'warning') return 2;
+  return 3;
 }
 
 export function OrderAutomationPage() {
@@ -100,6 +131,8 @@ export function OrderAutomationPage() {
     parseAllMallId(searchParams.get('store') ?? undefined)
   );
   const [dateRange, setDateRange] = useState<[string, string] | null>(null);
+  const [exceptionTypeFilter, setExceptionTypeFilter] = useState<OrderExceptionType | undefined>();
+  const [slaFilter, setSlaFilter] = useState<'at_risk' | 'breached' | undefined>();
   // Deep-link: /orders?order=<id> opens that order's detail modal on mount.
   const orderFromUrl = parseAllMallId(searchParams.get('order') ?? undefined);
   const [detailOrder, setDetailOrder] = useState<Order | null>(null);
@@ -110,8 +143,17 @@ export function OrderAutomationPage() {
   // ---- Data layer ----------------------------------------------------------
   const { data: orders = [] } = useQuery({ queryKey: ['orders'], queryFn: ordersApi.list });
   const { data: stores = [] } = useQuery({ queryKey: ['stores'], queryFn: storesApi.list });
+  const { data: syncResult } = useQuery({ queryKey: ['orderSync'], queryFn: ordersApi.getSyncResult });
   const storeNamesById = useMemo(() => new Map(stores.map((s) => [s.id, s.name])), [stores]);
   const storeNameOf = (order: Order) => storeNamesById.get(order.storeId) ?? '-';
+
+  const resyncMutation = useMutation({
+    mutationFn: ordersApi.resync,
+    onSuccess: (result) => {
+      queryClient.setQueryData(['orderSync'], result);
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    },
+  });
 
   // ---- Clock ticker for SLA countdowns (30s, same pattern as InboxPage) ----
   const [clock, setClock] = useState(dayjs);
@@ -120,12 +162,10 @@ export function OrderAutomationPage() {
   // ---- SLA map ------------------------------------------------------------
   const slaByOrderId = useMemo(() => {
     const map = new Map<AllMallId, SlaInfo>();
-    for (const order of orders) {
-      const sla = getSlaForOrder(order, clock);
-      map.set(order.id, sla);
-    }
+    for (const order of orders) map.set(order.id, getSlaForOrder(order, clock, t));
     return map;
-  }, [orders, clock]);
+  }, [orders, clock, t]);
+  const slaOf = (order: Order): SlaInfo => slaByOrderId.get(order.id) ?? { remainingMs: Number.MAX_SAFE_INTEGER, tone: 'none', label: '' };
 
   // ---- Automatically sorted + filtered base set ----------------------------
   const baseFiltered = useMemo(() => {
@@ -143,21 +183,40 @@ export function OrderAutomationPage() {
         return day >= dateRange[0] && day <= dateRange[1];
       });
     }
-    // Sort: breached → critical → warning → ok → others, then newest first
+    if (exceptionTypeFilter) items = items.filter((o) => o.exceptionType === exceptionTypeFilter);
+    if (slaFilter) {
+      items = items.filter((o) => {
+        const tone = slaByOrderId.get(o.id)?.tone;
+        return slaFilter === 'breached' ? tone === 'breached' : tone === 'breached' || tone === 'critical' || tone === 'warning';
+      });
+    }
+    // Needs-me first, then time pressure, then newest. Sorting purely by remaining time
+    // (as an earlier pass did) buries exceptions below finished orders.
     return [...items].sort((a, b) => {
-      const sa = slaByOrderId.get(a.id)?.sortScore ?? Number.MAX_SAFE_INTEGER;
-      const sb = slaByOrderId.get(b.id)?.sortScore ?? Number.MAX_SAFE_INTEGER;
-      if (sa !== sb) return sa - sb;
+      const sa = slaOf(a); const sb = slaOf(b);
+      const ra = priorityRank(a, sa); const rb = priorityRank(b, sb);
+      if (ra !== rb) return ra - rb;
+      if (sa.remainingMs !== sb.remainingMs) return sa.remainingMs - sb.remainingMs;
       return dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf();
     });
-  }, [orders, searchKw, storeFilter, dateRange, slaByOrderId]);
+  }, [orders, searchKw, storeFilter, dateRange, exceptionTypeFilter, slaFilter, slaByOrderId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const autoCountBase = baseFiltered.filter((o) => AUTO_FLOW_ORDER_STATUSES.includes(o.status)).length;
   const exceptionCountBase = baseFiltered.filter((o) => EXCEPTION_ORDER_STATUSES.includes(o.status)).length;
-  const needsMeCount = exceptionCountBase + baseFiltered.filter((o) => {
-    const sla = slaByOrderId.get(o.id);
-    return sla?.tone === 'breached' || sla?.tone === 'critical';
+  const atRiskCount = baseFiltered.filter((o) => { const tone = slaOf(o).tone; return tone === 'breached' || tone === 'critical'; }).length;
+  // Only exceptions that are *also* time-critical — the card's helper sits under the
+  // exception count, so counting every urgent order there would contradict the number.
+  const exceptionAtRiskCount = baseFiltered.filter((o) => {
+    const tone = slaOf(o).tone;
+    return EXCEPTION_ORDER_STATUSES.includes(o.status) && (tone === 'breached' || tone === 'critical');
   }).length;
+  // An exception that is also SLA-critical must not be counted twice.
+  const needsMeCount = baseFiltered.filter((o) => {
+    const tone = slaOf(o).tone;
+    return EXCEPTION_ORDER_STATUSES.includes(o.status) || tone === 'breached' || tone === 'critical';
+  }).length;
+  const filtersActive = !!(searchKw || storeFilter != null || dateRange || exceptionTypeFilter || slaFilter);
+  const clearFilters = () => { setSearchKw(''); setStoreFilter(undefined); setDateRange(null); setExceptionTypeFilter(undefined); setSlaFilter(undefined); };
 
   const filtered = useMemo(() => {
     if (tabFilter === 'auto') return baseFiltered.filter((o) => AUTO_FLOW_ORDER_STATUSES.includes(o.status));
@@ -165,10 +224,15 @@ export function OrderAutomationPage() {
     return baseFiltered;
   }, [baseFiltered, tabFilter]);
 
-  // Smart default: when there are exceptions/urgent items, land on "needs me" tab
+  // Results first: land on the exception tab when there is something to decide. Runs once
+  // *after* orders arrive — checking on mount (as an earlier pass did) always saw an
+  // empty list, so the default never actually switched.
+  const defaultTabApplied = useRef(false);
   useEffect(() => {
-    if (exceptionCountBase > 0) setTabFilter('exception');
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (defaultTabApplied.current || orders.length === 0) return;
+    defaultTabApplied.current = true;
+    if (orders.some((o) => EXCEPTION_ORDER_STATUSES.includes(o.status))) setTabFilter('exception');
+  }, [orders]);
 
   // Deep-link: /orders?order=<id> opens that order's detail modal once data arrives.
   useEffect(() => {
@@ -184,13 +248,16 @@ export function OrderAutomationPage() {
   const rateDenominator = totalCount - cancelledCount;
   const autoRate = rateDenominator > 0 ? Math.round((autoHandled / rateDenominator) * 100) : 0;
 
-  // Auto-handled log: steps marked `automated`, most recent first
+  /**
+   * Transparency log (O1): the steps automation took, newest first. Built from timeline
+   * entries already flagged `automated` — no second source of truth to drift.
+   */
   const autoLogEntries = useMemo(() => {
-    const entries: { text: string; at: string }[] = [];
+    const entries: { key: string; text: string; at: string }[] = [];
     for (const order of orders) {
-      for (const step of order.timeline) {
-        if (step.automated) entries.push({ text: `${step.title} · ${order.orderNo}`, at: step.at });
-      }
+      order.timeline.forEach((step, index) => {
+        if (step.automated) entries.push({ key: `${order.id}-${index}`, text: `${step.title} · ${order.orderNo}`, at: step.at });
+      });
     }
     return entries.sort((a, b) => dayjs(b.at).valueOf() - dayjs(a.at).valueOf()).slice(0, 20);
   }, [orders]);
@@ -198,15 +265,21 @@ export function OrderAutomationPage() {
   // ---- Mutations -----------------------------------------------------------
   const cancelMutation = useMutation({
     mutationFn: (params: { orderId: number; reason: string }) => ordersApi.cancelAndRefund(params.orderId, params.reason),
-    onSuccess: () => { message.success(t('order.cancelledAndRefunded')); queryClient.invalidateQueries({ queryKey: ['orders'] }); setDetailOrder(null); setPendingAction(null); setActionReason(''); },
+    onSuccess: () => { message.success(t('order.cancelledAndRefunded')); queryClient.invalidateQueries({ queryKey: ['orders'] }); queryClient.invalidateQueries({ queryKey: ['orderSync'] }); setDetailOrder(null); setPendingAction(null); setActionReason(''); },
   });
   const releaseMutation = useMutation({
     mutationFn: (params: { orderId: number; reason: string }) => ordersApi.releaseFraud(params.orderId, params.reason),
-    onSuccess: () => { message.success(t('order.fraudApproved')); queryClient.invalidateQueries({ queryKey: ['orders'] }); setDetailOrder(null); setPendingAction(null); setActionReason(''); },
+    onSuccess: () => { message.success(t('ordersv2.releasedFeedback')); queryClient.invalidateQueries({ queryKey: ['orders'] }); queryClient.invalidateQueries({ queryKey: ['orderSync'] }); setDetailOrder(null); setPendingAction(null); setActionReason(''); },
   });
   const applyRecMutation = useMutation({
     mutationFn: (orderId: number) => ordersApi.applyRecommendation(orderId),
-    onSuccess: () => { message.success(t('common.operationSuccess')); queryClient.invalidateQueries({ queryKey: ['orders'] }); },
+    // Conclusion-style feedback, matching product sync and store renewal: say what will
+    // happen next, not just "success".
+    onSuccess: (order) => {
+      message.success(order ? t('ordersv2.recommendationApplied', { order: order.orderNo }) : t('common.operationSuccess'));
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['orderSync'] });
+    },
   });
 
   const openRiskyAction = (type: RiskyActionType, order: Order) => { setActionReason(''); setPendingAction({ type, order }); };
@@ -222,60 +295,64 @@ export function OrderAutomationPage() {
     auto_completed: 'green', exception: 'orange', fraud_blocked: 'red', cancelled: 'default',
   };
 
-  // ---- SLA color helpers ---------------------------------------------------
-  const slaColor = (tone: SlaInfo['tone']) => tone === 'breached' ? 'var(--ark-red)' : tone === 'critical' ? 'var(--ark-orange)' : tone === 'warning' ? 'var(--ark-yellow, #d97706)' : 'var(--ark-muted)';
-
   // ---- Table columns -------------------------------------------------------
   const columns: ColumnsType<Order> = [
-    { title: t('order.orderNo'), dataIndex: 'orderNo', width: 160, render: (no: string) => <Typography.Text code>{no}</Typography.Text> },
-    { title: t('order.store'), dataIndex: 'storeId', width: 130, ellipsis: true, render: (id: number) => storeNamesById.get(id) ?? '-' },
-    { title: t('order.buyer'), dataIndex: 'buyerName', width: 100, ellipsis: true },
-    { title: t('order.items'), dataIndex: 'items', ellipsis: true, width: 170 },
+    { title: t('order.orderNo'), dataIndex: 'orderNo', width: 140, render: (no: string) => <Typography.Text code>{no}</Typography.Text> },
+    { title: t('order.store'), dataIndex: 'storeId', width: 110, ellipsis: true, render: (id: number) => storeNamesById.get(id) ?? '-' },
+    { title: t('order.buyer'), dataIndex: 'buyerName', width: 90, ellipsis: true },
+    { title: t('order.items'), dataIndex: 'items', ellipsis: true, width: 140 },
     {
-      title: t('order.amount'), dataIndex: 'amount', width: 80, align: 'right', sorter: (a, b) => a.amount - b.amount,
+      title: t('order.amount'), dataIndex: 'amount', width: 78, align: 'right', sorter: (a, b) => a.amount - b.amount,
       render: (v: number) => <Typography.Text strong>¥{v.toFixed(2)}</Typography.Text>,
     },
     {
-      title: 'SLA', key: 'sla', width: 115,
+      title: t('ordersv2.slaColumn'), key: 'sla', width: 105,
+      sorter: (a, b) => slaOf(a).remainingMs - slaOf(b).remainingMs,
       render: (_: unknown, record: Order) => {
-        const sla = slaByOrderId.get(record.id);
-        if (!sla || sla.tone === 'ok') return <Typography.Text type="secondary" style={{ fontSize: 12 }}>—</Typography.Text>;
-        return <Typography.Text strong style={{ color: slaColor(sla.tone), fontSize: 12, whiteSpace: 'nowrap' }} title={sla.label}>{sla.label}</Typography.Text>;
+        const sla = slaOf(record);
+        if (sla.tone === 'none') return <Typography.Text type="secondary" style={{ fontSize: 12 }}>—</Typography.Text>;
+        const urgent = sla.tone === 'breached' || sla.tone === 'critical';
+        return (
+          <Typography.Text strong={urgent} style={{ color: SLA_TONE_COLOR[sla.tone], fontSize: 12, whiteSpace: 'nowrap' }}>
+            {urgent && <ClockCircleOutlined style={{ marginRight: 4 }} />}{sla.label}
+          </Typography.Text>
+        );
       },
     },
-    { title: t('order.status'), dataIndex: 'status', width: 100, render: (s: OrderStatus) => <Tag color={statusColors[s]}>{t(`order.status_${s}`)}</Tag> },
+    { title: t('order.status'), dataIndex: 'status', width: 88, render: (s: OrderStatus) => <Tag color={statusColors[s]}>{t(`order.status_${s}`)}</Tag> },
     {
-      title: t('order.logistics'), dataIndex: 'logisticsStatus', width: 130, ellipsis: true,
-      render: (status: string, record: Order) => (
-        <Space direction="vertical" size={0}>
-          {record.trackingNo ? <Typography.Text code style={{ fontSize: 11 }}>{record.trackingNo}</Typography.Text> : <Typography.Text type="secondary" style={{ fontSize: 11 }}>—</Typography.Text>}
-          <Typography.Text type="secondary" style={{ fontSize: 11 }}>{status}</Typography.Text>
-        </Space>
-      ),
-    },
-    {
-      title: t('common.actions'), width: 200,
+      // Pinned: with the SLA column added, an unpinned action column lands past the
+      // viewport at 1280px and the recommended action becomes unreachable.
+      title: t('common.actions'), width: 185, fixed: 'right',
       render: (_: unknown, record: Order) => {
         const isException = EXCEPTION_ORDER_STATUSES.includes(record.status);
         const rec = record.recommendation;
+        const tier2 = rec && rec.action !== 'release' && rec.action !== 'cancel_refund' ? rec : undefined;
+        // Stop row-click (which opens the detail) from firing behind the buttons.
         return (
-          <TableActionGroup>
-            {isException && rec && rec.action !== 'release' && rec.action !== 'cancel_refund' && (
-              <Popconfirm title={rec.rationale} onConfirm={() => applyRecMutation.mutate(record.id)} okText={rec.label} cancelText={t('common.cancel')}>
-                <Button size="small" type="primary" icon={<ThunderboltOutlined />} loading={applyRecMutation.isPending}>{rec.label}</Button>
-              </Popconfirm>
-            )}
-            {isException && record.status === 'exception' && record.exceptionType !== 'fraud_suspected' && (
-              <Button size="small" icon={<MailOutlined />} onClick={() => handleContactBuyer(record)}>{t('order.contactBuyer')}</Button>
-            )}
-            {isException && record.status === 'fraud_blocked' && (
-              <Button size="small" type="primary" icon={<CheckCircleOutlined />} onClick={() => openRiskyAction('fraud_release', record)}>{t('order.approve')}</Button>
-            )}
-            {isException && record.status === 'exception' && (
-              <Button size="small" danger icon={<CloseOutlined />} onClick={() => openRiskyAction('cancel_refund', record)}>{t('order.cancelRefund')}</Button>
-            )}
-            <Button size="small" icon={<EyeOutlined />} onClick={() => setDetailOrder(record)}>{t('common.view')}</Button>
-          </TableActionGroup>
+          <div onClick={(event) => event.stopPropagation()}>
+            <TableActionGroup>
+              {isException && tier2 && (
+                <Popconfirm
+                  title={t('ordersv2.applyRecommendationTitle')}
+                  description={<Typography.Text style={{ fontSize: 12 }}>{tier2.rationale}</Typography.Text>}
+                  onConfirm={() => applyRecMutation.mutate(record.id)}
+                  okText={t('ordersv2.applyRecommendationOk')}
+                  cancelText={t('common.cancel')}
+                >
+                  <Button size="small" type="primary" icon={<ThunderboltOutlined />} loading={applyRecMutation.isPending}>
+                    {t('ordersv2.applyRecommendation')}
+                  </Button>
+                </Popconfirm>
+              )}
+              {isException && record.status === 'fraud_blocked' && (
+                <Button size="small" type="primary" icon={<CheckCircleOutlined />} onClick={() => openRiskyAction('fraud_release', record)}>{t('order.approve')}</Button>
+              )}
+              {/* Contact-buyer and cancel/refund stay in the detail modal: four buttons do
+                  not fit a pinned column, and both need the evidence next to them. */}
+              <Button size="small" icon={<EyeOutlined />} onClick={() => setDetailOrder(record)}>{t('common.view')}</Button>
+            </TableActionGroup>
+          </div>
         );
       },
     },
@@ -295,85 +372,209 @@ export function OrderAutomationPage() {
     return (
       <div className="page-stack">
         <PageHeader title={t('order.title')} description={t('order.description')} />
-        <StoreConnectionEmptyState description="尚未同步订单。连接店铺后，历史订单和后续新增订单会汇总到这里。" />
+        <StoreConnectionEmptyState description={t('ordersv2.onboardingEmpty')} />
       </div>
     );
   }
 
+  const renderOrdersTable = (description?: string) => (
+    <DataTableCard<Order>
+      rowKey="id"
+      columns={columns}
+      dataSource={filtered}
+      description={description}
+      pagination={{ pageSize: 15, size: 'small', showTotal: (total: number) => t('ordersv2.paginationTotal', { total }) }}
+      scroll={{ x: 930 }}
+      onRow={(record) => ({ onClick: () => setDetailOrder(record), style: { cursor: 'pointer' } })}
+      locale={{
+        emptyText: (
+          <EmptyState
+            description={filtersActive ? t('ordersv2.emptyFiltered') : t('ordersv2.emptyNoOrders')}
+            actionText={filtersActive ? t('ordersv2.clearFilters') : undefined}
+            onAction={filtersActive ? clearFilters : undefined}
+          />
+        ),
+      }}
+    />
+  );
+
+  const orderFilters = (
+    <PageFilterBar>
+      <Input prefix={<SearchOutlined />} placeholder={t('order.searchPlaceholder')} allowClear value={searchKw} onChange={(e) => setSearchKw(e.target.value)} />
+      <Select allowClear placeholder={t('order.filterStore')} value={storeFilter} onChange={setStoreFilter} options={stores.map((store) => ({ value: store.id, label: store.name }))} />
+      <Select
+        allowClear
+        placeholder={t('ordersv2.filterSla')}
+        value={slaFilter}
+        onChange={setSlaFilter}
+        options={[
+          { value: 'at_risk', label: t('ordersv2.filterSlaAtRisk') },
+          { value: 'breached', label: t('ordersv2.filterSlaBreached') },
+        ]}
+      />
+      <Select
+        allowClear
+        placeholder={t('ordersv2.filterExceptionType')}
+        value={exceptionTypeFilter}
+        onChange={setExceptionTypeFilter}
+        options={EXCEPTION_TYPE_OPTIONS.map((value) => ({ value, label: t(`ordersv2.exceptionType_${value}`) }))}
+      />
+      <DatePicker.RangePicker
+        size="middle"
+        placeholder={[t('order.startDate'), t('order.endDate')]}
+        onChange={(dates) => {
+          if (dates && dates[0] && dates[1]) setDateRange([dates[0].format('YYYY-MM-DD'), dates[1].format('YYYY-MM-DD')]);
+          else setDateRange(null);
+        }}
+      />
+    </PageFilterBar>
+  );
+
+  const troubledStores = (syncResult?.perStore ?? []).filter((entry) => entry.needsRelogin);
+
   return (
     <div className="page-stack">
-      <PageHeader
-        title={t('order.title')}
-        description={t('order.description')}
-        actions={<Button icon={<SyncOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['orders'] })}>立即同步订单</Button>}
-      />
+      <PageHeader title={t('order.title')} description={t('order.description')} />
 
-      {/* O1: Fulfillment digest card */}
-      <Card size="small" style={{ marginBottom: 16 }}
-        styles={{ body: { padding: '8px 16px' } }}>
-        <Space size={4} wrap style={{ width: '100%', justifyContent: 'space-between' }}>
-          <Space size={4} wrap>
-            <ThunderboltOutlined style={{ color: 'var(--ark-green)' }} />
-            <Typography.Text>{totalCount} 单中 <Typography.Text strong style={{ color: 'var(--ark-green)' }}>AI 已自动履约 {autoHandled} 单</Typography.Text></Typography.Text>
-            {needsMeCount > 0 ? (
-              <Button type="link" size="small" onClick={() => setTabFilter('exception')} style={{ color: 'var(--ark-red)', padding: 0 }}>
-                {needsMeCount} 单需要你决定 → 去处理
+      {/* O1: order sync digest — same shape as the products page's SyncDigestCard, since
+          orders arrive through the same store sync and raise the same question. */}
+      <Card size="small">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <Space size={8}>
+            <ThunderboltOutlined style={{ color: 'var(--ark-purple)' }} />
+            <Typography.Text strong>{t('ordersv2.syncDigestTitle')}</Typography.Text>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              {syncResult?.lastSyncedAt
+                ? t('ordersv2.lastSynced', { time: dayjs(syncResult.lastSyncedAt).format('YYYY-MM-DD HH:mm') })
+                : t('ordersv2.neverSynced')}
+              {' · '}{t('ordersv2.syncCadence')}
+            </Typography.Text>
+          </Space>
+          <Button size="small" icon={<SyncOutlined spin={resyncMutation.isPending} />} loading={resyncMutation.isPending} onClick={() => resyncMutation.mutate()}>
+            {syncResult?.status === 'failed' ? t('ordersv2.retryNow') : t('ordersv2.syncNow')}
+          </Button>
+        </div>
+
+        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <Space size={6} wrap>
+            {needsMeCount === 0 && <CheckCircleOutlined style={{ color: 'var(--ark-green)' }} />}
+            <Typography.Text style={{ fontSize: 13 }}>
+              {needsMeCount > 0
+                ? t('ordersv2.syncSummaryPending', { total: totalCount, auto: autoHandled })
+                : t('ordersv2.syncSummaryClean', { total: totalCount, auto: autoHandled })}
+            </Typography.Text>
+            {needsMeCount > 0 && (
+              <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setTabFilter('exception')}>
+                {t('ordersv2.needsYouAction', { count: needsMeCount })}
               </Button>
-            ) : (
-              <Typography.Text type="secondary">{cancelledCount} 单买家取消</Typography.Text>
             )}
           </Space>
-          <Space size={4}>
-            <HistoryOutlined style={{ color: 'var(--ark-muted)' }} />
-            <Button type="link" size="small" onClick={() => setDigestExpanded(!digestExpanded)} style={{ padding: 0, fontSize: 11 }}>
-              {t('products.autoHandledLog', { count: autoLogEntries.length })}
+          {autoLogEntries.length > 0 && (
+            <Button type="link" size="small" style={{ padding: 0 }} icon={digestExpanded ? <DownOutlined /> : <RightOutlined />} onClick={() => setDigestExpanded(!digestExpanded)}>
+              {t('ordersv2.autoHandledLog', { count: autoLogEntries.length })}
             </Button>
-            <Typography.Text type="secondary" style={{ fontSize: 11 }}>· 每 15 分钟自动检查</Typography.Text>
-          </Space>
-        </Space>
-        {digestExpanded && autoLogEntries.length > 0 && (
-          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--ark-border-soft)', maxHeight: 200, overflowY: 'auto' }}>
-            {autoLogEntries.map((e, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--ark-muted)', padding: '2px 0' }}>
-                <span><CheckCircleOutlined style={{ color: 'var(--ark-green)', marginRight: 4 }} />{e.text}</span>
-                <span>{dayjs(e.at).isValid() ? dayjs(e.at).format('MM-DD HH:mm') : e.at}</span>
+          )}
+        </div>
+
+        {troubledStores.length > 0 && (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginTop: 8, padding: '4px 10px' }}
+            message={
+              <Typography.Text style={{ fontSize: 12 }}>
+                {t('ordersv2.staleStoresWarning', { stores: troubledStores.map((entry) => storeNamesById.get(entry.storeId) ?? '').filter(Boolean).join('、') })}
+              </Typography.Text>
+            }
+          />
+        )}
+
+        {digestExpanded && (
+          <div style={{ marginTop: 8, paddingLeft: 8, borderLeft: '2px solid var(--ark-border-soft)', maxHeight: 220, overflowY: 'auto' }}>
+            {autoLogEntries.map((entry) => (
+              <div key={entry.key} style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                <CheckCircleOutlined style={{ color: 'var(--ark-green)', flexShrink: 0 }} />
+                <Typography.Text style={{ fontSize: 12, flex: 1 }}>{entry.text}</Typography.Text>
+                <Typography.Text type="secondary" style={{ fontSize: 11, flexShrink: 0 }}>{dayjs(entry.at).format('MM-DD HH:mm')}</Typography.Text>
               </div>
             ))}
           </div>
         )}
-        {autoLogEntries.length === 0 && (
-          <Card size="small" style={{ marginTop: 16, textAlign: 'center' }}>
-            <CheckCircleOutlined style={{ color: 'var(--ark-green)', fontSize: 32, marginBottom: 8, display: 'block' }} />
-            <Typography.Title level={5} style={{ margin: 0 }}>今日订单全部自动履约完成</Typography.Title>
-            <Typography.Text type="secondary">无需人工处理，系统已自动完成所有订单。</Typography.Text>
-          </Card>
-        )}
       </Card>
 
-      {/* O2 SLA urgency line when something is at risk */}
-      {baseFiltered.some((o) => { const s = slaByOrderId.get(o.id); return s?.tone === 'critical' || s?.tone === 'breached'; }) && (
+      {/* O2: the one thing with a platform penalty attached gets its own line. */}
+      {atRiskCount > 0 && (
         <Alert
           type="warning"
           showIcon
           icon={<ClockCircleOutlined />}
-          message={`⏰ ${baseFiltered.filter((o) => { const s = slaByOrderId.get(o.id); return s?.tone === 'critical' || s?.tone === 'breached'; }).length} 单即将触达或已超时平台红线`}
-          action={<Button size="small" onClick={() => setTabFilter('exception')}>立即处理</Button>}
-          style={{ marginBottom: 16 }}
+          message={t('ordersv2.slaAlert', { count: atRiskCount })}
+          action={<Button size="small" onClick={() => { setSlaFilter('at_risk'); setTabFilter('all'); }}>{t('ordersv2.slaAlertAction')}</Button>}
         />
       )}
 
-      {/* Filter bar */}
-      <PageFilterBar>
-        <Input prefix={<SearchOutlined />} placeholder={t('order.searchPlaceholder')} allowClear value={searchKw} onChange={(e) => setSearchKw(e.target.value)} />
-        <Select allowClear placeholder={t('order.filterStore')} value={storeFilter} onChange={setStoreFilter} options={stores.map((s) => ({ value: s.id, label: s.name }))} />
-        <DatePicker.RangePicker size="middle" placeholder={[t('order.startDate'), t('order.endDate')]} onChange={(dates) => { if (dates && dates[0] && dates[1]) { setDateRange([dates[0].format('YYYY-MM-DD'), dates[1].format('YYYY-MM-DD')]); } else { setDateRange(null); } }} />
-      </PageFilterBar>
+      <Row gutter={[16, 16]}>
+        <Col xs={12} sm={6}>
+          <MetricCard className="stat-card stat-card-primary" title={t('order.totalToday')} value={totalCount} overlayIcon={<ShoppingCartOutlined />} />
+        </Col>
+        <Col xs={12} sm={6}>
+          <MetricCard
+            className="stat-card stat-card-success"
+            title={t('order.autoProcessed')}
+            value={autoHandled}
+            valueStyle={{ color: 'var(--ark-green)' }}
+            overlayIcon={<ThunderboltOutlined />}
+            helper={t('ordersv2.autoRateNote', { rate: autoRate })}
+          />
+        </Col>
+        <Col xs={12} sm={6}>
+          <div onClick={() => setTabFilter(tabFilter === 'exception' ? 'all' : 'exception')} style={{ cursor: 'pointer' }}>
+            <MetricCard
+              className="stat-card stat-card-warning"
+              title={t('order.exceptionCount')}
+              value={exceptionCount}
+              valueStyle={{ color: exceptionCount > 0 ? 'var(--ark-orange)' : 'var(--ark-green)' }}
+              overlayIcon={<ExclamationCircleOutlined />}
+              helper={exceptionAtRiskCount > 0 ? t('ordersv2.exceptionCardHelper', { count: exceptionAtRiskCount }) : t('ordersv2.exceptionCardHelperNone')}
+            />
+          </div>
+        </Col>
+        <Col xs={12} sm={6}>
+          <MetricCard className="stat-card stat-card-purple" title={t('ordersv2.cardCancelled')} value={cancelledCount} overlayIcon={<CloseOutlined />} />
+        </Col>
+      </Row>
 
-      <Tabs activeKey={tabFilter} onChange={(key) => setTabFilter(key as TabFilter)} items={[
-        { key: 'all', label: <span><ShoppingCartOutlined /> {t('order.allOrders')} ({baseFiltered.length})</span>, children: <DataTableCard<Order> rowKey="id" columns={columns} dataSource={filtered} pagination={{ pageSize: 15, size: 'small', showTotal: (tCount: number) => `共 ${tCount} 条` }} scroll={{ x: 1200 }} /> },
-        { key: 'auto', label: <span><ThunderboltOutlined /> {t('order.autoProcessedTab')}{autoCountBase > 0 && <Badge count={autoCountBase} size="small" offset={[6, -4]} style={{ marginLeft: 6, background: 'var(--ark-green)' }} />}</span>, children: <DataTableCard<Order> rowKey="id" columns={columns} dataSource={filtered} pagination={{ pageSize: 15, size: 'small', showTotal: (tCount: number) => `共 ${tCount} 条` }} scroll={{ x: 1200 }} description={t('order.autoProcessedDesc')} /> },
-        { key: 'exception', label: <span><ExclamationCircleOutlined style={{ color: exceptionCountBase > 0 ? 'var(--ark-red)' : undefined }} /> {t('order.exceptionOrders')}{exceptionCountBase > 0 && <Badge count={exceptionCountBase} size="small" offset={[6, -4]} style={{ marginLeft: 6 }} />}</span>, children: <DataTableCard<Order> rowKey="id" columns={columns} dataSource={filtered} pagination={{ pageSize: 15, size: 'small', showTotal: (tCount: number) => `共 ${tCount} 条` }} scroll={{ x: 1200 }} description={t('order.exceptionOrderDesc')} /> },
-      ]} />
+      <Tabs
+        activeKey={tabFilter}
+        onChange={(key) => setTabFilter(key as TabFilter)}
+        items={[
+          {
+            key: 'all',
+            label: <span><ShoppingCartOutlined /> {t('order.allOrders')} ({baseFiltered.length})</span>,
+            children: <>{orderFilters}{renderOrdersTable()}</>,
+          },
+          {
+            key: 'auto',
+            label: (
+              <span>
+                <ThunderboltOutlined /> {t('order.autoProcessedTab')}
+                {autoCountBase > 0 && <Badge count={autoCountBase} size="small" offset={[6, -4]} style={{ marginLeft: 6, background: 'var(--ark-green)' }} />}
+              </span>
+            ),
+            children: <>{orderFilters}{renderOrdersTable(t('order.autoProcessedDesc'))}</>,
+          },
+          {
+            key: 'exception',
+            label: (
+              <span>
+                <ExclamationCircleOutlined style={{ color: exceptionCountBase > 0 ? 'var(--ark-red)' : undefined }} /> {t('order.exceptionOrders')}
+                {exceptionCountBase > 0 && <Badge count={exceptionCountBase} size="small" offset={[6, -4]} style={{ marginLeft: 6 }} />}
+              </span>
+            ),
+            children: <>{orderFilters}{renderOrdersTable(t('order.exceptionOrderDesc'))}</>,
+          },
+        ]}
+      />
 
       {/* Risky action modal */}
       <Modal
@@ -435,10 +636,33 @@ export function OrderAutomationPage() {
               <Descriptions.Item label={t('order.status')}><Tag color={statusColors[detailOrder.status]}>{t(`order.status_${detailOrder.status}`)}</Tag></Descriptions.Item>
               <Descriptions.Item label={t('order.buyer')}>{detailOrder.buyerName}</Descriptions.Item>
               <Descriptions.Item label={t('order.amount')}><Typography.Text strong>¥{detailOrder.amount.toFixed(2)}</Typography.Text></Descriptions.Item>
-              <Descriptions.Item label={t('order.createdAt')}>{dayjs(detailOrder.createdAt).format('YYYY-MM-DD')}</Descriptions.Item>
-              {detailOrder.trackingNo && <Descriptions.Item label={t('order.trackingNo')}><Typography.Text code>{detailOrder.trackingNo}</Typography.Text></Descriptions.Item>}
+              <Descriptions.Item label={t('order.createdAt')}>{dayjs(detailOrder.createdAt).format('YYYY-MM-DD HH:mm')}</Descriptions.Item>
+              {slaOf(detailOrder).tone !== 'none' && (
+                <Descriptions.Item label={t('ordersv2.slaColumn')}>
+                  <Typography.Text strong style={{ color: SLA_TONE_COLOR[slaOf(detailOrder).tone] }}>{slaOf(detailOrder).label}</Typography.Text>
+                </Descriptions.Item>
+              )}
+              <Descriptions.Item label={t('order.logistics')}>
+                {detailOrder.logisticsStatus ?? '—'}
+                {detailOrder.trackingNo && <Typography.Text code style={{ marginLeft: 6, fontSize: 12 }}>{detailOrder.trackingNo}</Typography.Text>}
+              </Descriptions.Item>
               <Descriptions.Item label={t('order.items')} span={2}>{detailOrder.items}</Descriptions.Item>
             </Descriptions>
+            {detailOrder.recommendation && (
+              <>
+                <Divider />
+                <Typography.Title level={5}><ThunderboltOutlined style={{ color: 'var(--ark-purple)', marginRight: 6 }} />{t('ordersv2.recommendationTitle')}</Typography.Title>
+                <Card size="small" style={{ background: 'color-mix(in srgb, var(--ark-purple) 6%, var(--ark-panel))', border: '1px solid color-mix(in srgb, var(--ark-purple) 25%, var(--ark-panel))' }}>
+                  <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                    <Space size={8} wrap>
+                      <Typography.Text strong style={{ fontSize: 13 }}>{detailOrder.recommendation.label}</Typography.Text>
+                      <Tag color="purple" style={{ margin: 0 }}>{t('ordersv2.recommendationConfidence', { value: Math.round(detailOrder.recommendation.confidence * 100) })}</Tag>
+                    </Space>
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>{detailOrder.recommendation.rationale}</Typography.Text>
+                  </Space>
+                </Card>
+              </>
+            )}
             {detailOrder.exceptionReason && (
               <>
                 <Divider />

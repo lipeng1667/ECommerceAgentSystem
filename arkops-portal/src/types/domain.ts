@@ -723,6 +723,27 @@ export interface OrderRecommendation {
   batchable: boolean;
 }
 
+/**
+ * Digest of one order sync pass (D8/O1). Orders arrive by store sync exactly like
+ * products, so this mirrors `SyncResult` — same status machine, same per-store health —
+ * and drives the same "results first, one summary line" card.
+ */
+export interface OrderSyncResult {
+  startedAt: string;
+  /** Timestamp of the last *successful* pass; preserved on failure. */
+  lastSyncedAt: string | null;
+  status: SyncRunStatus;
+  /** Orders pulled in by this pass. */
+  newOrderCount: number;
+  /** Of those, how many automation carried end to end without a human. */
+  autoHandledCount: number;
+  /** Orders this pass left for a person (exceptions + SLA-critical). */
+  pendingDecisionCount: number;
+  perStore: StoreSyncHealth[];
+  /** Set when status is 'failed'. */
+  errorMessage?: string;
+}
+
 export interface Order {
   id: AllMallId;
   orderNo: string; // display string, e.g. #ORD-2406-0820

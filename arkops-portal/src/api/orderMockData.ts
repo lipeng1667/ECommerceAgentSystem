@@ -72,14 +72,15 @@ export const orders: Order[] = [
     status: 'awaiting_shipment',
     logisticsStatus: '待发货',
     agentAction: '付款确认，库存分配完成，等待创建运单发货',
-    createdAt: now.subtract(4, 'hour').toISOString(),
-    paidAt: now.subtract(4, 'hour').toISOString(),
-    shipDeadlineAt: shipDeadline(now.subtract(4, 'hour'), 'jd'),
+    createdAt: now.subtract(26, 'hour').toISOString(),
+    paidAt: now.subtract(26, 'hour').toISOString(),
+    // Past its 24h JD deadline — the breached state the SLA column exists for.
+    shipDeadlineAt: shipDeadline(now.subtract(26, 'hour'), 'jd'),
     timeline: [
-      { title: '付款确认', at: now.subtract(4, 'hour').toISOString(), icon: 'check', automated: true },
-      { title: '风控通过', at: now.subtract(4, 'hour').toISOString(), icon: 'shield', automated: true },
-      { title: '库存分配完成', at: now.subtract(3.92, 'hour').toISOString(), icon: 'sync', automated: true },
-      { title: '待发货', at: now.hour(18).minute(0).toISOString(), icon: 'truck', estimated: now.format('YYYY-MM-DD 18:00') },
+      { title: '付款确认', at: now.subtract(26, 'hour').toISOString(), icon: 'check', automated: true },
+      { title: '风控通过', at: now.subtract(26, 'hour').toISOString(), icon: 'shield', automated: true },
+      { title: '库存分配完成', at: now.subtract(25.9, 'hour').toISOString(), icon: 'sync', automated: true },
+      { title: '待发货', at: now.subtract(25.9, 'hour').toISOString(), icon: 'truck', estimated: now.subtract(2, 'hour').format('YYYY-MM-DD HH:mm') },
     ],
   },
   {
@@ -93,13 +94,14 @@ export const orders: Order[] = [
     exceptionType: 'address_invalid',
     exceptionReason: '收货地址缺少门牌号，物流商暂无法配送。\n建议联系买家补充完整地址或取消订单。',
     agentAction: '自动拦截 → 推送到异常列表待运营处理',
-    createdAt: now.subtract(3, 'hour').toISOString(),
-    paidAt: now.subtract(3, 'hour').toISOString(),
-    shipDeadlineAt: shipDeadline(now.subtract(3, 'hour'), 'pinduoduo'),
+    createdAt: now.subtract(47, 'hour').toISOString(),
+    paidAt: now.subtract(47, 'hour').toISOString(),
+    // ~1h of its 48h Pinduoduo window left: an exception that is also about to breach.
+    shipDeadlineAt: shipDeadline(now.subtract(47, 'hour'), 'pinduoduo'),
     timeline: [
-      { title: '付款确认', at: now.subtract(3, 'hour').toISOString(), icon: 'check', automated: true },
-      { title: '地址校验失败', at: now.subtract(3, 'hour').toISOString(), icon: 'warning' },
-      { title: '自动拦截', at: now.subtract(2.92, 'hour').toISOString(), icon: 'stop', automated: true },
+      { title: '付款确认', at: now.subtract(47, 'hour').toISOString(), icon: 'check', automated: true },
+      { title: '地址校验失败', at: now.subtract(47, 'hour').toISOString(), icon: 'warning' },
+      { title: '自动拦截', at: now.subtract(46.9, 'hour').toISOString(), icon: 'stop', automated: true },
     ],
     recommendation: {
       action: 'apply_address_fix',
@@ -165,12 +167,13 @@ export const orders: Order[] = [
     status: 'auto_processing',
     logisticsStatus: '处理中',
     agentAction: '付款确认 → 风控校验中 → 智能分仓计算中',
-    createdAt: now.subtract(1, 'hour').toISOString(),
-    paidAt: now.subtract(1, 'hour').toISOString(),
-    shipDeadlineAt: shipDeadline(now.subtract(1, 'hour'), 'jd'),
+    createdAt: now.subtract(19, 'hour').toISOString(),
+    paidAt: now.subtract(19, 'hour').toISOString(),
+    // 5h left of the 24h JD window — the amber warning band.
+    shipDeadlineAt: shipDeadline(now.subtract(19, 'hour'), 'jd'),
     timeline: [
-      { title: '付款确认', at: now.subtract(1, 'hour').toISOString(), icon: 'check', automated: true },
-      { title: '风控校验中', at: now.subtract(1, 'hour').toISOString(), icon: 'sync', automated: true },
+      { title: '付款确认', at: now.subtract(19, 'hour').toISOString(), icon: 'check', automated: true },
+      { title: '风控校验中', at: now.subtract(19, 'hour').toISOString(), icon: 'sync', automated: true },
     ],
   },
 ];

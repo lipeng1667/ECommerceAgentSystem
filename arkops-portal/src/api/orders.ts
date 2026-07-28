@@ -1,8 +1,10 @@
 import { mockDelay } from './client';
 import { orders as initialOrders } from './orderMockData';
+import { stores } from './mockData';
 import { replaceItem } from './mockRepository';
 import { recordAuditLog } from './auditLogger';
-import type { AllMallId, Order } from '../types/domain';
+import { AUTO_FLOW_ORDER_STATUSES, EXCEPTION_ORDER_STATUSES } from '../types/domain';
+import type { AllMallId, Order, OrderSyncResult } from '../types/domain';
 import dayjs from 'dayjs';
 
 /**
@@ -28,9 +30,74 @@ function nowIso(): string {
   return dayjs().toISOString();
 }
 
+/**
+ * Order sync state (D8/O1). Orders are pulled from the stores on a schedule, so the page
+ * needs the same answers the products page gives: when did we last look, what did we
+ * find, what did automation already handle, and is any store unreachable.
+ */
+let syncState: OrderSyncResult = {
+  startedAt: dayjs().subtract(12, 'minute').toISOString(),
+  lastSyncedAt: dayjs().subtract(12, 'minute').toISOString(),
+  status: 'success',
+  newOrderCount: initialOrders.length,
+  autoHandledCount: initialOrders.filter((o) => AUTO_FLOW_ORDER_STATUSES.includes(o.status)).length,
+  pendingDecisionCount: initialOrders.filter((o) => EXCEPTION_ORDER_STATUSES.includes(o.status)).length,
+  perStore: [],
+};
+
+/** Recomputes the derived counts and per-store health from current data. */
+function buildSyncResult(patch: Partial<OrderSyncResult>): OrderSyncResult {
+  const perStore = stores.map((store) => ({
+    storeId: store.id,
+    lastSyncedAt: store.status === 'connected' ? syncState.lastSyncedAt : null,
+    needsRelogin: store.status === 'login_required' || store.status === 'expired',
+    // Connected but the last pass is old enough that the order list may be incomplete.
+    stale: store.status === 'connected' && !!syncState.lastSyncedAt && dayjs().diff(syncState.lastSyncedAt, 'hour') >= 2,
+  }));
+  syncState = {
+    ...syncState,
+    autoHandledCount: orders.filter((o) => AUTO_FLOW_ORDER_STATUSES.includes(o.status)).length,
+    pendingDecisionCount: orders.filter((o) => EXCEPTION_ORDER_STATUSES.includes(o.status)).length,
+    perStore,
+    ...patch,
+  };
+  // Hand back a copy: React Query skips the re-render when a cache write returns the
+  // same object reference, which would leave the card showing a stale sync time.
+  return { ...syncState, perStore: [...syncState.perStore] };
+}
+
 export const ordersApi = {
   /** List all orders. */
   list: (): Promise<Order[]> => mockDelay([...orders]),
+
+  /** Current order sync digest. */
+  getSyncResult: (): Promise<OrderSyncResult> => mockDelay(buildSyncResult({})),
+
+  /**
+   * Runs a sync pass. The mock finds nothing new — the point is the honest feedback
+   * ("checked, still current"), which a silent no-op button cannot give.
+   */
+  resync: (): Promise<OrderSyncResult> => {
+    const startedAt = nowIso();
+    const result = buildSyncResult({
+      startedAt,
+      lastSyncedAt: startedAt,
+      status: 'success',
+      newOrderCount: 0,
+      errorMessage: undefined,
+    });
+    // Not tied to one order, so it is logged against the collection rather than via
+    // logOrderAction (which takes an order id).
+    recordAuditLog({
+      actor: '当前用户',
+      action: '同步订单',
+      entity: '订单',
+      entityId: 'all',
+      summary: '手动触发订单同步',
+      category: 'human_ops',
+    });
+    return mockDelay(result, 900);
+  },
 
   /** Get a single order by its AllMallId. */
   get: (orderId: AllMallId): Promise<Order | undefined> =>

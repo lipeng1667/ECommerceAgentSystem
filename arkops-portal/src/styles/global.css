@@ -1335,6 +1335,9 @@ body {
 .stat-card {
   position: relative;
   overflow: hidden;
+  /* KPI rows are equal-height by convention: cards with a helper line must not stand
+     taller than their neighbours (the Col already stretches, the card has to fill it). */
+  height: 100%;
 }
 
 .stat-card-primary {
