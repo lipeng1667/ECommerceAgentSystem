@@ -36,7 +36,7 @@ export interface ApprovalUrgency {
 export const URGENCY_COLORS: Record<UrgencyTone, string> = {
   safe: 'var(--ark-green)',
   warning: 'var(--ark-orange)',
-  critical: 'var(--ark-red, #dc2626)'
+  critical: 'var(--ark-red)'
 };
 
 type TFunction = (key: string, params?: Record<string, string | number>) => string;

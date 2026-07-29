@@ -22,11 +22,15 @@ import {
   CheckOutlined,
   CloseOutlined,
   EyeOutlined,
+  HistoryOutlined,
+  InboxOutlined,
   LoginOutlined,
-  ThunderboltOutlined
+  SettingOutlined,
+  ThunderboltOutlined,
+  UserAddOutlined
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Badge, Button, Card, List, Popconfirm, Segmented, Space, Tag, Typography, message } from 'antd';
+import { Badge, Button, Card, Checkbox, List, Modal, Popconfirm, Segmented, Select, Space, Tabs, Tag, Typography, message } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
@@ -47,6 +51,9 @@ import { getExpiringInDays } from '../../utils/storeDisplay';
 import { getSlaState, isOrderActionable } from '../../utils/orderSla';
 import { EXCEPTION_ORDER_STATUSES } from '../../types/domain';
 import { ApprovalDecisionModal, type ApprovalDecision } from '../approvals/ApprovalDecisionModal';
+import { InboxHistoryTab } from './InboxHistoryTab';
+import { InboxRulesTab } from './InboxRulesTab';
+import { ASSIGNEE_OPTIONS } from '../operations/exceptionCenterMockData';
 import {
   URGENCY_COLORS,
   formatAge,
@@ -163,6 +170,24 @@ export function InboxPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const filter: InboxFilter = isValidFilter(searchParams.get('type')) ? (searchParams.get('type') as InboxFilter) : 'all';
   const [decisionTarget, setDecisionTarget] = useState<{ approval: Approval; decision: ApprovalDecision } | null>(null);
+  // D9: pending / history / rules. Kept in `tab` so `?type=` keeps meaning "which kind of
+  // pending item" — the two params are independent and old links still work.
+  const activeTab = searchParams.get('tab') === 'history' || searchParams.get('tab') === 'rules'
+    ? (searchParams.get('tab') as 'history' | 'rules')
+    : 'pending';
+  const setActiveTab = (next: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (next === 'pending') params.delete('tab');
+    else params.set('tab', next);
+    setSearchParams(params, { replace: true });
+  };
+  // Bulk actions cover exceptions only: exceptionsApi.batchResolve/batchIgnore are the
+  // only batch endpoints, and approvals must stay one-by-one with their own confirm.
+  const [selectedExceptionIds, setSelectedExceptionIds] = useState<string[]>([]);
+  const [assignTarget, setAssignTarget] = useState<ExceptionItem | null>(null);
+  const [assignee, setAssignee] = useState<string | undefined>();
+  // Exception detail opened from the history tab.
+  const [historyException, setHistoryException] = useState<ExceptionItem | null>(null);
   // Refresh countdowns periodically.
   const [clock, setClock] = useState(() => dayjs());
   useEffect(() => {
@@ -232,6 +257,33 @@ export function InboxPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['productMergeSuggestions'] });
       message.success(t('inbox.dismissed'));
+    }
+  });
+  const batchResolveMutation = useMutation({
+    mutationFn: (ids: string[]) => exceptionsApi.batchResolve(ids),
+    onSuccess: (_data, ids) => {
+      message.success(t('inbox.batchResolveDone', { count: ids.length }));
+      setSelectedExceptionIds([]);
+      queryClient.invalidateQueries({ queryKey: ['exceptions'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    }
+  });
+  const batchIgnoreMutation = useMutation({
+    mutationFn: (ids: string[]) => exceptionsApi.batchIgnore(ids),
+    onSuccess: (_data, ids) => {
+      message.success(t('inbox.batchIgnoreDone', { count: ids.length }));
+      setSelectedExceptionIds([]);
+      queryClient.invalidateQueries({ queryKey: ['exceptions'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    }
+  });
+  const assignMutation = useMutation({
+    mutationFn: (input: { id: string; assignee: string }) => exceptionsApi.assign(input.id, input.assignee),
+    onSuccess: () => {
+      message.success(t('inbox.assignSuccess'));
+      setAssignTarget(null);
+      setAssignee(undefined);
+      queryClient.invalidateQueries({ queryKey: ['exceptions'] });
     }
   });
   const applyOrderRecMutation = useMutation({
@@ -539,9 +591,17 @@ export function InboxPage() {
               {t('inbox.goHandle')}
             </Button>
           )}
-          <Link to="/agents/exceptions">
-            <Button size="small" type="link" style={{ padding: '0 4px' }}>{t('inbox.viewDetail')}</Button>
-          </Link>
+          {/* D9: assignment moved here from the exception centre. */}
+          <Button
+            size="small"
+            icon={<UserAddOutlined />}
+            onClick={() => { setAssignee(exception.assignee); setAssignTarget(exception); }}
+          >
+            {exception.assignee ? t('inbox.assignedTo', { name: exception.assignee }) : t('inbox.assign')}
+          </Button>
+          <Button size="small" type="link" style={{ padding: '0 4px' }} onClick={() => setHistoryException(exception)}>
+            {t('inbox.viewDetail')}
+          </Button>
         </Space>
       );
     }
@@ -675,7 +735,7 @@ export function InboxPage() {
           </Space>
         }
         description={t('inbox.description')}
-        actions={
+        actions={activeTab !== 'pending' ? undefined : (
           <Space>
             {/* D7.3: guided sequential re-login — hands the whole set of stores to the
                 store detail page as an ordered queue, so finishing one store offers the
@@ -697,114 +757,179 @@ export function InboxPage() {
               </Popconfirm>
             ) : undefined}
           </Space>
-        }
+        )}
       />
 
-      <Card size="small">
-        <Segmented
-          size="small"
-          value={filter}
-          onChange={(value) => {
-            const next = value as InboxFilter;
-            setSearchParams(next === 'all' ? {} : { type: next }, { replace: true });
-          }}
-          options={[
-            { value: 'all', label: `${t('inbox.filterAll')} (${counts.all})` },
-            { value: 'approval', label: `${t('inbox.filterApprovals')} (${counts.approval})` },
-            { value: 'exception', label: `${t('inbox.filterExceptions')} (${counts.exception})` },
-            { value: 'relogin', label: `${t('inbox.filterRelogin')} (${counts.relogin})` },
-            { value: 'order_exception', label: `${t('inbox.filterOrderException')} (${counts.order_exception})` },
-            { value: 'product_draft', label: `${t('inbox.filterProductDrafts')} (${counts.product_draft})` },
-            { value: 'product_new', label: `${t('inbox.filterProductNew')} (${counts.product_new})` },
-            { value: 'product_merge', label: `${t('inbox.filterProductMerge')} (${counts.product_merge})` },
-            { value: 'product_conflict', label: `${t('inbox.filterProductConflict')} (${counts.product_conflict})` }
-          ]}
-        />
-        {visibleEntries.length === 0 ? (
-          <div style={{ padding: '32px 0' }}>
-            <EmptyState description={filter === 'all' ? t('inbox.empty') : t('inbox.emptyFiltered')} />
-          </div>
-        ) : (
-          <List
-            itemLayout="vertical"
-            dataSource={visibleEntries}
-            rowKey={(entry) => entry.key}
-            renderItem={(entry) => {
-              const urgency = entry.approval ? getApprovalUrgency(entry.approval, clock) : undefined;
-              return (
-                <List.Item style={{ padding: '12px 0' }}>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                    <div style={{ flex: '1 1 260px', minWidth: 0 }}>
-                      <Space size={6} wrap style={{ marginBottom: 4 }}>
-                        <Tag color={KIND_TAG_COLORS[entry.kind]} style={{ margin: 0 }}>
-                          {t(`inbox.kind_${entry.kind}`)}
-                        </Tag>
-                        {entry.approval && <StatusBadge value={entry.approval.riskLevel} />}
-                        {entry.exception && (
-                          <Tag
-                            color={entry.exception.level === 'critical' ? 'red' : entry.exception.level === 'warning' ? 'orange' : 'blue'}
-                            style={{ margin: 0 }}
-                          >
-                            {t(`exc.${entry.exception.level}`)}
-                          </Tag>
-                        )}
-                        {entry.kind === 'relogin' && (
-                          entry.expiresInDays === undefined
-                            ? <AlertOutlined style={{ color: 'var(--ark-red, #dc2626)' }} />
-                            : <Tag color="orange" style={{ margin: 0 }}>{t('inbox.expiringTag', { days: entry.expiresInDays })}</Tag>
-                        )}
-                      </Space>
-                      <div>
-                        {entry.kind === 'approval' && entry.approval ? (
-                          <Link to={`/approvals/${entry.approval.id}`}>
-                            <Typography.Text strong>{entry.title}</Typography.Text>
-                          </Link>
-                        ) : (
-                          <Typography.Text strong>{entry.title}</Typography.Text>
-                        )}
-                      </div>
-                      {entry.kind === 'product_conflict' && entry.fieldConflict ? (
-                        <FieldConflictComparison conflict={entry.fieldConflict} t={t} />
-                      ) : (
-                        <Typography.Paragraph
-                          type="secondary"
-                          style={{ marginBottom: 4, fontSize: 12 }}
-                          ellipsis={{ rows: 2 }}
-                        >
-                          {entry.summary}
-                        </Typography.Paragraph>
-                      )}
-                      <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-                        {entry.storeName}
-                        {entry.approval ? ` · ${t(`agent.${entry.approval.agentType}`)}` : ''}
-                        {entry.exception ? ` · ${t(`agent.${entry.exception.agentType}`)}` : ''}
-                        {entry.createdAt ? ` · ${formatAge(t, entry.createdAt, clock)}` : ''}
-                      </Typography.Text>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                      {urgency && (
-                        <Typography.Text
-                          strong
-                          style={{ fontSize: 12, color: URGENCY_COLORS[urgency.tone] }}
-                          title={`${t('approvalDetail.expiresAtLabel')}: ${urgency.expiresAt.format('MM-DD HH:mm')} · ${t(timeoutConsequenceKey(urgency.policy))}`}
-                        >
-                          {formatRemaining(t, urgency.remainingMs)}
-                        </Typography.Text>
-                      )}
-                      {renderQuickActions(entry)}
-                    </div>
-                  </div>
-                </List.Item>
-              );
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={[
+          {
+            key: 'pending',
+            label: <span><InboxOutlined /> {t('inbox.tabPending')}{counts.all > 0 && <Badge count={counts.all} size="small" offset={[6, -4]} style={{ marginLeft: 6 }} />}</span>,
+            children: (
+        <Card size="small">
+          {/* D9: bulk resolve/ignore, migrated from the exception centre. Only exception
+              items are selectable — they are the only kind with batch endpoints. */}
+          {selectedExceptionIds.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+              <Typography.Text strong style={{ fontSize: 13 }}>
+                {t('inbox.selectedCount', { count: selectedExceptionIds.length })}
+              </Typography.Text>
+              <Popconfirm
+                title={t('inbox.batchResolve')}
+                onConfirm={() => batchResolveMutation.mutate(selectedExceptionIds)}
+                okText={t('common.confirm')}
+                cancelText={t('common.cancel')}
+              >
+                <Button size="small" type="primary" icon={<CheckOutlined />} loading={batchResolveMutation.isPending}>
+                  {t('inbox.batchResolve')}
+                </Button>
+              </Popconfirm>
+              <Popconfirm
+                title={t('inbox.batchIgnore')}
+                onConfirm={() => batchIgnoreMutation.mutate(selectedExceptionIds)}
+                okText={t('common.confirm')}
+                cancelText={t('common.cancel')}
+              >
+                <Button size="small" icon={<CloseOutlined />} loading={batchIgnoreMutation.isPending}>
+                  {t('inbox.batchIgnore')}
+                </Button>
+              </Popconfirm>
+              <Button size="small" type="link" onClick={() => setSelectedExceptionIds([])}>
+                {t('inbox.clearSelection')}
+              </Button>
+            </div>
+          )}
+          <Segmented
+            size="small"
+            value={filter}
+            onChange={(value) => {
+              const next = value as InboxFilter;
+              setSearchParams(next === 'all' ? {} : { type: next }, { replace: true });
             }}
+            options={[
+              { value: 'all', label: `${t('inbox.filterAll')} (${counts.all})` },
+              { value: 'approval', label: `${t('inbox.filterApprovals')} (${counts.approval})` },
+              { value: 'exception', label: `${t('inbox.filterExceptions')} (${counts.exception})` },
+              { value: 'relogin', label: `${t('inbox.filterRelogin')} (${counts.relogin})` },
+              { value: 'order_exception', label: `${t('inbox.filterOrderException')} (${counts.order_exception})` },
+              { value: 'product_draft', label: `${t('inbox.filterProductDrafts')} (${counts.product_draft})` },
+              { value: 'product_new', label: `${t('inbox.filterProductNew')} (${counts.product_new})` },
+              { value: 'product_merge', label: `${t('inbox.filterProductMerge')} (${counts.product_merge})` },
+              { value: 'product_conflict', label: `${t('inbox.filterProductConflict')} (${counts.product_conflict})` }
+            ]}
           />
-        )}
-        {counts.all > 0 && (
-          <Typography.Text type="secondary" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <CheckCircleOutlined /> {t('inbox.pendingCount', { count: counts.all })}
-          </Typography.Text>
-        )}
-      </Card>
+          {visibleEntries.length === 0 ? (
+            <div style={{ padding: '32px 0' }}>
+              <EmptyState description={filter === 'all' ? t('inbox.empty') : t('inbox.emptyFiltered')} />
+            </div>
+          ) : (
+            <List
+              itemLayout="vertical"
+              dataSource={visibleEntries}
+              rowKey={(entry) => entry.key}
+              renderItem={(entry) => {
+                const urgency = entry.approval ? getApprovalUrgency(entry.approval, clock) : undefined;
+                return (
+                  <List.Item style={{ padding: '12px 0' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                      <Checkbox
+                        style={{ marginTop: 2 }}
+                        disabled={entry.kind !== 'exception'}
+                        title={entry.kind === 'exception' ? undefined : t('inbox.onlyExceptionsSelectable')}
+                        checked={!!entry.exception && selectedExceptionIds.includes(entry.exception.id)}
+                        onChange={(e) => {
+                          if (!entry.exception) return;
+                          const id = entry.exception.id;
+                          setSelectedExceptionIds((prev) => e.target.checked ? [...prev, id] : prev.filter((x) => x !== id));
+                        }}
+                      />
+                      <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+                        <Space size={6} wrap style={{ marginBottom: 4 }}>
+                          <Tag color={KIND_TAG_COLORS[entry.kind]} style={{ margin: 0 }}>
+                            {t(`inbox.kind_${entry.kind}`)}
+                          </Tag>
+                          {entry.approval && <StatusBadge value={entry.approval.riskLevel} />}
+                          {entry.exception && (
+                            <Tag
+                              color={entry.exception.level === 'critical' ? 'red' : entry.exception.level === 'warning' ? 'orange' : 'blue'}
+                              style={{ margin: 0 }}
+                            >
+                              {t(`exc.${entry.exception.level}`)}
+                            </Tag>
+                          )}
+                          {entry.kind === 'relogin' && (
+                            entry.expiresInDays === undefined
+                              ? <AlertOutlined style={{ color: 'var(--ark-red)' }} />
+                              : <Tag color="orange" style={{ margin: 0 }}>{t('inbox.expiringTag', { days: entry.expiresInDays })}</Tag>
+                          )}
+                        </Space>
+                        <div>
+                          {entry.kind === 'approval' && entry.approval ? (
+                            <Link to={`/approvals/${entry.approval.id}`}>
+                              <Typography.Text strong>{entry.title}</Typography.Text>
+                            </Link>
+                          ) : (
+                            <Typography.Text strong>{entry.title}</Typography.Text>
+                          )}
+                        </div>
+                        {entry.kind === 'product_conflict' && entry.fieldConflict ? (
+                          <FieldConflictComparison conflict={entry.fieldConflict} t={t} />
+                        ) : (
+                          <Typography.Paragraph
+                            type="secondary"
+                            style={{ marginBottom: 4, fontSize: 12 }}
+                            ellipsis={{ rows: 2 }}
+                          >
+                            {entry.summary}
+                          </Typography.Paragraph>
+                        )}
+                        <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+                          {entry.storeName}
+                          {entry.approval ? ` · ${t(`agent.${entry.approval.agentType}`)}` : ''}
+                          {entry.exception ? ` · ${t(`agent.${entry.exception.agentType}`)}` : ''}
+                          {entry.createdAt ? ` · ${formatAge(t, entry.createdAt, clock)}` : ''}
+                        </Typography.Text>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                        {urgency && (
+                          <Typography.Text
+                            strong
+                            style={{ fontSize: 12, color: URGENCY_COLORS[urgency.tone] }}
+                            title={`${t('approvalDetail.expiresAtLabel')}: ${urgency.expiresAt.format('MM-DD HH:mm')} · ${t(timeoutConsequenceKey(urgency.policy))}`}
+                          >
+                            {formatRemaining(t, urgency.remainingMs)}
+                          </Typography.Text>
+                        )}
+                        {renderQuickActions(entry)}
+                      </div>
+                    </div>
+                  </List.Item>
+                );
+              }}
+            />
+          )}
+          {counts.all > 0 && (
+            <Typography.Text type="secondary" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <CheckCircleOutlined /> {t('inbox.pendingCount', { count: counts.all })}
+            </Typography.Text>
+          )}
+        </Card>
+            ),
+          },
+          {
+            key: 'history',
+            label: <span><HistoryOutlined /> {t('inbox.tabHistory')}</span>,
+            children: <InboxHistoryTab onOpenException={setHistoryException} />,
+          },
+          {
+            key: 'rules',
+            label: <span><SettingOutlined /> {t('inbox.tabRules')}</span>,
+            children: <InboxRulesTab />,
+          },
+        ]}
+      />
 
       {/* Quick decisions still require the confirm step (B4) */}
       <ApprovalDecisionModal
@@ -821,6 +946,78 @@ export function InboxPage() {
           })
         }
       />
+
+      {/* D9: assign an owner — migrated from the exception centre. */}
+      <Modal
+        title={t('inbox.assignTitle')}
+        open={!!assignTarget}
+        onCancel={() => { setAssignTarget(null); setAssignee(undefined); }}
+        okText={t('common.confirm')}
+        cancelText={t('common.cancel')}
+        okButtonProps={{ disabled: !assignee, loading: assignMutation.isPending }}
+        onOk={() => assignTarget && assignee && assignMutation.mutate({ id: assignTarget.id, assignee })}
+        width={420}
+      >
+        <Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>{assignTarget?.title}</Typography.Paragraph>
+        <Select
+          style={{ width: '100%' }}
+          placeholder={t('inbox.assignTitle')}
+          value={assignee}
+          onChange={setAssignee}
+          options={ASSIGNEE_OPTIONS.map((name) => ({ value: name, label: name }))}
+        />
+      </Modal>
+
+      {/* Exception detail, shared by the pending queue and the history tab. */}
+      <Modal
+        title={historyException?.title}
+        open={!!historyException}
+        onCancel={() => setHistoryException(null)}
+        footer={
+          <Space wrap>
+            <Button onClick={() => setHistoryException(null)}>{t('common.close')}</Button>
+            {historyException?.linkTo && (
+              <Button
+                type="primary"
+                icon={<EyeOutlined />}
+                onClick={() => { const target = historyException; setHistoryException(null); navigate(`${target.linkTo}?exc=${target.id}`); }}
+              >
+                {t('inbox.goHandle')}
+              </Button>
+            )}
+          </Space>
+        }
+        width={560}
+      >
+        {historyException && (
+          <Space direction="vertical" size={8} style={{ width: '100%' }}>
+            <Space size={8} wrap>
+              <Tag color={historyException.level === 'critical' ? 'red' : historyException.level === 'warning' ? 'orange' : 'blue'}>
+                {t(`exc.${historyException.level}`)}
+              </Tag>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {historyException.storeName} · {t(`agent.${historyException.agentType}`)}
+              </Typography.Text>
+            </Space>
+            <Typography.Text>{historyException.summary}</Typography.Text>
+            {historyException.detail && (
+              <Card size="small" style={{ background: 'var(--ark-panel-soft)' }}>
+                <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0, fontSize: 12 }}>{historyException.detail}</pre>
+              </Card>
+            )}
+            {historyException.suggestedAction && (
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {t('exc.suggestedAction')}: {historyException.suggestedAction}
+              </Typography.Text>
+            )}
+            {historyException.assignee && (
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {t('inbox.assignedTo', { name: historyException.assignee })}
+              </Typography.Text>
+            )}
+          </Space>
+        )}
+      </Modal>
     </div>
   );
 }

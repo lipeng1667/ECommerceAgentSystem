@@ -96,17 +96,16 @@ function getSelectedMenuKey(pathname: string) {
   if (pathname.startsWith('/settings/')) return pathname;
   // store workflow pages belong to the top-level Store Management item
   if (pathname === '/stores' || pathname.startsWith('/stores/')) return '/stores';
-  // agents sub-items
-  if (pathname === '/agents/exceptions') return '/agents/exceptions';
-  if (pathname === '/agents/approvals') return '/agents/approvals';
+  // D9: the exception/approval centres are folded into the inbox; only the approval
+  // detail page remains under /agents/approvals/:id and it belongs to the inbox entry.
+  if (pathname.startsWith('/agents/approvals')) return '/inbox';
   if (pathname.startsWith('/agents/')) return '/agents';
   if (pathname === '/agents') return '/agents';
   return routeMenuPrefixes.find((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) ?? pathname;
 }
 
 function getActiveMenuGroup(selectedKey: string): string | null {
-  if (selectedKey === '/inbox') return 'todo-group'; // WS-B
-  if (selectedKey === '/agents/exceptions' || selectedKey === '/agents/approvals') return 'todo-group';
+  // D9: 待办中心 is a single top-level item now, so it has no group to expand.
   if (selectedKey === '/agents' || selectedKey === '/setup') return 'agents-group';
   if (selectedKey.startsWith('/settings/') && selectedKey !== '/settings/billing' && selectedKey !== '/settings/guide') return 'settings-group';
   return null;
@@ -205,58 +204,18 @@ export function AppShell() {
       )
     },
 
-    // 5. 待办中心 — 聚合异常和审批
+    // 5. 待办中心 — 审批 / 异常 / 重新登录 / 订单 / 商品的统一队列（D9：三合一，不再分子项）
     {
-      key: 'todo-group',
-      icon: <CheckSquareOutlined />,
+      key: '/inbox',
+      icon: <InboxOutlined />,
       label: (
         <span>
           {t('nav.todoCenter')}
-          {/* WS-B (B2): group badge mirrors the Action Inbox count */}
           {inboxCount > 0 && (
             <Badge count={inboxCount} size="small" offset={[8, -2]} style={{ marginLeft: 8 }} />
           )}
         </span>
-      ),
-      children: [
-        // WS-B (B2, D2): unified Action Inbox entry; exception/approval pages are its filtered views
-        {
-          key: '/inbox',
-          icon: <InboxOutlined />,
-          label: (
-            <span>
-              {t('inbox.title')}
-              {inboxCount > 0 && (
-                <Badge count={inboxCount} size="small" offset={[8, -2]} style={{ marginLeft: 8 }} />
-              )}
-            </span>
-          )
-        },
-        {
-          key: '/agents/exceptions',
-          icon: <AlertOutlined />,
-          label: (
-            <span>
-              {t('nav.exceptionCenter')}
-              {exceptionPending > 0 && (
-                <Badge count={exceptionPending} size="small" offset={[8, -2]} style={{ marginLeft: 8 }} />
-              )}
-            </span>
-          )
-        },
-        {
-          key: '/agents/approvals',
-          icon: <CheckSquareOutlined />,
-          label: (
-            <span>
-              {t('nav.approvalCenter')}
-              {pendingApprovals > 0 && (
-                <Badge count={pendingApprovals} size="small" offset={[8, -2]} style={{ marginLeft: 8 }} />
-              )}
-            </span>
-          )
-        },
-      ]
+      )
     },
 
     // 6. Agent 中心

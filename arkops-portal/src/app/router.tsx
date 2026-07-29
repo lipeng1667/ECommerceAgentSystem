@@ -11,11 +11,9 @@ import { DashboardSkeleton, AgentListSkeleton, TablePageSkeleton } from '../comp
 const AgentConfigPage = lazy(() => import('../pages/agents/AgentConfigPage').then((module) => ({ default: module.AgentConfigPage })));
 const AgentListPage = lazy(() => import('../pages/agents/AgentListPage').then((module) => ({ default: module.AgentListPage })));
 const ApprovalDetailPage = lazy(() => import('../pages/approvals/ApprovalDetailPage').then((module) => ({ default: module.ApprovalDetailPage })));
-const ApprovalListPage = lazy(() => import('../pages/approvals/ApprovalListPage').then((module) => ({ default: module.ApprovalListPage })));
 const AuditLogsPage = lazy(() => import('../pages/audit/AuditLogsPage').then((module) => ({ default: module.AuditLogsPage })));
 const BillingSettingsPage = lazy(() => import('../pages/billing/BillingSettingsPage').then((module) => ({ default: module.BillingSettingsPage })));
 const DashboardPage = lazy(() => import('../pages/dashboard/DashboardPage').then((module) => ({ default: module.DashboardPage })));
-const ExceptionCenterPage = lazy(() => import('../pages/operations/ExceptionCenterPage').then((module) => ({ default: module.ExceptionCenterPage })));
 const InboxPage = lazy(() => import('../pages/inbox/InboxPage').then((module) => ({ default: module.InboxPage }))); // WS-B
 const LoginPage = lazy(() => import('../pages/auth/LoginPage').then((module) => ({ default: module.LoginPage })));
 const MembersSettingsPage = lazy(() => import('../pages/settings/MembersSettingsPage').then((module) => ({ default: module.MembersSettingsPage })));
@@ -116,12 +114,14 @@ const router = createBrowserRouter(
         // Agent 中心
         { path: 'agents', element: guarded('/agents', <AgentListPage />, agentListFallback) },
         { path: 'agents/:agentType', element: guarded('/agents', <AgentConfigPage />) },
-        { path: 'agents/exceptions', element: guarded('/agents/exceptions', <ExceptionCenterPage />) },
-        { path: 'agents/approvals', element: guarded('/agents/approvals', <ApprovalListPage />) },
+        // D9: both list pages are folded into the inbox's three tabs; the routes stay as
+        // redirects that preserve which kind of item the link meant.
+        { path: 'agents/exceptions', element: <Navigate to="/inbox?type=exception" replace /> },
+        { path: 'agents/approvals', element: <Navigate to="/inbox?type=approval" replace /> },
         { path: 'agents/approvals/:approvalId', element: guarded('/agents/approvals', <ApprovalDetailPage />) },
         // 旧路由重定向
-        { path: 'exception-center', element: <Navigate to="/agents/exceptions" replace /> },
-        { path: 'approvals', element: <Navigate to="/agents/approvals" replace /> },
+        { path: 'exception-center', element: <Navigate to="/inbox?type=exception" replace /> },
+        { path: 'approvals', element: <Navigate to="/inbox?type=approval" replace /> },
         { path: 'approvals/:approvalId', element: guarded('/agents/approvals', <ApprovalDetailPage />) },
 
         // 店铺管理
