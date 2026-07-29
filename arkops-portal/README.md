@@ -121,7 +121,7 @@ The sidebar is ordered around merchant tasks: Overview → Stores → Products �
 | `/login` | Login | Implemented | Select a first-time or established local merchant persona. |
 | `/dashboard` | Dashboard | Implemented | Business overview and Agent monitoring; empty until a new merchant connects a store. |
 | `/setup` | Scenario Activation | Implemented | Scenario-first activation surface (D1): 5 scenario bundles with autonomy dial (L1/L2/L3), per-store overrides; per-agent config is the advanced layer. |
-| `/inbox` | Action Inbox | Implemented | Unified "needs me" queue (D2): approvals + exceptions + re-login items ordered by urgency/expiry; header bell links here. |
+| `/inbox` | Action Inbox | Implemented | Unified "needs me" queue (D2/D9) in three tabs: pending (approvals, exceptions, re-login, orders, products — with bulk resolve/ignore and assignment), history (handled exceptions + decided approvals), and rules & logs (approval policy, agent auto-handling log). |
 | `/orders` | Order Automation | Implemented | Order handling, automation progress, and exception workflows. |
 | `/products` | Product Management | Implemented | Imported products, drafts, prices, and inventory. |
 | `/stores` | Store List | Implemented | Store list, authorization status, service tags, add-store entry. |
@@ -130,8 +130,8 @@ The sidebar is ordered around merchant tasks: Overview → Stores → Products �
 | `/stores/:storeId` | Store Detail | Implemented | Store business overview and settings tabs. |
 | `/agents` | Agent Center | Implemented | My Agents and available Agents panels. |
 | `/agents/:agentType` | Agent Detail | Implemented | Agent stats, run instructions, task history, task creation modal. |
-| `/agents/exceptions` | Exception Center | Implemented | Filtered view of the Action Inbox: issues requiring operator intervention. |
-| `/agents/approvals` | Approval List | Implemented | Filtered view of the Action Inbox: pending approvals, expiry-ordered. |
+| `/agents/exceptions` | — | Redirect (D9) | Redirects to `/inbox?type=exception`; the page merged into the inbox tabs. |
+| `/agents/approvals` | — | Redirect (D9) | Redirects to `/inbox?type=approval`; the page merged into the inbox tabs. |
 | `/agents/approvals/:approvalId` | Approval Detail | Implemented | Approve or reject high-risk actions. |
 | `/settings/stores` | Store Settings Entry | Implemented | Store management entry within Settings. |
 | `/settings/models` | Model Center | Implemented | Agent model assignment, custom models, monthly usage. |
@@ -516,10 +516,11 @@ Use this table as the first stop when a collaborator or AI coding tool needs to 
 | `src/pages/agents/workflow-modals/*` | Page sections | Agent-specific demo workflow modals. | Agent workflow demos change. |
 | `src/pages/agents/agentConfigMockData.ts` | Page data | Large Agent detail demo datasets. | Agent detail demo content changes. |
 | `src/pages/models/ModelListPage.tsx` | Page | Model center and Agent-to-model assignment. | Model assignment or custom model UI changes. |
-| `src/pages/approvals/ApprovalListPage.tsx` | Page | Approval list. | Approval table or filters change. |
 | `src/pages/approvals/ApprovalDetailPage.tsx` | Page | Approval detail and approve/reject actions. | Approval decision UI changes. |
-| `src/pages/operations/ExceptionCenterPage.tsx` | Page | Operator exception queue. | Exception workflow or filters change. |
-| `src/pages/operations/exceptionCenterColumns.tsx` | Page helper | Exception center table columns. | Exception table column/action definitions change. |
+| `src/pages/inbox/InboxPage.tsx` | Page | Action Inbox: pending queue with bulk actions, plus the history and rules tabs. | Inbox queue, bulk actions, or tab layout change. |
+| `src/pages/inbox/InboxHistoryTab.tsx` | Page section | Handled exceptions and decided approvals in one timeline. | History columns or filters change. |
+| `src/pages/inbox/InboxRulesTab.tsx` | Page section | Approval policy reference and agent auto-handling log. | Policy or log presentation changes. |
+| `src/pages/operations/exceptionCenterColumns.tsx` | Page helper | Exception and agent-log table columns, used by the inbox tabs. | Exception table column/action definitions change. |
 | `src/pages/operations/exceptionCenterMockData.ts` | Page data | Exception center demo records. | Exception demo content changes. |
 | `src/pages/orders/OrderAutomationPage.tsx` | Page | Order automation, exception handling, order detail, and timeline. | Order workflow UI changes. |
 | `src/pages/billing/BillingSettingsPage.tsx` | Page | Billing page composition. | Billing page tabs/sections change. |
@@ -568,8 +569,8 @@ Current page domains:
 - `agents/`: Agent list, detail, strategy config, built-in task cards, workflow modals, product draft preview.
 - `stores/`: store list, add-store flow, store detail, store business overview, store settings.
 - `dashboard/`: business dashboard and Agent monitoring.
-- `approvals/`: approval list and detail.
-- `operations/`: exception center helpers and mock data; the former operations overview now lives in the dashboard.
+- `approvals/`: approval detail page and the decision modal (the list merged into the inbox, D9).
+- `operations/`: exception column builders and mock data, consumed by the inbox tabs (D9 removed the standalone exception page); the former operations overview now lives in the dashboard.
 - `orders/`: order automation page and order exception workflows.
 - `products/`: imported products, drafts, prices, and inventory.
 - `billing/`: billing page and billing section components.
