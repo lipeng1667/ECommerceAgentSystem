@@ -157,7 +157,7 @@ export function AppShell() {
   const orderExceptions = hasBusinessData ? dashboard?.orderExceptions ?? 0 : 0;
   // WS-B (B2): unified Action Inbox count = approvals + exceptions + re-login stores
   const loginRequiredStores = hasBusinessData ? dashboard?.loginRequiredStores ?? 0 : 0;
-  const inboxCount = pendingApprovals + exceptionPending + loginRequiredStores;
+  const inboxCount = hasBusinessData ? dashboard?.inboxTotal ?? 0 : 0;
   const selectedMenuKey = getSelectedMenuKey(location.pathname);
   const activeMenuGroup = getActiveMenuGroup(selectedMenuKey);
   const [openMenuKeys, setOpenMenuKeys] = useState<string[]>(() => activeMenuGroup ? [activeMenuGroup] : []);

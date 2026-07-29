@@ -1,6 +1,7 @@
 import { mockDelay } from './client';
 import { countActionableOrders } from './orders';
 import { approvals, stores, tasks } from './mockData';
+import { productListingsApi } from './products';
 import { exceptionItems } from '../pages/operations/exceptionCenterMockData'; // WS-B (B2)
 import { agentConfigs } from './agentMockData';
 
@@ -77,6 +78,11 @@ export const dashboardApi = {
     const activeSessions = connectedStores;
     const totalSessions = stores.length;
 
+    // D9/N1: inbox total — covers approvals, exceptions, relogin stores, and order
+    // exceptions, so the sidebar badge agrees with the inbox page's count.
+    const reloginCount = stores.filter((s) => s.status === 'login_required' || s.status === 'expired').length;
+    const inboxTotal = pendingApprovals + exceptionCenterPending + reloginCount + orderExceptions;
+
     return mockDelay({
       connectedStores,
       runningTasks,
@@ -84,6 +90,7 @@ export const dashboardApi = {
       loginRequiredStores,
       exceptionCenterPending,
       orderExceptions,
+      inboxTotal,
       recentTasks,
       recentApprovals,
       operationTrend: [
