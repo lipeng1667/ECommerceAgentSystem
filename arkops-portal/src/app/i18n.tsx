@@ -2544,8 +2544,8 @@ const dictionaries = {
     'guidev2.goBilling': 'Open Billing',
     'guidev2.goDashboard': 'Open Overview',
     // WS-B: Action Inbox, approvals & exceptions (appended)
-    'inbox.title': 'Action Inbox',
-    'inbox.description': 'Everything that needs you — approvals, exceptions, and re-login requests in one queue, most urgent first.',
+    'inbox.title': 'Action Center',
+    'inbox.description': 'Everything that needs a decision in one queue, most urgent first; what has already been handled and how automation is governed sit in the other two tabs.',
     'inbox.justNow': 'just now',
     'inbox.minutesAgo': '{minutes} min ago',
     'inbox.hoursAgo': '{hours} h ago',
@@ -5233,8 +5233,8 @@ const dictionaries = {
     'guidev2.goBilling': '前往账单页',
     'guidev2.goDashboard': '前往经营总览',
     // WS-B: 行动收件箱、审批与异常（追加）
-    'inbox.title': '行动收件箱',
-    'inbox.description': '所有需要你处理的事项——审批、异常与重新登录，按紧急程度排成一个队列。',
+    'inbox.title': '待办中心',
+    'inbox.description': '所有需要你决定的事项排成一个队列，按紧急程度排序；已处理的记录和自动化规则在后两个标签页。',
     'inbox.justNow': '刚刚',
     'inbox.minutesAgo': '{minutes} 分钟前',
     'inbox.hoursAgo': '{hours} 小时前',

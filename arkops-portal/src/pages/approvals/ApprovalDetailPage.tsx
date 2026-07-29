@@ -94,8 +94,10 @@ export function ApprovalDetailPage() {
         title={approval.title}
         description={approval.reason}
         breadcrumb={[
+          // D9: the approval centre is a filter of the inbox now, so the trail is
+          // 待办中心 → 审批 → this item rather than pointing at a page that redirects.
           { title: t('inbox.title'), href: '/inbox' },
-          { title: t('approvals.title'), href: '/agents/approvals' },
+          { title: t('inbox.filterApprovals'), href: '/inbox?type=approval' },
           { title: approval.title }
         ]}
         onBack={() => navigate(-1)}
