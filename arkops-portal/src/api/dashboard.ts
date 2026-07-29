@@ -1,7 +1,8 @@
 import { mockDelay } from './client';
 import { countActionableOrders } from './orders';
 import { approvals, stores, tasks } from './mockData';
-import { productListingsApi } from './products';
+import { countInboxProductItems } from './products';
+import { getExpiringInDays } from '../utils/storeDisplay';
 import { exceptionItems } from '../pages/operations/exceptionCenterMockData'; // WS-B (B2)
 import { agentConfigs } from './agentMockData';
 
@@ -78,10 +79,14 @@ export const dashboardApi = {
     const activeSessions = connectedStores;
     const totalSessions = stores.length;
 
-    // D9/N1: inbox total — covers approvals, exceptions, relogin stores, and order
-    // exceptions, so the sidebar badge agrees with the inbox page's count.
-    const reloginCount = stores.filter((s) => s.status === 'login_required' || s.status === 'expired').length;
-    const inboxTotal = pendingApprovals + exceptionCenterPending + reloginCount + orderExceptions;
+    // D9/N1: the sidebar badge must equal the inbox page's own count, so every kind the
+    // inbox renders is counted here — including the proactive store-expiry warnings and
+    // the product-side items, which a hand-written sum kept missing.
+    const reloginItems =
+      stores.filter((s) => s.status === 'login_required' || s.status === 'expired').length +
+      stores.filter((s) => getExpiringInDays(s) !== undefined).length;
+    const inboxTotal =
+      pendingApprovals + exceptionCenterPending + reloginItems + orderExceptions + countInboxProductItems();
 
     return mockDelay({
       connectedStores,

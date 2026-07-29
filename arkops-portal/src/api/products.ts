@@ -342,6 +342,17 @@ function computeStoreHealth(): StoreSyncHealth[] {
   });
 }
 
+/**
+ * Product-side items that show up in the Action Inbox (D9): draft/pending-review
+ * listings plus the Tier 2 decisions. Exported so the sidebar badge counts exactly what
+ * the inbox lists — the badge used to be a hand-written sum that silently missed every
+ * kind added after it.
+ */
+export function countInboxProductItems(): number {
+  const draftListings = productListings.filter((l) => l.status === 'draft' || l.status === 'pending_review').length;
+  return draftListings + newProductCandidates.length + mergeSuggestions.length + fieldConflicts.length;
+}
+
 function countPendingDecisions(): number {
   const storesNeedingRelogin = stores.filter((s) => s.status === 'login_required' || s.status === 'expired').length;
   return mergeSuggestions.length + newProductCandidates.length + fieldConflicts.length + storesNeedingRelogin;
