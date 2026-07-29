@@ -102,12 +102,17 @@ const SLA_TONE_COLOR: Record<SlaState['tone'], string> = {
   none: 'var(--ark-muted)',
 };
 
-/** Needs-me first, then urgency, then newest — the order a merchant works in. */
+/**
+ * The order a merchant works in: what is already costing money first. Ranking every
+ * exception above every deadline signal would put an order that has *already* missed its
+ * platform deadline below a fraud hold with 42 hours to spare.
+ */
 function priorityRank(order: Order, sla: SlaInfo): number {
-  if (EXCEPTION_ORDER_STATUSES.includes(order.status)) return 0;
-  if (sla.tone === 'breached' || sla.tone === 'critical') return 1;
-  if (sla.tone === 'warning') return 2;
-  return 3;
+  if (sla.tone === 'breached') return 0;
+  if (sla.tone === 'critical') return 1;
+  if (EXCEPTION_ORDER_STATUSES.includes(order.status)) return 2;
+  if (sla.tone === 'warning') return 3;
+  return 4;
 }
 
 export function OrderAutomationPage() {
@@ -123,6 +128,10 @@ export function OrderAutomationPage() {
   const [dateRange, setDateRange] = useState<[string, string] | null>(null);
   const [exceptionTypeFilter, setExceptionTypeFilter] = useState<OrderExceptionType | undefined>();
   const [slaFilter, setSlaFilter] = useState<'at_risk' | 'breached' | undefined>();
+  // "Needs me" = exceptions plus deadline-critical orders. Kept as its own filter so the
+  // digest's single call to action lands on exactly the orders it counted (the exception
+  // tab alone would show fewer).
+  const [needsMeOnly, setNeedsMeOnly] = useState(false);
   // Deep-link: /orders?order=<id> opens that order's detail modal on mount;
   // /orders?exc=<anything> (used by the exception centre) lands on the exception tab.
   const orderFromUrl = parseAllMallId(searchParams.get('order') ?? undefined);
@@ -175,6 +184,7 @@ export function OrderAutomationPage() {
         return day >= dateRange[0] && day <= dateRange[1];
       });
     }
+    if (needsMeOnly) items = items.filter((o) => isOrderActionable(o, clock));
     if (exceptionTypeFilter) items = items.filter((o) => o.exceptionType === exceptionTypeFilter);
     if (slaFilter) {
       items = items.filter((o) => {
@@ -191,11 +201,13 @@ export function OrderAutomationPage() {
       if (sa.remainingMs !== sb.remainingMs) return sa.remainingMs - sb.remainingMs;
       return dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf();
     });
-  }, [orders, searchKw, storeFilter, dateRange, exceptionTypeFilter, slaFilter, slaByOrderId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [orders, searchKw, storeFilter, dateRange, needsMeOnly, exceptionTypeFilter, slaFilter, slaByOrderId, clock]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const autoCountBase = baseFiltered.filter((o) => AUTO_FLOW_ORDER_STATUSES.includes(o.status)).length;
   const exceptionCountBase = baseFiltered.filter((o) => EXCEPTION_ORDER_STATUSES.includes(o.status)).length;
-  const atRiskCount = baseFiltered.filter((o) => { const tone = slaOf(o).tone; return tone === 'breached' || tone === 'critical'; }).length;
+  // Digest counts describe all orders, not the filtered view: they are the page's
+  // headline, and they must not change when the user narrows the table.
+  const atRiskCount = orders.filter((o) => { const tone = slaOf(o).tone; return tone === 'breached' || tone === 'critical'; }).length;
   // Only exceptions that are *also* time-critical — the card's helper sits under the
   // exception count, so counting every urgent order there would contradict the number.
   const exceptionAtRiskCount = baseFiltered.filter((o) => {
@@ -203,9 +215,9 @@ export function OrderAutomationPage() {
     return EXCEPTION_ORDER_STATUSES.includes(o.status) && (tone === 'breached' || tone === 'critical');
   }).length;
   // An exception that is also SLA-critical must not be counted twice.
-  const needsMeCount = baseFiltered.filter((o) => isOrderActionable(o, clock)).length;
-  const filtersActive = !!(searchKw || storeFilter != null || dateRange || exceptionTypeFilter || slaFilter);
-  const clearFilters = () => { setSearchKw(''); setStoreFilter(undefined); setDateRange(null); setExceptionTypeFilter(undefined); setSlaFilter(undefined); };
+  const needsMeCount = orders.filter((o) => isOrderActionable(o, clock)).length;
+  const filtersActive = !!(searchKw || storeFilter != null || dateRange || exceptionTypeFilter || slaFilter || needsMeOnly);
+  const clearFilters = () => { setSearchKw(''); setStoreFilter(undefined); setDateRange(null); setExceptionTypeFilter(undefined); setSlaFilter(undefined); setNeedsMeOnly(false); };
 
   const filtered = useMemo(() => {
     if (tabFilter === 'auto') return baseFiltered.filter((o) => AUTO_FLOW_ORDER_STATUSES.includes(o.status));
@@ -391,6 +403,13 @@ export function OrderAutomationPage() {
     <PageFilterBar>
       <Input prefix={<SearchOutlined />} placeholder={t('order.searchPlaceholder')} allowClear value={searchKw} onChange={(e) => setSearchKw(e.target.value)} />
       <Select allowClear placeholder={t('order.filterStore')} value={storeFilter} onChange={setStoreFilter} options={stores.map((store) => ({ value: store.id, label: store.name }))} />
+      <Button
+        type={needsMeOnly ? 'primary' : 'default'}
+        icon={<ExclamationCircleOutlined />}
+        onClick={() => setNeedsMeOnly((prev) => !prev)}
+      >
+        {t('ordersv2.filterNeedsMe')}
+      </Button>
       <Select
         allowClear
         placeholder={t('ordersv2.filterSla')}
@@ -454,8 +473,15 @@ export function OrderAutomationPage() {
             </Typography.Text>
           </Space>
           {needsMeCount > 0 && (
-            <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setTabFilter('exception')}>
-              {t('ordersv2.needsYouAction', { count: needsMeCount })}
+            <Button
+              type="link"
+              size="small"
+              style={{ padding: 0 }}
+              onClick={() => { setNeedsMeOnly(true); setTabFilter('all'); }}
+            >
+              {atRiskCount > 0
+                ? t('ordersv2.needsYouActionWithSla', { count: needsMeCount, atRisk: atRiskCount })
+                : t('ordersv2.needsYouAction', { count: needsMeCount })}
             </Button>
           )}
         </div>
@@ -495,17 +521,6 @@ export function OrderAutomationPage() {
         )}
       </Card>
 
-      {/* O2: the one thing with a platform penalty attached gets its own line. */}
-      {atRiskCount > 0 && (
-        <Alert
-          type="warning"
-          showIcon
-          icon={<ClockCircleOutlined />}
-          message={t('ordersv2.slaAlert', { count: atRiskCount })}
-          action={<Button size="small" onClick={() => { setSlaFilter('at_risk'); setTabFilter('all'); }}>{t('ordersv2.slaAlertAction')}</Button>}
-        />
-      )}
-
       <Row gutter={[16, 16]}>
         <Col xs={12} sm={6}>
           <MetricCard className="stat-card stat-card-primary" title={t('order.totalToday')} value={totalCount} overlayIcon={<ShoppingCartOutlined />} />
@@ -521,7 +536,7 @@ export function OrderAutomationPage() {
           />
         </Col>
         <Col xs={12} sm={6}>
-          <div onClick={() => setTabFilter(tabFilter === 'exception' ? 'all' : 'exception')} style={{ cursor: 'pointer' }}>
+          <div onClick={() => { setNeedsMeOnly(false); setTabFilter(tabFilter === 'exception' ? 'all' : 'exception'); }} style={{ cursor: 'pointer' }}>
             <MetricCard
               className="stat-card stat-card-warning"
               title={t('order.exceptionCount')}
