@@ -116,14 +116,12 @@ const router = createBrowserRouter(
         // Agent 中心
         { path: 'agents', element: guarded('/agents', <AgentListPage />, agentListFallback) },
         { path: 'agents/:agentType', element: guarded('/agents', <AgentConfigPage />) },
-        // D9/N2: exception/approval list pages folded into the inbox three-tab
-        // layout; their routes now redirect with a type filter preserved.
-        { path: 'agents/exceptions', element: <Navigate to="/inbox?type=exception" replace /> },
-        { path: 'agents/approvals', element: <Navigate to="/inbox?type=approval" replace /> },
+        { path: 'agents/exceptions', element: guarded('/agents/exceptions', <ExceptionCenterPage />) },
+        { path: 'agents/approvals', element: guarded('/agents/approvals', <ApprovalListPage />) },
         { path: 'agents/approvals/:approvalId', element: guarded('/agents/approvals', <ApprovalDetailPage />) },
         // 旧路由重定向
-        { path: 'exception-center', element: <Navigate to="/inbox?type=exception" replace /> },
-        { path: 'approvals', element: <Navigate to="/inbox?type=approval" replace /> },
+        { path: 'exception-center', element: <Navigate to="/agents/exceptions" replace /> },
+        { path: 'approvals', element: <Navigate to="/agents/approvals" replace /> },
         { path: 'approvals/:approvalId', element: guarded('/agents/approvals', <ApprovalDetailPage />) },
 
         // 店铺管理
