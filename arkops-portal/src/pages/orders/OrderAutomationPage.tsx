@@ -452,15 +452,10 @@ export function OrderAutomationPage() {
                 ? t('ordersv2.syncSummaryPending', { total: totalCount, auto: autoHandled })
                 : t('ordersv2.syncSummaryClean', { total: totalCount, auto: autoHandled })}
             </Typography.Text>
-            {needsMeCount > 0 && (
-              <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setTabFilter('exception')}>
-                {t('ordersv2.needsYouAction', { count: needsMeCount })}
-              </Button>
-            )}
           </Space>
-          {autoLogEntries.length > 0 && (
-            <Button type="link" size="small" style={{ padding: 0 }} icon={digestExpanded ? <DownOutlined /> : <RightOutlined />} onClick={() => setDigestExpanded(!digestExpanded)}>
-              {t('ordersv2.autoHandledLog', { count: autoLogEntries.length })}
+          {needsMeCount > 0 && (
+            <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setTabFilter('exception')}>
+              {t('ordersv2.needsYouAction', { count: needsMeCount })}
             </Button>
           )}
         </div>
@@ -478,15 +473,24 @@ export function OrderAutomationPage() {
           />
         )}
 
-        {digestExpanded && (
-          <div style={{ marginTop: 8, paddingLeft: 8, borderLeft: '2px solid var(--ark-border-soft)', maxHeight: 220, overflowY: 'auto' }}>
-            {autoLogEntries.map((entry) => (
-              <div key={entry.key} style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-                <CheckCircleOutlined style={{ color: 'var(--ark-green)', flexShrink: 0 }} />
-                <Typography.Text style={{ fontSize: 12, flex: 1 }}>{entry.text}</Typography.Text>
-                <Typography.Text type="secondary" style={{ fontSize: 11, flexShrink: 0 }}>{dayjs(entry.at).format('MM-DD HH:mm')}</Typography.Text>
+        {/* Same placement as the products digest card: the log toggle sits on its own
+            line under the summary, with the entries expanding directly beneath it. */}
+        {autoLogEntries.length > 0 && (
+          <div style={{ marginTop: 8 }}>
+            <Button type="link" size="small" style={{ padding: 0 }} icon={digestExpanded ? <DownOutlined /> : <RightOutlined />} onClick={() => setDigestExpanded(!digestExpanded)}>
+              {t('ordersv2.autoHandledLog', { count: autoLogEntries.length })}
+            </Button>
+            {digestExpanded && (
+              <div style={{ marginTop: 8, paddingLeft: 8, borderLeft: '2px solid var(--ark-border-soft)', maxHeight: 220, overflowY: 'auto' }}>
+                {autoLogEntries.map((entry) => (
+                  <div key={entry.key} style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                    <CheckCircleOutlined style={{ color: 'var(--ark-green)', flexShrink: 0 }} />
+                    <Typography.Text style={{ fontSize: 12, flex: 1 }}>{entry.text}</Typography.Text>
+                    <Typography.Text type="secondary" style={{ fontSize: 11, flexShrink: 0 }}>{dayjs(entry.at).format('MM-DD HH:mm')}</Typography.Text>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         )}
       </Card>
