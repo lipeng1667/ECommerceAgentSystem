@@ -21,7 +21,6 @@
  * - fieldConflictsApi: list/resolve for manually-locked fields the platform tried to change.
  */
 import { stores } from './mockData';
-import { getProductStockLevel } from '../utils/productStock';
 import { mockDelay } from './client';
 import { appendItem, insertFirst, removeWhere, replaceItem } from './mockRepository';
 import { nextId } from './idGenerator';
@@ -351,10 +350,7 @@ function computeStoreHealth(): StoreSyncHealth[] {
  */
 export function countInboxProductItems(): number {
   const draftListings = productListings.filter((l) => l.status === 'draft' || l.status === 'pending_review').length;
-  // D9 follow-up: low/out-of-stock products now also raise an inbox item, so they must
-  // be counted here too or the sidebar badge drifts from the inbox page's own total.
-  const stockAlerts = products.filter((p) => getProductStockLevel(p) !== 'healthy').length;
-  return draftListings + newProductCandidates.length + mergeSuggestions.length + fieldConflicts.length + stockAlerts;
+  return draftListings + newProductCandidates.length + mergeSuggestions.length + fieldConflicts.length;
 }
 
 function countPendingDecisions(): number {

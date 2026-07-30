@@ -40,7 +40,6 @@ import { exceptionsApi } from '../../api/exceptions';
 import type { ExceptionItem } from '../../api/exceptions';
 import { fieldConflictsApi, mergeSuggestionsApi, newProductCandidatesApi, productListingsApi, productsApi } from '../../api/products';
 import { ordersApi } from '../../api/orders';
-import { businessDashboardApi } from '../../api/businessDashboard';
 import { storesApi } from '../../api/stores';
 import { useAuth } from '../../app/auth';
 import { useI18n } from '../../app/i18n';
@@ -50,7 +49,6 @@ import { StatusBadge } from '../../components/StatusBadge';
 import { StoreConnectionEmptyState } from '../../components/StoreConnectionEmptyState';
 import { getExpiringInDays } from '../../utils/storeDisplay';
 import { getSlaState, isOrderActionable } from '../../utils/orderSla';
-import { getProductStockLevel } from '../../utils/productStock';
 import { EXCEPTION_ORDER_STATUSES } from '../../types/domain';
 import { ApprovalDecisionModal, type ApprovalDecision } from '../approvals/ApprovalDecisionModal';
 import { InboxHistoryTab } from './InboxHistoryTab';
@@ -94,8 +92,6 @@ interface InboxEntry {
   newProductCandidate?: NewProductCandidate;
   mergeSuggestion?: ProductMergeSuggestion;
   fieldConflict?: FieldConflict;
-  /** Set on product_stock entries so the quick action can deep-link to this product. */
-  product?: Product;
   /**
    * D7.3: set on proactive session-expiry warnings — the store is still connected, but
    * its authorization expires within the warning window. Distinguishes "act before it
@@ -129,9 +125,7 @@ const KIND_TAG_COLORS: Record<InboxItemKind, string> = {
   product_draft: 'purple',
   product_new: 'cyan',
   product_merge: 'gold',
-  product_conflict: 'volcano',
-  review_pending: 'gold',
-  product_stock: 'orange'
+  product_conflict: 'volcano'
 };
 
 type TranslateFn = ReturnType<typeof useI18n>['t'];
@@ -171,8 +165,7 @@ function FieldConflictComparison({ conflict, t }: { conflict: FieldConflict; t: 
 function isValidFilter(value: string | null): value is InboxFilter {
   return (
     value === 'all' || value === 'approval' || value === 'exception' || value === 'relogin' || value === 'order_exception' ||
-    value === 'product_draft' || value === 'product_new' || value === 'product_merge' || value === 'product_conflict' ||
-    value === 'review_pending' || value === 'product_stock'
+    value === 'product_draft' || value === 'product_new' || value === 'product_merge' || value === 'product_conflict'
   );
 }
 
@@ -222,11 +215,6 @@ export function InboxPage() {
   const { data: newProductCandidates = [] } = useQuery({ queryKey: ['newProductCandidates'], queryFn: newProductCandidatesApi.list });
   const { data: mergeSuggestions = [] } = useQuery({ queryKey: ['productMergeSuggestions'], queryFn: mergeSuggestionsApi.list });
   const { data: fieldConflicts = [] } = useQuery({ queryKey: ['fieldConflicts'], queryFn: fieldConflictsApi.list });
-  // D9 follow-up: the dashboard's "今日需要处理" strip already names negative reviews and
-  // low stock as needing a person; the inbox was missing both. getMetrics('today') is the
-  // one place per-store pending-review counts exist — reusing it instead of inventing a
-  // parallel reviews model. Unscoped (no storeName) so it always returns every store.
-  const { data: businessMetrics } = useQuery({ queryKey: ['businessDashboard', 'today', 'all'], queryFn: () => businessDashboardApi.getMetrics('today') });
 
   const decide = useMutation({
     mutationFn: ({ approvalId, status, note }: { approvalId: number; status: ApprovalDecision; note?: string }) =>
@@ -399,22 +387,6 @@ export function InboxPage() {
       }
     }
 
-    // D9 follow-up: negative reviews awaiting a reply, per store — real per-store counts
-    // from businessDashboardApi (STORE_PROFILES), not a fabricated per-review list. The
-    // dashboard's attention strip already flags this; the inbox did not.
-    for (const storeMetric of businessMetrics?.storeMetrics ?? []) {
-      if (storeMetric.pendingNegativeReviews <= 0) continue;
-      list.push({
-        key: `review_pending-${storeMetric.storeName}`,
-        kind: 'review_pending',
-        title: t('inbox.reviewPendingTitle', { store: storeMetric.storeName, count: storeMetric.pendingNegativeReviews }),
-        summary: t('inbox.reviewPendingSummary'),
-        storeName: storeMetric.storeName,
-        urgencyRank: 2,
-        batchable: false
-      });
-    }
-
     // D8/O4: orders that need a person — exceptions, plus orders about to miss (or that
     // have missed) the platform shipping deadline. Same "needs me" definition the orders
     // page and the sidebar badge use, so the three can never disagree.
@@ -451,27 +423,6 @@ export function InboxPage() {
         createdAt: order.createdAt,
         order,
         batchable: !!tier2?.batchable,
-      });
-    }
-
-    // D9 follow-up: low/out-of-stock products — same threshold the products page uses
-    // (getProductStockLevel), so a SKU flagged here matches what /products shows.
-    for (const product of products) {
-      const level = getProductStockLevel(product);
-      if (level === 'healthy') continue;
-      const storeName = stores.find((s) => s.id === product.primaryStoreId)?.name ?? '';
-      list.push({
-        key: `product_stock-${product.id}`,
-        kind: 'product_stock',
-        title: product.name,
-        summary: level === 'out'
-          ? t('inbox.productStockOutSummary')
-          : t('inbox.productStockLowSummary', { stock: product.totalStock }),
-        storeName,
-        urgencyRank: level === 'out' ? 0 : 2,
-        createdAt: product.createdAt,
-        product,
-        batchable: false
       });
     }
 
@@ -564,12 +515,11 @@ export function InboxPage() {
       if (remainingB !== undefined) return 1;
       return dayjs(b.createdAt ?? 0).valueOf() - dayjs(a.createdAt ?? 0).valueOf();
     });
-  }, [approvals, exceptions, stores, orders, productListings, products, newProductCandidates, mergeSuggestions, fieldConflicts, businessMetrics, clock, t]);
+  }, [approvals, exceptions, stores, productListings, products, newProductCandidates, mergeSuggestions, fieldConflicts, clock, t]);
 
   const counts = useMemo(() => {
     const byKind: Record<InboxItemKind, number> = {
-      approval: 0, exception: 0, relogin: 0, order_exception: 0, product_draft: 0, product_new: 0, product_merge: 0, product_conflict: 0,
-      review_pending: 0, product_stock: 0
+      approval: 0, exception: 0, relogin: 0, order_exception: 0, product_draft: 0, product_new: 0, product_merge: 0, product_conflict: 0
     };
     for (const entry of entries) byKind[entry.kind] += 1;
     return { ...byKind, all: entries.length };
@@ -707,30 +657,6 @@ export function InboxPage() {
             {t('inbox.goHandle')}
           </Button>
         </Space>
-      );
-    }
-    if (entry.kind === 'review_pending') {
-      return (
-        <Button
-          size="small"
-          type="primary"
-          icon={<EyeOutlined />}
-          onClick={() => navigate('/agents/review_manager')}
-        >
-          {t('inbox.goReply')}
-        </Button>
-      );
-    }
-    if (entry.kind === 'product_stock' && entry.product) {
-      return (
-        <Button
-          size="small"
-          type="primary"
-          icon={<EyeOutlined />}
-          onClick={() => navigate(`/products/${entry.product!.id}`)}
-        >
-          {t('inbox.goHandle')}
-        </Button>
       );
     }
     if (entry.kind === 'product_draft' && entry.listing) {
@@ -899,9 +825,7 @@ export function InboxPage() {
               { value: 'product_draft', label: `${t('inbox.filterProductDrafts')} (${counts.product_draft})` },
               { value: 'product_new', label: `${t('inbox.filterProductNew')} (${counts.product_new})` },
               { value: 'product_merge', label: `${t('inbox.filterProductMerge')} (${counts.product_merge})` },
-              { value: 'product_conflict', label: `${t('inbox.filterProductConflict')} (${counts.product_conflict})` },
-              { value: 'review_pending', label: `${t('inbox.filterReviewPending')} (${counts.review_pending})` },
-              { value: 'product_stock', label: `${t('inbox.filterProductStock')} (${counts.product_stock})` }
+              { value: 'product_conflict', label: `${t('inbox.filterProductConflict')} (${counts.product_conflict})` }
             ]}
           />
           {visibleEntries.length === 0 ? (

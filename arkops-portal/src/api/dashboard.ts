@@ -2,7 +2,6 @@ import { mockDelay } from './client';
 import { countActionableOrders } from './orders';
 import { approvals, stores, tasks } from './mockData';
 import { countInboxProductItems } from './products';
-import { countPendingReviews } from './businessDashboard';
 import { getExpiringInDays } from '../utils/storeDisplay';
 import { exceptionItems } from '../pages/operations/exceptionCenterMockData'; // WS-B (B2)
 import { agentConfigs } from './agentMockData';
@@ -87,8 +86,7 @@ export const dashboardApi = {
       stores.filter((s) => s.status === 'login_required' || s.status === 'expired').length +
       stores.filter((s) => getExpiringInDays(s) !== undefined).length;
     const inboxTotal =
-      pendingApprovals + exceptionCenterPending + reloginItems + orderExceptions +
-      countInboxProductItems() + countPendingReviews();
+      pendingApprovals + exceptionCenterPending + reloginItems + orderExceptions + countInboxProductItems();
 
     return mockDelay({
       connectedStores,

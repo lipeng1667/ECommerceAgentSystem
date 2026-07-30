@@ -111,16 +111,6 @@ function buildTrend(range: DashboardTimeRange, share: number) {
   return points;
 }
 
-/**
- * Total negative reviews awaiting a reply across all stores (D9 follow-up). Synchronous
- * and store-profile-only — unlike getMetrics, it does not need the range/GMV machinery —
- * so the inbox badge can use the same number the inbox page itself lists without pulling
- * in the whole metrics payload.
- */
-export function countPendingReviews(): number {
-  return STORE_PROFILES.reduce((sum, profile) => sum + profile.pendingNegativeReviews, 0);
-}
-
 export const businessDashboardApi = {
   /**
    * Returns dashboard metrics scoped to a time range and (optionally) one store.
