@@ -813,12 +813,9 @@ export function InboxPage() {
   return (
     <div className="page-stack">
       <PageHeader
-        title={
-          <Space size={8}>
-            <span>{t('inbox.title')}</span>
-            {counts.all > 0 && <Badge count={counts.all} />}
-          </Space>
-        }
+        // The count lives on the 待处理 tab (and the nav item); repeating it in the title
+        // said the same number three times on one screen.
+        title={t('inbox.title')}
         description={t('inbox.description')}
         actions={activeTab !== 'pending' ? undefined : (
           <Space>
