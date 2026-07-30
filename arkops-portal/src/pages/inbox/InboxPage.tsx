@@ -25,7 +25,6 @@ import {
   HistoryOutlined,
   InboxOutlined,
   LoginOutlined,
-  SettingOutlined,
   ThunderboltOutlined,
   UserAddOutlined
 } from '@ant-design/icons';
@@ -35,6 +34,7 @@ import dayjs from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { approvalPolicyApi } from '../../api/approvalPolicies';
 import { approvalsApi } from '../../api/approvals';
 import { exceptionsApi } from '../../api/exceptions';
 import type { ExceptionItem } from '../../api/exceptions';
@@ -52,7 +52,7 @@ import { getSlaState, isOrderActionable } from '../../utils/orderSla';
 import { EXCEPTION_ORDER_STATUSES } from '../../types/domain';
 import { ApprovalDecisionModal, type ApprovalDecision } from '../approvals/ApprovalDecisionModal';
 import { InboxHistoryTab } from './InboxHistoryTab';
-import { InboxRulesTab } from './InboxRulesTab';
+import { InboxAutoHandledTab } from './InboxAutoHandledTab';
 import { ASSIGNEE_OPTIONS } from '../operations/exceptionCenterMockData';
 import {
   URGENCY_COLORS,
@@ -108,6 +108,13 @@ const FIELD_LABEL_KEYS: Record<FieldConflict['field'], string> = {
   category: 'products.category',
   cost: 'products.cost',
   description: 'products.descriptionLabel'
+};
+
+/** Approval-rule wording per policy action, shown on approval items (D9). */
+const APPROVAL_ACTION_LABELS: Record<'auto_execute' | 'single_approval' | 'dual_approval', string> = {
+  auto_execute: 'agent.autoExecute',
+  single_approval: 'agent.singleApproval',
+  dual_approval: 'agent.dualApproval'
 };
 
 const KIND_TAG_COLORS: Record<InboxItemKind, string> = {
@@ -170,10 +177,11 @@ export function InboxPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const filter: InboxFilter = isValidFilter(searchParams.get('type')) ? (searchParams.get('type') as InboxFilter) : 'all';
   const [decisionTarget, setDecisionTarget] = useState<{ approval: Approval; decision: ApprovalDecision } | null>(null);
-  // D9: pending / history / rules. Kept in `tab` so `?type=` keeps meaning "which kind of
-  // pending item" — the two params are independent and old links still work.
-  const activeTab = searchParams.get('tab') === 'history' || searchParams.get('tab') === 'rules'
-    ? (searchParams.get('tab') as 'history' | 'rules')
+  // D9: 待处理 / 自动处理 / 处理记录 — "what needs me → what the system did for me → what
+  // I decided". Kept in `tab` so `?type=` keeps meaning "which kind of pending item";
+  // the two params are independent and old links still work.
+  const activeTab = searchParams.get('tab') === 'history' || searchParams.get('tab') === 'auto'
+    ? (searchParams.get('tab') as 'history' | 'auto')
     : 'pending';
   const setActiveTab = (next: string) => {
     const params = new URLSearchParams(searchParams);
@@ -196,6 +204,9 @@ export function InboxPage() {
   }, []);
 
   const { data: approvals = [] } = useQuery({ queryKey: ['approvals'], queryFn: approvalsApi.list });
+  // D9: the approval policy table left the inbox — the question it answered ("why does
+  // this need me?") is answered on the item itself instead.
+  const { data: approvalPolicies = [] } = useQuery({ queryKey: ['approval-policies'], queryFn: approvalPolicyApi.list });
   const { data: exceptions = [] } = useQuery({ queryKey: ['exceptions'], queryFn: exceptionsApi.list });
   const { data: stores = [] } = useQuery({ queryKey: ['stores'], queryFn: storesApi.list });
   const { data: orders = [] } = useQuery({ queryKey: ['orders'], queryFn: ordersApi.list });
@@ -851,6 +862,18 @@ export function InboxPage() {
                             {t(`inbox.kind_${entry.kind}`)}
                           </Tag>
                           {entry.approval && <StatusBadge value={entry.approval.riskLevel} />}
+                        {entry.approval && (() => {
+                          const policy = approvalPolicies.find((p) => p.riskLevel === entry.approval!.riskLevel);
+                          // An item sitting in the approval queue while its policy says
+                          // "no approval needed" would read as a contradiction, so the
+                          // rule is only shown when it explains why this needs a person.
+                          if (!policy || policy.action === 'auto_execute') return null;
+                          return (
+                            <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+                              {t(APPROVAL_ACTION_LABELS[policy.action])}
+                            </Typography.Text>
+                          );
+                        })()}
                           {entry.exception && (
                             <Tag
                               color={entry.exception.level === 'critical' ? 'red' : entry.exception.level === 'warning' ? 'orange' : 'blue'}
@@ -919,14 +942,16 @@ export function InboxPage() {
             ),
           },
           {
+            // Reads as a sequence with the other two: what needs me → what the system
+            // did for me → what I decided.
+            key: 'auto',
+            label: <span><ThunderboltOutlined /> {t('inbox.tabAuto')}</span>,
+            children: <InboxAutoHandledTab onShowPending={() => setActiveTab('pending')} />,
+          },
+          {
             key: 'history',
             label: <span><HistoryOutlined /> {t('inbox.tabHistory')}</span>,
             children: <InboxHistoryTab onOpenException={setHistoryException} />,
-          },
-          {
-            key: 'rules',
-            label: <span><SettingOutlined /> {t('inbox.tabRules')}</span>,
-            children: <InboxRulesTab />,
           },
         ]}
       />
