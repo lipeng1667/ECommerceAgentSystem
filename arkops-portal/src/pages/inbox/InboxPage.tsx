@@ -73,7 +73,16 @@ import type {
   Store
 } from '../../types/domain';
 
-type InboxFilter = 'all' | InboxItemKind;
+type InboxFilter = 'all' | 'product' | InboxItemKind;
+
+/**
+ * The four Smart Sync Tier 2 decisions (商品草稿/新品发现/疑似重复/字段冲突) share one
+ * filter bucket: each has its own quick actions and Tag, but the full triage context for
+ * all of them lives on the products page, not here — splitting them into four parallel
+ * top-level filters added width without adding a real "narrow down what I'm looking at"
+ * use case. `filter === 'product'` matches any of these four kinds.
+ */
+const PRODUCT_FILTER_KINDS: InboxItemKind[] = ['product_draft', 'product_new', 'product_merge', 'product_conflict'];
 
 interface InboxEntry {
   key: string;
@@ -164,7 +173,7 @@ function FieldConflictComparison({ conflict, t }: { conflict: FieldConflict; t: 
 
 function isValidFilter(value: string | null): value is InboxFilter {
   return (
-    value === 'all' || value === 'approval' || value === 'exception' || value === 'relogin' || value === 'order_exception' ||
+    value === 'all' || value === 'product' || value === 'approval' || value === 'exception' || value === 'relogin' || value === 'order_exception' ||
     value === 'product_draft' || value === 'product_new' || value === 'product_merge' || value === 'product_conflict'
   );
 }
@@ -525,7 +534,11 @@ export function InboxPage() {
     return { ...byKind, all: entries.length };
   }, [entries]);
 
-  const visibleEntries = filter === 'all' ? entries : entries.filter((entry) => entry.kind === filter);
+  const visibleEntries = filter === 'all'
+    ? entries
+    : filter === 'product'
+      ? entries.filter((entry) => PRODUCT_FILTER_KINDS.includes(entry.kind))
+      : entries.filter((entry) => entry.kind === filter);
   // D7.3: ordered store ids for guided sequential re-login — already-expired stores
   // first (they block agents now), then the proactive expiry warnings.
   const reloginQueue = visibleEntries
@@ -822,10 +835,10 @@ export function InboxPage() {
               { value: 'exception', label: `${t('inbox.filterExceptions')} (${counts.exception})` },
               { value: 'relogin', label: `${t('inbox.filterRelogin')} (${counts.relogin})` },
               { value: 'order_exception', label: `${t('inbox.filterOrderException')} (${counts.order_exception})` },
-              { value: 'product_draft', label: `${t('inbox.filterProductDrafts')} (${counts.product_draft})` },
-              { value: 'product_new', label: `${t('inbox.filterProductNew')} (${counts.product_new})` },
-              { value: 'product_merge', label: `${t('inbox.filterProductMerge')} (${counts.product_merge})` },
-              { value: 'product_conflict', label: `${t('inbox.filterProductConflict')} (${counts.product_conflict})` }
+              {
+                value: 'product',
+                label: `${t('inbox.filterProduct')} (${counts.product_draft + counts.product_new + counts.product_merge + counts.product_conflict})`
+              }
             ]}
           />
           {visibleEntries.length === 0 ? (
