@@ -28,6 +28,7 @@ import { ListingDistribution } from '../../components/products/ListingDistributi
 import { ListingMatrix } from '../../components/products/ListingMatrix';
 import { ProductThumb } from '../../components/products/ProductThumb';
 import { StoreConnectionEmptyState } from '../../components/StoreConnectionEmptyState';
+import { getProductStockLevel } from '../../utils/productStock';
 import { DataTableCard } from '../../components/table/DataTableCard';
 import { TableActionGroup } from '../../components/table/TableActionGroup';
 import { CreateProductModal } from './CreateProductModal';
@@ -36,18 +37,9 @@ import type { AllMallId, AttributeProvenance, AutoSyncChange, ListingStatus, Pro
 
 type TranslateFn = ReturnType<typeof useI18n>['t'];
 
-/** Stock level below which a product's shared pool counts as low. */
-const LOW_STOCK_THRESHOLD = 50;
-
 type StockFilter = 'all' | 'healthy' | 'low' | 'out';
 /** "Listed on / not listed on [store]" — the gap-finder toggle (§3.14.2). Only active with a specific storeFilter. */
 type ListedToggle = 'any' | 'listed' | 'not_listed';
-
-export function productStockLevel(product: Product): 'healthy' | 'low' | 'out' {
-  if (product.totalStock <= 0) return 'out';
-  if (product.totalStock < LOW_STOCK_THRESHOLD) return 'low';
-  return 'healthy';
-}
 
 function priceRangeText(listings: ProductListing[]): string {
   if (listings.length === 0) return '-';
@@ -393,7 +385,7 @@ export function ProductManagementPage() {
     if (statusFilter === 'all') return true;
     return productListings.some((l) => l.status === statusFilter);
   };
-  const matchesStock = (product: Product) => stockFilter === 'all' || productStockLevel(product) === stockFilter;
+  const matchesStock = (product: Product) => stockFilter === 'all' || getProductStockLevel(product) === stockFilter;
 
   const filteredProducts = products.filter((p) => {
     const productListings = listingsByProduct.get(p.id) ?? [];
@@ -407,8 +399,8 @@ export function ProductManagementPage() {
   const avgStores = totalProducts > 0
     ? products.reduce((sum, p) => sum + (listingsByProduct.get(p.id) ?? []).filter((l) => l.status === 'listed').length, 0) / totalProducts
     : 0;
-  const lowStockCount = products.filter((p) => productStockLevel(p) === 'low').length;
-  const outOfStockCount = products.filter((p) => productStockLevel(p) === 'out').length;
+  const lowStockCount = products.filter((p) => getProductStockLevel(p) === 'low').length;
+  const outOfStockCount = products.filter((p) => getProductStockLevel(p) === 'out').length;
   const hasStockAlerts = lowStockCount + outOfStockCount > 0;
   const draftListingsCount = listings.filter((l) => l.status === 'draft' || l.status === 'pending_review').length;
   const mergeCount = mergeSuggestions.length;
@@ -467,7 +459,7 @@ export function ProductManagementPage() {
     {
       title: t('products.stock'), dataIndex: 'totalStock', width: 100, align: 'right', sorter: (a, b) => a.totalStock - b.totalStock,
       render: (v: number, r: Product) => {
-        const level = productStockLevel(r);
+        const level = getProductStockLevel(r);
         return <Tag color={level === 'out' ? 'red' : level === 'low' ? 'orange' : 'green'}>{v}</Tag>;
       }
     },
