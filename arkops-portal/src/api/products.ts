@@ -41,6 +41,14 @@ import type {
   SyncResult,
 } from '../types/domain';
 
+/**
+ * D6 sub-decision 1: ≥95% confidence (or an identical SPU code) is safe to merge
+ * automatically and reversibly; the 60–95% band is **review-only** — a person must see
+ * the pair before the merge happens. Exported so the inbox can honour the same rule when
+ * deciding what "accept all recommended" is allowed to touch.
+ */
+export const AUTO_MERGE_CONFIDENCE_THRESHOLD = 95;
+
 const AI_FROM = (storeId: AllMallId): AttributeProvenance => ({ source: 'ai', storeId });
 const MANUAL: AttributeProvenance = { source: 'manual' };
 

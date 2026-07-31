@@ -31,14 +31,14 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Badge, Button, Card, Checkbox, List, Modal, Popconfirm, Segmented, Select, Space, Tabs, Tag, Typography, message } from 'antd';
 import dayjs from 'dayjs';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { approvalPolicyApi } from '../../api/approvalPolicies';
 import { approvalsApi } from '../../api/approvals';
 import { exceptionsApi } from '../../api/exceptions';
 import type { ExceptionItem } from '../../api/exceptions';
-import { fieldConflictsApi, mergeSuggestionsApi, newProductCandidatesApi, productListingsApi, productsApi } from '../../api/products';
+import { AUTO_MERGE_CONFIDENCE_THRESHOLD, fieldConflictsApi, mergeSuggestionsApi, newProductCandidatesApi, productListingsApi, productsApi } from '../../api/products';
 import { ordersApi } from '../../api/orders';
 import { storesApi } from '../../api/stores';
 import { useAuth } from '../../app/auth';
@@ -180,6 +180,34 @@ function FieldConflictComparison({ conflict, t }: { conflict: FieldConflict; t: 
   );
 }
 
+/**
+ * What "accept" will actually do to one entry, plus the model's confidence where it has
+ * one. Shown in the batch manifest so the user is agreeing to specific changes rather
+ * than to a count.
+ */
+function describeRecommendation(entry: InboxEntry, t: TranslateFn): { action: string; confidence?: number } {
+  if (entry.kind === 'product_new') {
+    return { action: t('inbox.batchActionCreateProduct') };
+  }
+  if (entry.kind === 'product_merge' && entry.mergeSuggestion) {
+    return { action: t('inbox.batchActionMerge'), confidence: entry.mergeSuggestion.confidence };
+  }
+  if (entry.kind === 'product_conflict' && entry.fieldConflict) {
+    return {
+      action: entry.fieldConflict.recommendation === 'keep_yours'
+        ? t('inbox.batchActionKeepYours')
+        : t('inbox.batchActionAcceptPlatform')
+    };
+  }
+  if (entry.kind === 'order_exception' && entry.order?.recommendation) {
+    return {
+      action: entry.order.recommendation.label,
+      confidence: Math.round(entry.order.recommendation.confidence * 100)
+    };
+  }
+  return { action: t('inbox.acceptRecommended') };
+}
+
 function isValidFilter(value: string | null): value is InboxFilter {
   return (
     value === 'all' || value === 'product' || value === 'store' || value === 'approval' || value === 'exception' || value === 'relogin' || value === 'store_pending' || value === 'order_exception' ||
@@ -225,6 +253,17 @@ export function InboxPage() {
   const [assignee, setAssignee] = useState<string | undefined>();
   // Exception detail opened from the history tab.
   const [historyException, setHistoryException] = useState<ExceptionItem | null>(null);
+  // "Accept all recommended" now confirms through a manifest rather than a bare count:
+  // the batch spans several domains and varies in reversibility, so the user sees exactly
+  // what will happen and can drop individual rows.
+  const [batchModalOpen, setBatchModalOpen] = useState(false);
+  const [batchExcluded, setBatchExcluded] = useState<string[]>([]);
+  const [batchRunning, setBatchRunning] = useState(false);
+  // The per-item mutations each toast on success. During a batch that would stack one
+  // toast per item on top of the batch summary, so they stay quiet and let the summary
+  // ("N applied, M failed") speak for the whole run.
+  const suppressItemToast = useRef(false);
+  const itemToast = (text: string) => { if (!suppressItemToast.current) message.success(text); };
   // Refresh countdowns periodically.
   const [clock, setClock] = useState(() => dayjs());
   useEffect(() => {
@@ -273,7 +312,7 @@ export function InboxPage() {
       queryClient.invalidateQueries({ queryKey: ['newProductCandidates'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['productListings'] });
-      message.success(t('inbox.newProductAccepted'));
+      itemToast(t('inbox.newProductAccepted'));
     }
   });
   const dismissNewProductMutation = useMutation({
@@ -289,7 +328,7 @@ export function InboxPage() {
       queryClient.invalidateQueries({ queryKey: ['productMergeSuggestions'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['productListings'] });
-      message.success(t('inbox.merged'));
+      itemToast(t('inbox.merged'));
     }
   });
   const dismissMergeMutation = useMutation({
@@ -332,7 +371,7 @@ export function InboxPage() {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['orderSync'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      message.success(t('inbox.orderRecommendationApplied'));
+      itemToast(t('inbox.orderRecommendationApplied'));
     }
   });
   const resolveFieldConflictMutation = useMutation({
@@ -340,7 +379,7 @@ export function InboxPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fieldConflicts'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      message.success(t('inbox.conflictResolved'));
+      itemToast(t('inbox.conflictResolved'));
     }
   });
 
@@ -535,7 +574,10 @@ export function InboxPage() {
         urgencyRank: 2,
         createdAt: suggestion.createdAt,
         mergeSuggestion: suggestion,
-        batchable: true
+        // D6 sub-decision 1: the 60–95% band is review-only. Batch-accepting it would
+        // merge two product masters without anyone having seen the pair — the exact
+        // outcome that decision exists to prevent.
+        batchable: suggestion.confidence >= AUTO_MERGE_CONFIDENCE_THRESHOLD
       });
     }
 
@@ -588,24 +630,44 @@ export function InboxPage() {
     .filter((entry) => entry.kind === 'relogin' && entry.store)
     .map((entry) => entry.store!.id);
   const batchableEntries = visibleEntries.filter((entry) => entry.batchable);
-  const batchAccepting = acceptNewProductMutation.isPending || mergeProductsMutation.isPending || resolveFieldConflictMutation.isPending || applyOrderRecMutation.isPending;
+  const batchAccepting = batchRunning;
+
+  /** Applies one entry's recommendation. Throws so the caller can count failures. */
+  const applyRecommendationFor = async (entry: InboxEntry): Promise<void> => {
+    if (entry.kind === 'product_new' && entry.newProductCandidate) {
+      await acceptNewProductMutation.mutateAsync(entry.newProductCandidate.id);
+    } else if (entry.kind === 'product_merge' && entry.mergeSuggestion) {
+      await mergeProductsMutation.mutateAsync(entry.mergeSuggestion.id);
+    } else if (entry.kind === 'order_exception' && entry.order) {
+      await applyOrderRecMutation.mutateAsync(entry.order.id);
+    } else if (entry.kind === 'product_conflict' && entry.fieldConflict) {
+      // Apply each conflict's own recommendation, not a blanket keep_yours — otherwise
+      // "accept all recommended" would silently reject platform values it recommended.
+      await resolveFieldConflictMutation.mutateAsync({ id: entry.fieldConflict.id, decision: entry.fieldConflict.recommendation });
+    }
+  };
 
   const handleBatchAccept = async () => {
-    const targets = [...batchableEntries];
-    for (const entry of targets) {
-      if (entry.kind === 'product_new' && entry.newProductCandidate) {
-        await acceptNewProductMutation.mutateAsync(entry.newProductCandidate.id);
-      } else if (entry.kind === 'product_merge' && entry.mergeSuggestion) {
-        await mergeProductsMutation.mutateAsync(entry.mergeSuggestion.id);
-      } else if (entry.kind === 'order_exception' && entry.order) {
-        await applyOrderRecMutation.mutateAsync(entry.order.id);
-      } else if (entry.kind === 'product_conflict' && entry.fieldConflict) {
-        // Apply each conflict's own recommendation, not a blanket keep_yours — otherwise
-        // "accept all recommended" would silently reject platform values it recommended.
-        await resolveFieldConflictMutation.mutateAsync({ id: entry.fieldConflict.id, decision: entry.fieldConflict.recommendation });
-      }
+    const targets = batchableEntries.filter((entry) => !batchExcluded.includes(entry.key));
+    if (targets.length === 0) return;
+    setBatchRunning(true);
+    suppressItemToast.current = true;
+    // Sequential but fault-isolated: one failure used to abort the loop, leaving the
+    // already-applied items done, the rest untouched and the user told nothing.
+    const outcomes = await Promise.allSettled(
+      targets.map((entry) => () => applyRecommendationFor(entry)).map((run) => run())
+    );
+    suppressItemToast.current = false;
+    setBatchRunning(false);
+    const failed = outcomes.filter((outcome) => outcome.status === 'rejected').length;
+    const succeeded = outcomes.length - failed;
+    if (failed === 0) {
+      message.success(t('inbox.batchAcceptDone', { count: succeeded }));
+    } else {
+      message.warning(t('inbox.batchAcceptPartial', { done: succeeded, failed }));
     }
-    message.success(t('inbox.batchAcceptDone', { count: targets.length }));
+    setBatchModalOpen(false);
+    setBatchExcluded([]);
   };
 
   if (user?.experience === 'onboarding') {
@@ -826,11 +888,14 @@ export function InboxPage() {
               </Button>
             )}
             {batchableEntries.length > 0 ? (
-              <Popconfirm title={t('inbox.batchAcceptConfirm', { count: batchableEntries.length })} onConfirm={handleBatchAccept} okText={t('common.confirm')} cancelText={t('common.cancel')}>
-                <Button type="primary" icon={<ThunderboltOutlined />} loading={batchAccepting}>
-                  {t('inbox.batchAccept', { count: batchableEntries.length })}
-                </Button>
-              </Popconfirm>
+              <Button
+                type="primary"
+                icon={<ThunderboltOutlined />}
+                loading={batchAccepting}
+                onClick={() => { setBatchExcluded([]); setBatchModalOpen(true); }}
+              >
+                {t('inbox.batchAccept', { count: batchableEntries.length })}
+              </Button>
             ) : undefined}
           </Space>
         )}
@@ -1036,6 +1101,63 @@ export function InboxPage() {
           })
         }
       />
+
+      {/* Batch manifest: what will be applied, to what, at what confidence — with a way
+          to drop individual rows before committing. */}
+      <Modal
+        title={t('inbox.batchAcceptTitle')}
+        open={batchModalOpen}
+        onCancel={() => setBatchModalOpen(false)}
+        okText={t('inbox.batchAcceptOk', { count: batchableEntries.length - batchExcluded.length })}
+        cancelText={t('common.cancel')}
+        okButtonProps={{
+          loading: batchRunning,
+          disabled: batchableEntries.length - batchExcluded.length === 0
+        }}
+        onOk={handleBatchAccept}
+        width={620}
+        destroyOnClose
+      >
+        <Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
+          {t('inbox.batchAcceptHint')}
+        </Typography.Paragraph>
+        <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+          {batchableEntries.map((entry) => {
+            const { action, confidence } = describeRecommendation(entry, t);
+            const included = !batchExcluded.includes(entry.key);
+            return (
+              <div
+                key={entry.key}
+                style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 0',
+                  borderBottom: '1px solid var(--ark-border-soft)', opacity: included ? 1 : 0.45
+                }}
+              >
+                <Checkbox
+                  checked={included}
+                  onChange={(e) => setBatchExcluded((prev) =>
+                    e.target.checked ? prev.filter((key) => key !== entry.key) : [...prev, entry.key]
+                  )}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <Space size={6} wrap style={{ marginBottom: 2 }}>
+                    <Tag color={KIND_TAG_COLORS[entry.kind]} style={{ margin: 0 }}>{t(`inbox.kind_${entry.kind}`)}</Tag>
+                    <Typography.Text strong style={{ fontSize: 13 }}>{entry.title}</Typography.Text>
+                  </Space>
+                  <div>
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>{action}</Typography.Text>
+                    {confidence !== undefined && (
+                      <Typography.Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>
+                        {t('inbox.batchConfidence', { value: confidence })}
+                      </Typography.Text>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Modal>
 
       {/* D9: assign an owner — migrated from the exception centre. */}
       <Modal
