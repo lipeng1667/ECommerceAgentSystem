@@ -17,7 +17,7 @@ Frontend status:
 - The navigation has been updated to match the latest product design.
 - Agent tasks are now managed inside Agent detail pages rather than through standalone task list/detail pages.
 - Billing ledger is available from the main navigation; the standalone subscription page has been removed from the latest navigation.
-- Exception Center, Order Automation, the unified Dashboard, and Usage Guide are available from the main navigation.
+- The Action Center (D9: exception centre and approval centre merged into its three tabs), Order Automation, the unified Dashboard, and Usage Guide are available from the main navigation.
 - Model Center has been redesigned around Agent-to-model assignment.
 - The approval badge in the sidebar reflects pending approvals from mock summary data.
 - Light, dark, and system theme switching are available.
@@ -114,14 +114,14 @@ Local authentication is frontend-only. A deployment identifier is generated when
 
 ## Implemented Navigation
 
-The sidebar is ordered around merchant tasks: Overview → Stores → Products → Orders → Action Inbox → Agent Center → Platform Settings, followed by independent Plans & Billing and Help Center entries. Multiple submenu groups can stay open at once; navigating opens the active group additively. Under 768px the sidebar becomes a drawer opened from the header hamburger. The header also hosts a persistent store-scope filter (D3), a Cmd/Ctrl+K command palette, and an avatar identity dropdown.
+The sidebar is ordered around merchant tasks: Overview → Stores → Products → Orders → Action Center → Agent Center → Platform Settings, followed by independent Plans & Billing and Help Center entries. Multiple submenu groups can stay open at once; navigating opens the active group additively. Under 768px the sidebar becomes a drawer opened from the header hamburger. The header also hosts a persistent store-scope filter (D3), a Cmd/Ctrl+K command palette, and an avatar identity dropdown.
 
 | Route | Page | Status | Purpose |
 | --- | --- | --- | --- |
 | `/login` | Login | Implemented | Select a first-time or established local merchant persona. |
 | `/dashboard` | Dashboard | Implemented | Business overview and Agent monitoring; empty until a new merchant connects a store. |
 | `/setup` | Scenario Activation | Implemented | Scenario-first activation surface (D1): 5 scenario bundles with autonomy dial (L1/L2/L3), per-store overrides; per-agent config is the advanced layer. |
-| `/inbox` | Action Inbox | Implemented | Unified "needs me" queue (D2/D9) in three tabs: pending (approvals, exceptions, re-login, orders, products — with bulk resolve/ignore and assignment), history (handled exceptions + decided approvals), and rules & logs (approval policy, agent auto-handling log). |
+| `/inbox` | Action Center | Implemented | Single "needs me" surface (D2/D9) in three tabs reading as one sequence — pending (approvals, exceptions, re-login, orders, products; bulk resolve/ignore and assignment), handled-by-AI (agent auto-handling log with an escalation summary), and history (handled exceptions + decided approvals). Type filter narrowed to 6 buckets; the four product Smart Sync kinds share one. |
 | `/orders` | Order Automation | Implemented | Order handling, automation progress, and exception workflows. |
 | `/products` | Product Management | Implemented | Imported products, drafts, prices, and inventory. |
 | `/stores` | Store List | Implemented | Store list, authorization status, service tags, add-store entry. |
@@ -163,7 +163,7 @@ The dashboard combines the business overview and Agent monitoring into one opera
 
 The dashboard includes:
 
-- Single top attention strip linking into the Action Inbox
+- Single top attention strip linking into the Action Center
 - GMV, orders, average order value, and store count (≤4 top KPIs)
 - GMV and order trend chart
 - Advertising ROI panel
@@ -517,9 +517,9 @@ Use this table as the first stop when a collaborator or AI coding tool needs to 
 | `src/pages/agents/agentConfigMockData.ts` | Page data | Large Agent detail demo datasets. | Agent detail demo content changes. |
 | `src/pages/models/ModelListPage.tsx` | Page | Model center and Agent-to-model assignment. | Model assignment or custom model UI changes. |
 | `src/pages/approvals/ApprovalDetailPage.tsx` | Page | Approval detail and approve/reject actions. | Approval decision UI changes. |
-| `src/pages/inbox/InboxPage.tsx` | Page | Action Inbox: pending queue with bulk actions, plus the history and rules tabs. | Inbox queue, bulk actions, or tab layout change. |
+| `src/pages/inbox/InboxPage.tsx` | Page | Action Center: pending queue with bulk actions and assignment, plus the auto-handled and history tabs. | Inbox queue, bulk actions, or tab layout change. |
 | `src/pages/inbox/InboxHistoryTab.tsx` | Page section | Handled exceptions and decided approvals in one timeline. | History columns or filters change. |
-| `src/pages/inbox/InboxRulesTab.tsx` | Page section | Approval policy reference and agent auto-handling log. | Policy or log presentation changes. |
+| `src/pages/inbox/InboxAutoHandledTab.tsx` | Page section | Agent auto-handling log plus the "handled without you / escalated to you" summary. | Auto-handled log or its summary changes. |
 | `src/pages/operations/exceptionCenterColumns.tsx` | Page helper | Exception and agent-log table columns, used by the inbox tabs. | Exception table column/action definitions change. |
 | `src/pages/operations/exceptionCenterMockData.ts` | Page data | Exception center demo records. | Exception demo content changes. |
 | `src/pages/orders/OrderAutomationPage.tsx` | Page | Order automation, exception handling, order detail, and timeline. | Order workflow UI changes. |
