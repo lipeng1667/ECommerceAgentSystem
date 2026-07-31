@@ -536,7 +536,7 @@ export interface PriorApprovalRecord {
  * Tier 2 decisions (§ Smart Sync, Node 3) — 'store_relogin' reuses the existing
  * 'relogin' kind rather than introducing a parallel representation.
  */
-export type InboxItemKind = 'approval' | 'exception' | 'relogin' | 'order_exception' | 'product_draft' | 'product_new' | 'product_merge' | 'product_conflict';
+export type InboxItemKind = 'approval' | 'exception' | 'relogin' | 'store_pending' | 'order_exception' | 'product_draft' | 'product_new' | 'product_merge' | 'product_conflict';
 
 // ===== Products (D6: SPU + per-store Listing, product-design.md §3.14) =====
 //

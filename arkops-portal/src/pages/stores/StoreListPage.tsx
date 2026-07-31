@@ -182,7 +182,7 @@ export function StoreListPage() {
                   <Button
                     type="link"
                     icon={<ExclamationCircleOutlined />}
-                    onClick={() => navigate('/inbox?type=relogin')}
+                    onClick={() => navigate('/inbox?type=store')}
                     style={{ color: 'var(--ark-red)', padding: 0 }}
                   >
                     {needsRelogin} {t('stores.healthNeedsRelogin')} → {t('stores.healthGoHandle')}
@@ -194,7 +194,7 @@ export function StoreListPage() {
                   <Button
                     type="link"
                     icon={<ClockCircleOutlined />}
-                    onClick={() => navigate('/inbox?type=relogin')}
+                    onClick={() => navigate('/inbox?type=store')}
                     style={{ color: 'var(--ark-orange)', padding: 0, fontSize: 12 }}
                   >
                     {expiringSoon} {t('stores.healthExpiringSoon')} → {t('stores.healthGoHandle')}

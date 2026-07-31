@@ -70,7 +70,7 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
     const next = queueIndex >= 0 ? reloginQueue[queueIndex + 1] : undefined;
     if (next === undefined) {
       message.success(t('storewizard.reloginQueueDone'));
-      navigate('/inbox?type=relogin');
+      navigate('/inbox?type=store');
       return;
     }
     navigate(`/stores/${next}?reloginQueue=${reloginQueue.join(',')}`);

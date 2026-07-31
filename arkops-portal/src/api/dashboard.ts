@@ -82,11 +82,13 @@ export const dashboardApi = {
     // D9/N1: the sidebar badge must equal the inbox page's own count, so every kind the
     // inbox renders is counted here — including the proactive store-expiry warnings and
     // the product-side items, which a hand-written sum kept missing.
-    const reloginItems =
+    const storeItems =
       stores.filter((s) => s.status === 'login_required' || s.status === 'expired').length +
-      stores.filter((s) => getExpiringInDays(s) !== undefined).length;
+      stores.filter((s) => getExpiringInDays(s) !== undefined).length +
+      // Authorization started but never finished — nothing syncs for that store yet.
+      stores.filter((s) => s.status === 'pending_login').length;
     const inboxTotal =
-      pendingApprovals + exceptionCenterPending + reloginItems + orderExceptions + countInboxProductItems();
+      pendingApprovals + exceptionCenterPending + storeItems + orderExceptions + countInboxProductItems();
 
     return mockDelay({
       connectedStores,

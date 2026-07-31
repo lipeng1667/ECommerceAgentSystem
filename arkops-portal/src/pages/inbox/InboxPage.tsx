@@ -73,7 +73,7 @@ import type {
   Store
 } from '../../types/domain';
 
-type InboxFilter = 'all' | 'product' | InboxItemKind;
+type InboxFilter = 'all' | 'product' | 'store' | InboxItemKind;
 
 /**
  * The four Smart Sync Tier 2 decisions (商品草稿/新品发现/疑似重复/字段冲突) share one
@@ -83,6 +83,14 @@ type InboxFilter = 'all' | 'product' | InboxItemKind;
  * use case. `filter === 'product'` matches any of these four kinds.
  */
 const PRODUCT_FILTER_KINDS: InboxItemKind[] = ['product_draft', 'product_new', 'product_merge', 'product_conflict'];
+
+/**
+ * Store-domain items: a session that already broke (relogin), one about to expire, and a
+ * store whose authorization was never finished (store_pending). Same bucket for the same
+ * reason as products — the filter should name the domain the merchant thinks in, not the
+ * internal kind. `filter === 'store'` matches both kinds.
+ */
+const STORE_FILTER_KINDS: InboxItemKind[] = ['relogin', 'store_pending'];
 
 interface InboxEntry {
   key: string;
@@ -130,6 +138,7 @@ const KIND_TAG_COLORS: Record<InboxItemKind, string> = {
   approval: 'blue',
   exception: 'orange',
   relogin: 'red',
+  store_pending: 'gold',
   order_exception: 'volcano',
   product_draft: 'purple',
   product_new: 'cyan',
@@ -173,9 +182,20 @@ function FieldConflictComparison({ conflict, t }: { conflict: FieldConflict; t: 
 
 function isValidFilter(value: string | null): value is InboxFilter {
   return (
-    value === 'all' || value === 'product' || value === 'approval' || value === 'exception' || value === 'relogin' || value === 'order_exception' ||
+    value === 'all' || value === 'product' || value === 'store' || value === 'approval' || value === 'exception' || value === 'relogin' || value === 'store_pending' || value === 'order_exception' ||
     value === 'product_draft' || value === 'product_new' || value === 'product_merge' || value === 'product_conflict'
   );
+}
+
+/**
+ * Maps a per-kind `?type=` value onto the bucket that actually appears in the filter bar,
+ * so links written before the buckets existed (e.g. `?type=relogin` from the store list)
+ * still land on a highlighted segment instead of an unselected control.
+ */
+function toFilterBucket(value: InboxFilter): InboxFilter {
+  if (STORE_FILTER_KINDS.includes(value as InboxItemKind)) return 'store';
+  if (PRODUCT_FILTER_KINDS.includes(value as InboxItemKind)) return 'product';
+  return value;
 }
 
 export function InboxPage() {
@@ -184,7 +204,7 @@ export function InboxPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const filter: InboxFilter = isValidFilter(searchParams.get('type')) ? (searchParams.get('type') as InboxFilter) : 'all';
+  const filter: InboxFilter = isValidFilter(searchParams.get('type')) ? toFilterBucket(searchParams.get('type') as InboxFilter) : 'all';
   const [decisionTarget, setDecisionTarget] = useState<{ approval: Approval; decision: ApprovalDecision } | null>(null);
   // D9: 待处理 / 自动处理 / 处理记录 — "what needs me → what the system did for me → what
   // I decided". Kept in `tab` so `?type=` keeps meaning "which kind of pending item";
@@ -373,6 +393,23 @@ export function InboxPage() {
         });
         continue;
       }
+      // A store record exists but its authorization was never completed, so nothing has
+      // synced for it yet. Resolvable (finish the login and it leaves the queue), and
+      // easy to forget precisely because nothing about it is visibly broken.
+      if (store.status === 'pending_login') {
+        list.push({
+          key: `store_pending-${store.id}`,
+          kind: 'store_pending',
+          title: t('inbox.storePendingTitle', { store: store.name }),
+          summary: t('inbox.storePendingSummary'),
+          storeName: store.name,
+          urgencyRank: 2,
+          createdAt: store.createdAt,
+          store,
+          batchable: false
+        });
+        continue;
+      }
       // D7.3: proactive expiry warning — a still-connected store whose authorization
       // runs out within the warning window becomes a "renew now" item before anything
       // breaks. Lower urgency than an already-expired session: nothing is paused yet.
@@ -404,7 +441,11 @@ export function InboxPage() {
       const sla = getSlaState(order, clock);
       const storeName = stores.find((s) => s.id === order.storeId)?.name ?? '';
       const isException = EXCEPTION_ORDER_STATUSES.includes(order.status);
-      const urgent = sla.tone === 'breached' || sla.tone === 'critical';
+      // Breached/critical outrank exceptions with time to spare; the 6h warning band sits
+      // below both so widening the window (D8) did not push genuinely urgent items down.
+      const urgencyRank = sla.tone === 'breached' || sla.tone === 'critical'
+        ? 0
+        : isException ? 1 : 2;
       // Tier 2 recommendations can be accepted in bulk; fraud release and cancel/refund
       // are Tier 3 and must stay one-by-one with a typed reason on the orders page.
       const tier2 = order.recommendation && order.recommendation.action !== 'release' && order.recommendation.action !== 'cancel_refund'
@@ -428,7 +469,7 @@ export function InboxPage() {
               ? t('inbox.orderSlaBreachedSummary')
               : t('inbox.orderSlaSummary'),
         storeName,
-        urgencyRank: urgent ? 0 : 1,
+        urgencyRank,
         createdAt: order.createdAt,
         order,
         batchable: !!tier2?.batchable,
@@ -528,7 +569,7 @@ export function InboxPage() {
 
   const counts = useMemo(() => {
     const byKind: Record<InboxItemKind, number> = {
-      approval: 0, exception: 0, relogin: 0, order_exception: 0, product_draft: 0, product_new: 0, product_merge: 0, product_conflict: 0
+      approval: 0, exception: 0, relogin: 0, store_pending: 0, order_exception: 0, product_draft: 0, product_new: 0, product_merge: 0, product_conflict: 0
     };
     for (const entry of entries) byKind[entry.kind] += 1;
     return { ...byKind, all: entries.length };
@@ -538,7 +579,9 @@ export function InboxPage() {
     ? entries
     : filter === 'product'
       ? entries.filter((entry) => PRODUCT_FILTER_KINDS.includes(entry.kind))
-      : entries.filter((entry) => entry.kind === filter);
+      : filter === 'store'
+        ? entries.filter((entry) => STORE_FILTER_KINDS.includes(entry.kind))
+        : entries.filter((entry) => entry.kind === filter);
   // D7.3: ordered store ids for guided sequential re-login — already-expired stores
   // first (they block agents now), then the proactive expiry warnings.
   const reloginQueue = visibleEntries
@@ -627,6 +670,18 @@ export function InboxPage() {
             {t('inbox.viewDetail')}
           </Button>
         </Space>
+      );
+    }
+    if (entry.kind === 'store_pending' && entry.store) {
+      return (
+        <Button
+          size="small"
+          type="primary"
+          icon={<LoginOutlined />}
+          onClick={() => navigate(`/stores/${entry.store!.id}`)}
+        >
+          {t('inbox.goFinishAuth')}
+        </Button>
       );
     }
     if (entry.kind === 'relogin' && entry.store) {
@@ -761,7 +816,7 @@ export function InboxPage() {
             {/* D7.3: guided sequential re-login — hands the whole set of stores to the
                 store detail page as an ordered queue, so finishing one store offers the
                 next instead of dropping the user back to a list. */}
-            {filter === 'relogin' && reloginQueue.length > 1 && (
+            {filter === 'store' && reloginQueue.length > 1 && (
               <Button
                 type="primary"
                 icon={<LoginOutlined />}
@@ -833,7 +888,7 @@ export function InboxPage() {
               { value: 'all', label: `${t('inbox.filterAll')} (${counts.all})` },
               { value: 'approval', label: `${t('inbox.filterApprovals')} (${counts.approval})` },
               { value: 'exception', label: `${t('inbox.filterExceptions')} (${counts.exception})` },
-              { value: 'relogin', label: `${t('inbox.filterRelogin')} (${counts.relogin})` },
+              { value: 'store', label: `${t('inbox.filterStore')} (${counts.relogin + counts.store_pending})` },
               { value: 'order_exception', label: `${t('inbox.filterOrderException')} (${counts.order_exception})` },
               {
                 value: 'product',

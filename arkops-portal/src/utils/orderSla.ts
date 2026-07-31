@@ -44,12 +44,17 @@ export function getSlaState(order: Order, now: dayjs.Dayjs = dayjs()): SlaState 
 }
 
 /**
- * Whether an order needs a person now: it is an exception, or it is about to miss (or
- * has missed) the platform deadline. This is the single definition behind the orders
- * page's "needs you" count, the inbox items and the sidebar badge.
+ * Whether an order needs a person now: it is an exception, or its shipping deadline is
+ * close enough to act on. This is the single definition behind the orders page's
+ * "needs you" count, the inbox items and the sidebar badge — they must never disagree.
+ *
+ * The window is the full warning band (6h), not just critical (2h): shipping takes
+ * preparation, so an order surfaced only two hours out is often already too late to
+ * save. The inbox ranks the bands differently so the 6h ones don't crowd out the
+ * genuinely urgent — see the inbox's urgencyRank.
  */
 export function isOrderActionable(order: Order, now: dayjs.Dayjs = dayjs()): boolean {
   if (EXCEPTION_ORDER_STATUSES.includes(order.status)) return true;
   const { tone } = getSlaState(order, now);
-  return tone === 'breached' || tone === 'critical';
+  return tone === 'breached' || tone === 'critical' || tone === 'warning';
 }
