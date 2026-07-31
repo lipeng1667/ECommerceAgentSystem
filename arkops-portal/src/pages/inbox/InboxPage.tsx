@@ -208,6 +208,55 @@ function describeRecommendation(entry: InboxEntry, t: TranslateFn): { action: st
   return { action: t('inbox.acceptRecommended') };
 }
 
+/**
+ * 可批量的三条标准，缺一不可：
+ *   1. AI 推荐明确（高置信度或无歧义）
+ *   2. 动作可逆或影响较小
+ *   3. 逐条看也不会改变决定
+ *
+ * In English, for the same rule: an item may be batch-accepted only when the
+ * recommendation leaves no judgement call, the action is reversible or low-impact, and
+ * inspecting the item individually would not change what the user decides. Everything
+ * else stays a one-by-one decision.
+ *
+ * This is the single place that decides. A new inbox kind has to be argued past all
+ * three criteria here — not granted a `batchable: true` at its own construction site,
+ * which is how the 60–95% merges and the locked-field overwrites slipped in before.
+ */
+function isBatchable(entry: Omit<InboxEntry, 'batchable'>): boolean {
+  switch (entry.kind) {
+    case 'product_new':
+      // create_new only adds a record and is undone by deleting it. A likely_duplicate
+      // is the textbook "seeing it might change your mind" case, so it stays manual.
+      return entry.newProductCandidate?.recommendation === 'create_new';
+
+    case 'product_merge':
+      // D6 sub-decision 1: the 60–95% band exists precisely because a person should look
+      // at the pair. Only the auto-merge band clears criterion 3.
+      return (entry.mergeSuggestion?.confidence ?? 0) >= AUTO_MERGE_CONFIDENCE_THRESHOLD;
+
+    case 'product_conflict':
+      // keep_yours preserves the merchant's locked value — nothing of theirs is lost, so
+      // it is reversible in the only sense that matters here. accept_platform discards a
+      // manual edit that D6 sub-decision 2 says sync must never overwrite; that fails
+      // criteria 2 and 3 and has to be seen field by field.
+      return entry.fieldConflict?.recommendation === 'keep_yours';
+
+    case 'order_exception': {
+      const recommendation = entry.order?.recommendation;
+      // Tier 3 (fraud release, cancel + refund) always needs a typed reason.
+      if (!recommendation || recommendation.action === 'release' || recommendation.action === 'cancel_refund') return false;
+      return recommendation.batchable;
+    }
+
+    default:
+      // Approvals need a recorded reason; exceptions have their own resolve/ignore batch;
+      // store items each need a real login session; drafts carry no recommendation to
+      // accept in the first place.
+      return false;
+  }
+}
+
 function isValidFilter(value: string | null): value is InboxFilter {
   return (
     value === 'all' || value === 'product' || value === 'store' || value === 'approval' || value === 'exception' || value === 'relogin' || value === 'store_pending' || value === 'order_exception' ||
@@ -384,7 +433,7 @@ export function InboxPage() {
   });
 
   const entries = useMemo<InboxEntry[]>(() => {
-    const list: InboxEntry[] = [];
+    const list: Omit<InboxEntry, 'batchable'>[] = [];
 
     for (const approval of approvals) {
       if (approval.status !== 'pending') continue;
@@ -397,8 +446,7 @@ export function InboxPage() {
         storeName: approval.storeName,
         urgencyRank: urgency ? (urgency.tone === 'critical' ? 0 : urgency.tone === 'warning' ? 1 : 2) : 2,
         createdAt: approval.requestedAt,
-        approval,
-        batchable: false
+        approval
       });
     }
 
@@ -412,8 +460,7 @@ export function InboxPage() {
         storeName: exception.storeName,
         urgencyRank: exception.level === 'critical' ? 0 : exception.level === 'warning' ? 1 : 2,
         createdAt: exception.createdAt,
-        exception,
-        batchable: false
+        exception
       });
     }
 
@@ -427,8 +474,7 @@ export function InboxPage() {
           storeName: store.name,
           urgencyRank: 0,
           createdAt: store.lastVerifiedAt,
-          store,
-          batchable: false
+          store
         });
         continue;
       }
@@ -444,8 +490,7 @@ export function InboxPage() {
           storeName: store.name,
           urgencyRank: 2,
           createdAt: store.createdAt,
-          store,
-          batchable: false
+          store
         });
         continue;
       }
@@ -466,8 +511,7 @@ export function InboxPage() {
           urgencyRank: 2,
           createdAt: store.lastVerifiedAt,
           store,
-          expiresInDays: expiringInDays,
-          batchable: false
+          expiresInDays: expiringInDays
         });
       }
     }
@@ -510,8 +554,7 @@ export function InboxPage() {
         storeName,
         urgencyRank,
         createdAt: order.createdAt,
-        order,
-        batchable: !!tier2?.batchable,
+        order
       });
     }
 
@@ -531,16 +574,14 @@ export function InboxPage() {
         storeName,
         urgencyRank: 3,
         createdAt: listing.lastSyncedAt,
-        listing,
-        batchable: false
+        listing
       });
     }
 
-    // Smart Sync Tier 2 (Node 3): possibly-new products, merge suggestions, and locked-
+    // Smart Sync Tier 2 (Node 3): possibly-new products, merge suggestions and locked-
     // field conflicts all surface here too, each with a one-click accept for the AI
-    // recommendation. Only unambiguous recommendations are "batchable" — a candidate
-    // the AI itself flagged as a likely duplicate needs a person to look, not a
-    // silent default, so it's excluded from "accept all recommended".
+    // recommendation. Which of them may also be accepted *in bulk* is decided in one
+    // place — see isBatchable.
     for (const candidate of newProductCandidates) {
       const storeName = stores.find((s) => s.id === candidate.storeId)?.name ?? '';
       const duplicateOf = candidate.possibleDuplicateOfProductId != null
@@ -556,8 +597,7 @@ export function InboxPage() {
         storeName,
         urgencyRank: 2,
         createdAt: candidate.createdAt,
-        newProductCandidate: candidate,
-        batchable: candidate.recommendation === 'create_new'
+        newProductCandidate: candidate
       });
     }
 
@@ -573,11 +613,7 @@ export function InboxPage() {
         storeName: '',
         urgencyRank: 2,
         createdAt: suggestion.createdAt,
-        mergeSuggestion: suggestion,
-        // D6 sub-decision 1: the 60–95% band is review-only. Batch-accepting it would
-        // merge two product masters without anyone having seen the pair — the exact
-        // outcome that decision exists to prevent.
-        batchable: suggestion.confidence >= AUTO_MERGE_CONFIDENCE_THRESHOLD
+        mergeSuggestion: suggestion
       });
     }
 
@@ -593,12 +629,13 @@ export function InboxPage() {
         storeName,
         urgencyRank: 1,
         createdAt: conflict.createdAt,
-        fieldConflict: conflict,
-        batchable: true
+        fieldConflict: conflict
       });
     }
 
-    return list.sort((a, b) => {
+    return list
+      .map((entry): InboxEntry => ({ ...entry, batchable: isBatchable(entry) }))
+      .sort((a, b) => {
       if (a.urgencyRank !== b.urgencyRank) return a.urgencyRank - b.urgencyRank;
       const remainingA = a.approval ? getApprovalUrgency(a.approval, clock)?.remainingMs : undefined;
       const remainingB = b.approval ? getApprovalUrgency(b.approval, clock)?.remainingMs : undefined;
@@ -1118,8 +1155,13 @@ export function InboxPage() {
         width={620}
         destroyOnClose
       >
-        <Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
+        <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 4 }}>
           {t('inbox.batchAcceptHint')}
+        </Typography.Paragraph>
+        {/* Naming what is deliberately absent is what makes the rule legible: without it
+            the batch just looks like an arbitrary subset of the queue. */}
+        <Typography.Paragraph type="secondary" style={{ fontSize: 11 }}>
+          {t('inbox.batchAcceptExcluded')}
         </Typography.Paragraph>
         <div style={{ maxHeight: 320, overflowY: 'auto' }}>
           {batchableEntries.map((entry) => {
