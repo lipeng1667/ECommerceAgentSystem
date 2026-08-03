@@ -21,6 +21,7 @@ import {
   ShopOutlined,
   ShoppingOutlined,
   SmileOutlined,
+  ThunderboltOutlined,
   WifiOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -261,6 +262,7 @@ export function SetupConfigPage() {
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         {scenarioDefinitions.map((def) => {
           const state = scenarios.find((s) => s.key === def.key);
+          const scenarioResult = digest?.perScenario.find((row) => row.key === def.key);
           const memberAgents = def.agents
             .map((at) => allAgents.find((a) => a.agentType === at))
             .filter((a): a is NonNullable<typeof a> => Boolean(a));
@@ -299,6 +301,29 @@ export function SetupConfigPage() {
                 <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 8 }}>
                   {t(def.descKey)}
                 </Typography.Paragraph>
+
+                {/* Results-first: an enabled scenario shows what it did for the merchant;
+                    a disabled one shows what it will do, in plain outcome language. */}
+                {state?.enabled && scenarioResult ? (
+                  <div style={{
+                    marginBottom: 12, padding: '8px 10px', borderRadius: 6,
+                    background: 'color-mix(in srgb, var(--ark-green) 8%, var(--ark-panel))',
+                  }}>
+                    <Typography.Text style={{ fontSize: 12 }}>
+                      <ThunderboltOutlined style={{ color: 'var(--ark-green)', marginRight: 4 }} />
+                      {t('scenario.thisWeekResult', { actions: scenarioResult.actions, hours: scenarioResult.hoursSaved })}
+                    </Typography.Text>
+                    <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 2 }}>
+                      {t(scenarioResult.outcomeKey)}
+                    </Typography.Text>
+                  </div>
+                ) : (
+                  <div style={{ marginBottom: 12 }}>
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      {t('scenario.willDo')} {t(`scenario.preview_${def.key}`)}。
+                    </Typography.Text>
+                  </div>
+                )}
 
                 {/* 成员 Agent */}
                 <div style={{ marginBottom: 12 }}>
@@ -444,7 +469,7 @@ export function SetupConfigPage() {
                   <Space size={4}>
                     <span style={{
                       display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
-                      background: getSessionHealthColor(record.status) === 'green' ? '#16a34a' : getSessionHealthColor(record.status) === 'red' ? '#dc2626' : getSessionHealthColor(record.status) === 'orange' ? '#ea580c' : '#94a3b8',
+                      background: getSessionHealthColor(record.status) === 'green' ? 'var(--ark-green)' : getSessionHealthColor(record.status) === 'red' ? 'var(--ark-red)' : getSessionHealthColor(record.status) === 'orange' ? 'var(--ark-orange)' : 'var(--ark-muted)',
                       flexShrink: 0
                     }} />
                     {renderSessionTag(record.status)}
@@ -487,7 +512,7 @@ export function SetupConfigPage() {
       {/* ===== D3: 周报摘要占位 ===== */}
       {digest && (
         <Card
-          title={<><CheckCircleOutlined style={{ marginRight: 8, color: '#16a34a' }} />{t('scenario.digestTitle')}</>}
+          title={<><CheckCircleOutlined style={{ marginRight: 8, color: 'var(--ark-green)' }} />{t('scenario.digestTitle')}</>}
           extra={<Tag style={{ fontSize: 10 }}>{t('scenario.digestStub')}</Tag>}
         >
           <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
@@ -495,7 +520,7 @@ export function SetupConfigPage() {
           </Typography.Text>
           <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
             <Col xs={12} sm={6}>
-              <Statistic title={t('scenario.digestActions')} value={digest.autonomousActions} valueStyle={{ color: '#16a34a', fontSize: 22 }} />
+              <Statistic title={t('scenario.digestActions')} value={digest.autonomousActions} valueStyle={{ color: 'var(--ark-green)', fontSize: 22 }} />
             </Col>
             <Col xs={12} sm={6}>
               <Statistic title={t('scenario.digestApprovals')} value={digest.approvalsRequested} valueStyle={{ fontSize: 22 }} />
@@ -504,7 +529,7 @@ export function SetupConfigPage() {
               <Statistic title={t('scenario.digestApproved')} value={digest.approvalsApproved} suffix={`/ ${digest.approvalsRequested}`} valueStyle={{ fontSize: 22 }} />
             </Col>
             <Col xs={12} sm={6}>
-              <Statistic title={t('scenario.digestHoursSaved')} value={digest.hoursSaved} suffix="h" valueStyle={{ color: '#2563eb', fontSize: 22 }} />
+              <Statistic title={t('scenario.digestHoursSaved')} value={digest.hoursSaved} suffix="h" valueStyle={{ color: 'var(--ark-blue)', fontSize: 22 }} />
             </Col>
           </Row>
           <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 6 }}>

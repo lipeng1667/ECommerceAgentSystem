@@ -434,7 +434,9 @@ export interface WeeklyDigest {
   approvalsRequested: number;
   approvalsApproved: number;
   hoursSaved: number;
-  perScenario: { key: ScenarioKey; actions: number; approvals: number }[];
+  /** Per-scenario results, phrased for a merchant: `outcomeKey` is a translatable
+   *  "what it did" summary, hoursSaved a rough labour-savings estimate. */
+  perScenario: { key: ScenarioKey; actions: number; approvals: number; hoursSaved: number; outcomeKey: string }[];
 }
 
 /** 决策与结果记录（S4 outcomes 数据契约，mock） */

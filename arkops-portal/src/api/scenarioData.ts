@@ -52,7 +52,7 @@ export const scenarioDefinitions: ScenarioDefinition[] = [
     key: 'pricing_promo',
     nameKey: 'scenario.pricingPromo',
     descKey: 'scenario.pricingPromoDesc',
-    color: '#2563eb',
+    color: 'var(--ark-blue)',
     agents: ['pricing_strategy', 'promotion_campaign', 'ads_optimizer', 'competitor_intel'],
     overrideFields: [
       { id: 'targetMargin', labelKey: 'scenario.fieldTargetMargin', type: 'number', defaultValue: 30, min: 5, max: 80, suffix: '%' },
@@ -65,7 +65,7 @@ export const scenarioDefinitions: ScenarioDefinition[] = [
     key: 'cs_aftersales',
     nameKey: 'scenario.csAftersales',
     descKey: 'scenario.csAftersalesDesc',
-    color: '#16a34a',
+    color: 'var(--ark-green)',
     agents: ['customer_service', 'after_sales', 'review_manager', 'crm_retention'],
     overrideFields: [
       { id: 'autoRefundCap', labelKey: 'scenario.fieldAutoRefundCap', type: 'number', defaultValue: 20, min: 0, prefix: '¥' },
@@ -77,7 +77,7 @@ export const scenarioDefinitions: ScenarioDefinition[] = [
     key: 'inventory',
     nameKey: 'scenario.inventory',
     descKey: 'scenario.inventoryDesc',
-    color: '#7c3aed',
+    color: 'var(--ark-purple)',
     agents: ['inventory_alert'],
     overrideFields: [
       { id: 'lowStockThreshold', labelKey: 'scenario.fieldLowStock', type: 'number', defaultValue: 50, min: 0, suffix: '件' },
@@ -88,7 +88,7 @@ export const scenarioDefinitions: ScenarioDefinition[] = [
     key: 'fulfillment_risk',
     nameKey: 'scenario.fulfillmentRisk',
     descKey: 'scenario.fulfillmentRiskDesc',
-    color: '#dc2626',
+    color: 'var(--ark-red)',
     agents: ['risk_control', 'finance_audit', 'login_bootstrap'],
     overrideFields: [
       { id: 'discrepancyThreshold', labelKey: 'scenario.fieldDiscrepancy', type: 'number', defaultValue: 100, min: 0, prefix: '¥' },
@@ -98,7 +98,7 @@ export const scenarioDefinitions: ScenarioDefinition[] = [
     key: 'listing_content',
     nameKey: 'scenario.listingContent',
     descKey: 'scenario.listingContentDesc',
-    color: '#ea580c',
+    color: 'var(--ark-orange)',
     agents: ['product_launch', 'creative_factory', 'live_stream_ops'],
     overrideFields: [
       { id: 'defaultCategory', labelKey: 'scenario.fieldDefaultCategory', type: 'text', defaultValue: '' },
@@ -252,11 +252,11 @@ export const scenariosApi = {
       approvalsApproved: 8,
       hoursSaved: 21,
       perScenario: [
-        { key: 'pricing_promo', actions: 47, approvals: 5 },
-        { key: 'cs_aftersales', actions: 68, approvals: 2 },
-        { key: 'inventory', actions: 18, approvals: 0 },
-        { key: 'fulfillment_risk', actions: 12, approvals: 1 },
-        { key: 'listing_content', actions: 7, approvals: 1 },
+        { key: 'pricing_promo', actions: 47, approvals: 5, hoursSaved: 6, outcomeKey: 'scenario.outcome_pricing_promo' },
+        { key: 'cs_aftersales', actions: 68, approvals: 2, hoursSaved: 9, outcomeKey: 'scenario.outcome_cs_aftersales' },
+        { key: 'inventory', actions: 18, approvals: 0, hoursSaved: 3, outcomeKey: 'scenario.outcome_inventory' },
+        { key: 'fulfillment_risk', actions: 12, approvals: 1, hoursSaved: 2, outcomeKey: 'scenario.outcome_fulfillment_risk' },
+        { key: 'listing_content', actions: 7, approvals: 1, hoursSaved: 1, outcomeKey: 'scenario.outcome_listing_content' },
       ],
     }),
 };
