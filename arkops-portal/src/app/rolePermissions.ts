@@ -67,7 +67,7 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, boolean>> = {
     '/stores': true, '/settings/stores': true, '/settings/members': false,
     '/settings/models': false, '/settings/billing': true,
     '/settings/audit-logs': false, '/settings/notifications': false,
-    '/settings/guide': true, '/setup': false,
+    '/settings/guide': true, '/setup': true, // D10: /setup fronts the /agents expert view; grant together
   },
   Finance: {
     '/dashboard': true, '/orders': false, '/products': false,
@@ -85,7 +85,7 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, boolean>> = {
     '/stores': true, '/settings/stores': true, '/settings/members': false,
     '/settings/models': true, '/settings/billing': true,
     '/settings/audit-logs': true, '/settings/notifications': false,
-    '/settings/guide': true, '/setup': false,
+    '/settings/guide': true, '/setup': true, // D10: /setup fronts the /agents expert view; grant together
   },
 };
 
@@ -197,6 +197,7 @@ const ROLE_MENU_VISIBILITY: Record<Role, Set<string>> = {
   Approver: new Set([
     '/dashboard', '/orders', '/products',
     '/agents', '/agents/exceptions', '/agents/approvals', '/inbox', // WS-B
+    '/setup', // D10: 自动化配置 front door for the /agents expert view
     '/stores', '/settings/stores', '/settings/billing',
     '/settings/guide',
   ]),
@@ -204,6 +205,7 @@ const ROLE_MENU_VISIBILITY: Record<Role, Set<string>> = {
   Viewer: new Set([
     '/dashboard', '/orders', '/products',
     '/agents', '/agents/exceptions', '/agents/approvals', '/inbox', // WS-B
+    '/setup', // D10: 自动化配置 front door for the /agents expert view
     '/stores', '/settings/stores', '/settings/models',
     '/settings/billing', '/settings/audit-logs', '/settings/guide',
   ]),

@@ -326,6 +326,11 @@ export function AgentListPage() {
       <PageHeader
         title={t('agent.title')}
         description={t('agent.description')}
+        actions={
+          <Button icon={<ThunderboltOutlined />} onClick={() => navigate('/setup')}>
+            {t('agent.backToSetup')}
+          </Button>
+        }
       />
 
       {/* ===== 汇总指标 ===== */}

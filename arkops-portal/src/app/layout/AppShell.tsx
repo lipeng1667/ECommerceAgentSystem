@@ -29,7 +29,6 @@ import {
   LogoutOutlined,
   MenuOutlined,
   MoonOutlined,
-  RobotOutlined,
   SearchOutlined,
   SettingOutlined,
   ShoppingCartOutlined,
@@ -84,7 +83,6 @@ const routeMenuPrefixes = [
   '/orders',
   '/products',
   '/stores',
-  '/agents',
   '/dashboard',
   '/settings',
 ];
@@ -99,14 +97,15 @@ function getSelectedMenuKey(pathname: string) {
   // D9: the exception/approval centres are folded into the inbox; only the approval
   // detail page remains under /agents/approvals/:id and it belongs to the inbox entry.
   if (pathname.startsWith('/agents/approvals')) return '/inbox';
-  if (pathname.startsWith('/agents/')) return '/agents';
-  if (pathname === '/agents') return '/agents';
+  // D10: the sidebar entry is 自动化配置 (/setup) — the scenario surface. The per-agent
+  // pages under /agents are the "expert view" reached from a button there, not their own
+  // nav item, so they highlight the 自动化配置 entry.
+  if (pathname === '/agents' || pathname.startsWith('/agents/')) return '/setup';
   return routeMenuPrefixes.find((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) ?? pathname;
 }
 
 function getActiveMenuGroup(selectedKey: string): string | null {
   // D9: 待办中心 is a single top-level item now, so it has no group to expand.
-  if (selectedKey === '/agents' || selectedKey === '/setup') return 'agents-group';
   if (selectedKey.startsWith('/settings/') && selectedKey !== '/settings/billing' && selectedKey !== '/settings/guide') return 'settings-group';
   return null;
 }
@@ -218,15 +217,13 @@ export function AppShell() {
       )
     },
 
-    // 6. Agent 中心
+    // 6. 自动化配置（场景优先；逐 Agent 专家视图从页内进入）
     {
-      key: 'agents-group',
-      icon: <RobotOutlined />,
-      label: t('nav.agents'),
-      children: [
-        { key: '/agents', icon: <RobotOutlined />, label: t('nav.agentManagement') },
-        { key: '/setup', icon: <ThunderboltOutlined />, label: t('nav.automationConfig') },
-      ]
+      // D10: 自动化配置 (the scenario surface) is the single Agent entry; the per-agent
+      // "expert view" (/agents) is reached from a button there, not a nav item.
+      key: '/setup',
+      icon: <ThunderboltOutlined />,
+      label: t('nav.automationConfig')
     },
 
     // 7. 平台设置
