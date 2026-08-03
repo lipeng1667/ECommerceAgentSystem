@@ -527,6 +527,17 @@ export const agentRunStatsMap: Record<string, AgentRunStats> = {
   }
 };
 
+// A real last-run time per agent (the "最近执行" column). Derived once from run
+// frequency so busier agents read as more recently active — replaces the old attempt to
+// parse it out of trend[].date, which held weekday abbreviations and produced "NaN 天前".
+for (const stats of Object.values(agentRunStatsMap)) {
+  const dailyRuns = stats.trend.length > 0 ? stats.trend[stats.trend.length - 1].runs : 1;
+  // ~evenly spaced within the last day for a busy agent; up to a couple of days for a quiet one.
+  const minutesAgo = Math.max(5, Math.round((24 * 60) / Math.max(1, dailyRuns)) + Math.round(Math.random() * 90));
+  stats.lastRunAt = new Date(Date.now() - minutesAgo * 60_000).toISOString();
+}
+
+
 /* ===== WS-D (S4): 决策与结果 mock 数据 =====
  * 定义未来后端需要的数据契约：每个重要动作 → 指标执行前 → 3/7 天后 → 评估。
  */

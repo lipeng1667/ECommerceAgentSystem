@@ -31,24 +31,21 @@ import type { AgentConfig, AgentLayer, AgentType } from '../../types/domain';
 import type { AgentRunStats } from '../../types/domain';
 
 function getRecentRunText(stats: AgentRunStats | undefined, t: (key: string, params?: Record<string, string | number>) => string): string {
-  if (!stats) return '-';
-  const trend = stats.trend;
-  if (!trend || trend.length === 0) return '-';
-  const last = trend[trend.length - 1];
-  const lastDate = new Date(last.date);
-  const now = new Date();
-  const hoursAgo = Math.max(0, (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60));
+  if (!stats?.lastRunAt) return '-';
+  const lastDate = new Date(stats.lastRunAt);
+  if (Number.isNaN(lastDate.getTime())) return '-';
+  const hoursAgo = Math.max(0, (Date.now() - lastDate.getTime()) / (1000 * 60 * 60));
   if (hoursAgo <= 1) return t('agent.recentWithin1h');
   if (hoursAgo <= 24) return t('agent.recentHoursAgo', { hours: Math.round(hoursAgo) });
   return t('agent.recentDaysAgo', { days: Math.round(hoursAgo / 24) });
 }
 
 const layerColors: Record<AgentLayer, string> = {
-  foundation: '#dc2626',
-  traffic: '#2563eb',
-  growth: '#16a34a',
-  support: '#7c3aed',
-  standalone: '#ea580c'
+  foundation: 'var(--ark-red)',
+  traffic: 'var(--ark-blue)',
+  growth: 'var(--ark-green)',
+  support: 'var(--ark-purple)',
+  standalone: 'var(--ark-orange)'
 };
 
 export function AgentListPage() {
@@ -171,7 +168,7 @@ export function AgentListPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                 <Typography.Text
                   strong
-                  style={{ cursor: 'pointer', color: '#2563eb', fontSize: 13 }}
+                  style={{ cursor: 'pointer', color: 'var(--ark-blue)', fontSize: 13 }}
                   onClick={() => navigate(`/agents/${record.agentType}`)}
                 >
                   {name}
@@ -229,7 +226,7 @@ export function AgentListPage() {
               }}
             />
             {locked && (
-              <Typography.Text type="secondary" style={{ fontSize: 9, display: 'block', marginTop: 2, color: '#b45309' }}>
+              <Typography.Text type="secondary" style={{ fontSize: 9, display: 'block', marginTop: 2, color: 'var(--ark-amber)' }}>
                 <LockOutlined /> {t('agent.unlockToUpgrade')}
               </Typography.Text>
             )}
@@ -275,9 +272,9 @@ export function AgentListPage() {
               size="small"
               showInfo={false}
               style={{ width: 50, margin: 0 }}
-              strokeColor={rate >= 90 ? '#16a34a' : rate >= 70 ? '#ea580c' : '#dc2626'}
+              strokeColor={rate >= 90 ? 'var(--ark-green)' : rate >= 70 ? 'var(--ark-orange)' : 'var(--ark-red)'}
             />
-            <Typography.Text style={{ fontSize: 10, fontWeight: 600, color: rate >= 90 ? '#16a34a' : rate >= 70 ? '#ea580c' : '#dc2626' }}>
+            <Typography.Text style={{ fontSize: 10, fontWeight: 600, color: rate >= 90 ? 'var(--ark-green)' : rate >= 70 ? 'var(--ark-orange)' : 'var(--ark-red)' }}>
               {rate}%
             </Typography.Text>
           </div>
@@ -302,11 +299,11 @@ export function AgentListPage() {
       width: 120,
       render: (_: unknown, record: AgentListItem) => (
         <Space size={4} wrap>
-          {record.needsConfig && <Tooltip title={t('agent.strategyConfig')}><SettingOutlined style={{ fontSize: 12, color: '#2563eb' }} /></Tooltip>}
-          {record.needsApproval && <Tooltip title={t('agent.needApproval')}><CheckCircleOutlined style={{ fontSize: 12, color: '#ea580c' }} /></Tooltip>}
-          {record.triggerMode === 'scheduled' && <Tooltip title={t('agent.autoRun')}><ClockCircleOutlined style={{ fontSize: 12, color: '#7c3aed' }} /></Tooltip>}
-          {record.triggerMode === 'event' && <Tooltip title={t('agent.eventRun')}><ThunderboltOutlined style={{ fontSize: 12, color: '#16a34a' }} /></Tooltip>}
-          {record.triggerMode === 'manual' && <Tooltip title={t('agent.manualRun')}><PlayCircleOutlined style={{ fontSize: 12, color: '#64748b' }} /></Tooltip>}
+          {record.needsConfig && <Tooltip title={t('agent.strategyConfig')}><SettingOutlined style={{ fontSize: 12, color: 'var(--ark-blue)' }} /></Tooltip>}
+          {record.needsApproval && <Tooltip title={t('agent.needApproval')}><CheckCircleOutlined style={{ fontSize: 12, color: 'var(--ark-orange)' }} /></Tooltip>}
+          {record.triggerMode === 'scheduled' && <Tooltip title={t('agent.autoRun')}><ClockCircleOutlined style={{ fontSize: 12, color: 'var(--ark-purple)' }} /></Tooltip>}
+          {record.triggerMode === 'event' && <Tooltip title={t('agent.eventRun')}><ThunderboltOutlined style={{ fontSize: 12, color: 'var(--ark-green)' }} /></Tooltip>}
+          {record.triggerMode === 'manual' && <Tooltip title={t('agent.manualRun')}><PlayCircleOutlined style={{ fontSize: 12, color: 'var(--ark-muted)' }} /></Tooltip>}
         </Space>
       )
     }
@@ -340,15 +337,17 @@ export function AgentListPage() {
             title={t('agent.enabledAgents')}
             value={enabledList.length}
             suffix={`/ ${agents.length}`}
-            overlayIcon={<CheckCircleOutlined style={{ color: '#16a34a' }} />}
-            valueStyle={{ color: '#16a34a' }}
+            overlayIcon={<CheckCircleOutlined style={{ color: 'var(--ark-green)' }} />}
+            valueStyle={{ color: 'var(--ark-green)' }}
             helper={
-              <Space size={4} wrap>
+              <Space size={6} wrap>
                 {Object.entries(layerCounts).filter(([, c]) => c.total > 0).map(([layer, c]) => (
-                  <span key={layer} style={{ fontSize: 10 }}>
-                    <span style={{ color: layerColors[layer as AgentLayer], fontWeight: 600 }}>{c.enabled}</span>
-                    <span style={{ color: '#94a3b8' }}>/{c.total}</span>
-                  </span>
+                  <Tooltip key={layer} title={t(`agent.layer_${layer}`)}>
+                    <span style={{ fontSize: 10, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: layerColors[layer as AgentLayer], display: 'inline-block' }} />
+                      <span style={{ color: 'var(--ark-muted)' }}>{t(`agent.layer_${layer}`)} {c.enabled}/{c.total}</span>
+                    </span>
+                  </Tooltip>
                 ))}
               </Space>
             }
@@ -358,8 +357,8 @@ export function AgentListPage() {
           <MetricCard
             title={t('agent.availableAgents')}
             value={disabledList.length}
-            overlayIcon={<PlusOutlined style={{ color: '#2563eb' }} />}
-            valueStyle={{ color: '#2563eb' }}
+            overlayIcon={<PlusOutlined style={{ color: 'var(--ark-blue)' }} />}
+            valueStyle={{ color: 'var(--ark-blue)' }}
             helper={disabledAgents > 0 ? `${disabledAgents} ${t('agent.canEnable')}` : t('agent.allEnabled')}
           />
         </Col>
@@ -367,8 +366,8 @@ export function AgentListPage() {
           <MetricCard
             title={t('agent.colActiveTasks')}
             value={totalActiveTasks}
-            overlayIcon={<RocketOutlined style={{ color: '#7c3aed' }} />}
-            valueStyle={{ color: '#7c3aed' }}
+            overlayIcon={<RocketOutlined style={{ color: 'var(--ark-purple)' }} />}
+            valueStyle={{ color: 'var(--ark-purple)' }}
             helper={`${enabledList.filter(a => (a.activeTaskCount ?? 0) > 0).length} ${t('agent.agentsRunning')}`}
           />
         </Col>
@@ -377,11 +376,11 @@ export function AgentListPage() {
             title={t('agent.colSuccessRate')}
             value={avgSuccessRate}
             suffix="%"
-            overlayIcon={<ThunderboltOutlined style={{ color: avgSuccessRate >= 90 ? '#16a34a' : '#ea580c' }} />}
-            valueStyle={{ color: avgSuccessRate >= 90 ? '#16a34a' : avgSuccessRate >= 70 ? '#ea580c' : '#dc2626' }}
+            overlayIcon={<ThunderboltOutlined style={{ color: avgSuccessRate >= 90 ? 'var(--ark-green)' : 'var(--ark-orange)' }} />}
+            valueStyle={{ color: avgSuccessRate >= 90 ? 'var(--ark-green)' : avgSuccessRate >= 70 ? 'var(--ark-orange)' : 'var(--ark-red)' }}
             helper={
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Progress percent={avgSuccessRate} size="small" showInfo={false} style={{ width: 60, margin: 0 }} strokeColor={avgSuccessRate >= 90 ? '#16a34a' : '#ea580c'} />
+                <Progress percent={avgSuccessRate} size="small" showInfo={false} style={{ width: 60, margin: 0 }} strokeColor={avgSuccessRate >= 90 ? 'var(--ark-green)' : 'var(--ark-orange)'} />
               </div>
             }
           />
@@ -391,7 +390,7 @@ export function AgentListPage() {
       {/* ===== 搜索栏 ===== */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
         <Input
-          prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+          prefix={<SearchOutlined style={{ color: 'var(--ark-muted)' }} />}
           placeholder={t('common.searchPlaceholder')}
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
@@ -437,9 +436,9 @@ export function AgentListPage() {
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
             padding: '6px 12px', borderRadius: 8, background: 'rgba(22, 163, 74, 0.06)',
-            borderLeft: '3px solid #16a34a',
+            borderLeft: '3px solid var(--ark-green)',
           }}>
-            <CheckCircleOutlined style={{ color: '#16a34a' }} />
+            <CheckCircleOutlined style={{ color: 'var(--ark-green)' }} />
             <Typography.Text strong style={{ fontSize: 13 }}>{t('agent.enabledAgents')}</Typography.Text>
             <Tag color="green" style={{ fontSize: 11 }}>{enabledList.length}</Tag>
           </div>
@@ -462,9 +461,9 @@ export function AgentListPage() {
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
             padding: '6px 12px', borderRadius: 8, background: 'rgba(37, 99, 235, 0.06)',
-            borderLeft: '3px solid #2563eb',
+            borderLeft: '3px solid var(--ark-blue)',
           }}>
-            <PlusOutlined style={{ color: '#2563eb' }} />
+            <PlusOutlined style={{ color: 'var(--ark-blue)' }} />
             <Typography.Text strong style={{ fontSize: 13 }}>{t('agent.availableAgents')}</Typography.Text>
             <Tag color="blue" style={{ fontSize: 11 }}>{disabledList.length}</Tag>
           </div>
@@ -485,11 +484,11 @@ export function AgentListPage() {
       <Card
         title={
           <Space>
-            <ThunderboltOutlined style={{ color: '#7c3aed' }} />
+            <ThunderboltOutlined style={{ color: 'var(--ark-purple)' }} />
             <Typography.Text strong style={{ fontSize: 13 }}>{t('agent.flowTitle')}</Typography.Text>
           </Space>
         }
-        style={{ borderTop: '3px solid #7c3aed' }}
+        style={{ borderTop: '3px solid var(--ark-purple)' }}
       >
         <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 12 }}>
           {t('agent.flowDesc')}
@@ -500,18 +499,18 @@ export function AgentListPage() {
           display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16,
           padding: '8px 14px', background: 'var(--ark-panel-soft)', borderRadius: 8, fontSize: 12,
         }}>
-          <CheckCircleOutlined style={{ color: '#16a34a' }} />
+          <CheckCircleOutlined style={{ color: 'var(--ark-green)' }} />
           <Typography.Text style={{ fontSize: 12 }}>
             <span dangerouslySetInnerHTML={{ __html: t('agent.enabledCount', { count: enabledList.length, total: agents.length }) }} />
           </Typography.Text>
           <div style={{ flex: 1 }} />
           <Space size={12}>
             <Space size={4}>
-              <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: '#16a34a' }} />
+              <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: 'var(--ark-green)' }} />
               <Typography.Text type="secondary" style={{ fontSize: 11 }}>{t('common.enabled')}</Typography.Text>
             </Space>
             <Space size={4}>
-              <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: '#d4d4d8', border: '1.5px dashed #94a3b8' }} />
+              <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: 'var(--ark-border)', border: '1.5px dashed var(--ark-muted)' }} />
               <Typography.Text type="secondary" style={{ fontSize: 11 }}>{t('common.disabled')}</Typography.Text>
             </Space>
           </Space>

@@ -295,13 +295,13 @@ export function AgentConfigPage() {
             <MetricCard title={t('agent.totalRuns')} value={stats.totalRuns} prefix={<LineChartOutlined />} />
           </Col>
           <Col span={6}>
-            <MetricCard title={t('agent.successRate')} value={`${stats.successRate}%`} valueStyle={{ color: stats.successRate >= 90 ? '#16a34a' : '#ea580c' }} />
+            <MetricCard title={t('agent.successRate')} value={`${stats.successRate}%`} valueStyle={{ color: stats.successRate >= 90 ? 'var(--ark-green)' : 'var(--ark-orange)' }} />
           </Col>
           <Col span={6}>
-            <MetricCard title={t('agent.succeededRuns')} value={Math.round(stats.totalRuns * stats.successRate / 100)} valueStyle={{ color: '#16a34a' }} prefix={<CheckCircleOutlined />} />
+            <MetricCard title={t('agent.succeededRuns')} value={Math.round(stats.totalRuns * stats.successRate / 100)} valueStyle={{ color: 'var(--ark-green)' }} prefix={<CheckCircleOutlined />} />
           </Col>
           <Col span={6}>
-            <MetricCard title={t('agent.failedRuns')} value={stats.totalRuns - Math.round(stats.totalRuns * stats.successRate / 100)} valueStyle={{ color: '#dc2626' }} prefix={<CloseCircleOutlined />} />
+            <MetricCard title={t('agent.failedRuns')} value={stats.totalRuns - Math.round(stats.totalRuns * stats.successRate / 100)} valueStyle={{ color: 'var(--ark-red)' }} prefix={<CloseCircleOutlined />} />
           </Col>
         </Row>
       )}
@@ -408,7 +408,7 @@ export function AgentConfigPage() {
               {
                 title: t('entity.task'), dataIndex: 'title',
                 render: (title: string) => (
-                  <Typography.Text strong style={{ cursor: 'pointer', color: '#2563eb' }}>{title}</Typography.Text>
+                  <Typography.Text strong style={{ cursor: 'pointer', color: 'var(--ark-blue)' }}>{title}</Typography.Text>
                 ),
               },
               { title: t('tasks.status'), dataIndex: 'status', width: 120, render: (status: TaskStatus) => <StatusBadge value={status} /> },

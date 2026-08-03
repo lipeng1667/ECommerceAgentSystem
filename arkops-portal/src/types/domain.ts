@@ -248,6 +248,8 @@ export interface AgentRunStats {
   avgDurationMinutes: number;
   avgTokenUsage: number;
   avgCost: number;
+  /** ISO timestamp of the most recent run — the real "last executed" time. */
+  lastRunAt?: string;
   trend: { date: string; runs: number; successRate: number }[];
   failureReasons: { reason: string; count: number }[];
 }
