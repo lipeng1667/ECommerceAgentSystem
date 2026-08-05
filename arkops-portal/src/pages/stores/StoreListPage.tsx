@@ -1,8 +1,7 @@
-import { CheckCircleOutlined, ClockCircleOutlined, CloudSyncOutlined, ExclamationCircleOutlined, EyeOutlined, LoginOutlined, PayCircleOutlined, ShopOutlined, ShoppingCartOutlined, WifiOutlined } from '@ant-design/icons';
+import { AppstoreOutlined, CheckCircleOutlined, ClockCircleOutlined, CloudSyncOutlined, ExclamationCircleOutlined, EyeOutlined, LoginOutlined, PayCircleOutlined, ShopOutlined, ShoppingCartOutlined, TableOutlined, WifiOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Button, Card, Input, Select, Space, Tag, Typography } from 'antd';
+import { Button, Card, Input, Segmented, Select, Space, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import dayjs from 'dayjs';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { storeBusinessApi } from '../../api/storeBusiness';
@@ -16,6 +15,8 @@ import { DataTableCard } from '../../components/table/DataTableCard';
 import { TableActionGroup } from '../../components/table/TableActionGroup';
 import type { Store } from '../../types/domain';
 import { SERVICE_ICONS, getExpiringInDays, getPlatformName, getSessionHealthColor, renderSessionTag } from '../../utils/storeDisplay';
+import { computeStoreHealth } from '../../utils/storeHealth';
+import { StoreCard } from './StoreCard';
 
 const SESSION_DOT_COLOR: Record<string, string> = {
   green: 'var(--ark-green)',
@@ -38,6 +39,15 @@ export function StoreListPage() {
 
   const [keyword, setKeyword] = useState('');
   const [platformFilter, setPlatformFilter] = useState<string | undefined>();
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+
+  // GMV share is relative to the whole account, so it's computed across all stores
+  // (not just the filtered subset) — a store's slice of the pie doesn't change when
+  // you type in the search box.
+  const totalGmv = useMemo(
+    () => businessDetails.reduce((sum, d) => sum + (d.gmv.today ?? 0), 0),
+    [businessDetails]
+  );
 
   const platformOptions = useMemo(() => {
     const platforms = Array.from(new Set(data.map((store) => store.platform)));
@@ -216,28 +226,64 @@ export function StoreListPage() {
               </Card>
             );
           })()}
-          <DataTableCard<Store>
-            rowKey="id"
-            columns={columns}
-            dataSource={filteredData}
-            scroll={{ x: 1350 }}
-            toolbar={
-              <PageFilterBar>
-                <Input.Search
-                  placeholder={t('stores.searchPlaceholder')}
-                  onChange={(e) => setKeyword(e.target.value)}
-                  allowClear
-                />
-                <Select
-                  placeholder={t('stores.allPlatforms')}
-                  allowClear
-                  value={platformFilter}
-                  onChange={setPlatformFilter}
-                  options={platformOptions}
-                />
-              </PageFilterBar>
-            }
-          />
+          {/* Shared controls: view switch on the left, filters on the right —
+              both views read the same keyword/platform state. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+            <Segmented
+              value={viewMode}
+              onChange={(value) => setViewMode(value as 'cards' | 'table')}
+              options={[
+                { value: 'cards', label: t('storecard.viewCards'), icon: <AppstoreOutlined /> },
+                { value: 'table', label: t('storecard.viewTable'), icon: <TableOutlined /> },
+              ]}
+            />
+            <div style={{ flex: 1 }} />
+            <PageFilterBar>
+              <Input.Search
+                placeholder={t('stores.searchPlaceholder')}
+                onChange={(e) => setKeyword(e.target.value)}
+                allowClear
+              />
+              <Select
+                placeholder={t('stores.allPlatforms')}
+                allowClear
+                value={platformFilter}
+                onChange={setPlatformFilter}
+                options={platformOptions}
+              />
+            </PageFilterBar>
+          </div>
+
+          {viewMode === 'cards' ? (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                gap: 14,
+              }}
+            >
+              {filteredData.map((store) => {
+                const biz = businessByStoreId.get(store.id);
+                const gmvShare = totalGmv > 0 ? Math.round(((biz?.gmv.today ?? 0) / totalGmv) * 100) : 0;
+                return (
+                  <StoreCard
+                    key={store.id}
+                    store={store}
+                    biz={biz}
+                    gmvShare={gmvShare}
+                    health={computeStoreHealth(store, biz)}
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            <DataTableCard<Store>
+              rowKey="id"
+              columns={columns}
+              dataSource={filteredData}
+              scroll={{ x: 1350 }}
+            />
+          )}
         </>
       )}
     </div>

@@ -49,7 +49,8 @@ const details: Record<AllMallId, StoreBusinessDetail> = {
       { name: '防晒速干T恤', gmv: 1980, orders: 52, sku: 'PDD-00234' },
       { name: '折叠水壶 1L', gmv: 1560, orders: 44, sku: 'PDD-00891' },
       { name: '户外防潮垫', gmv: 1320, orders: 35, sku: 'PDD-00456' }
-    ]
+    ],
+    aiActivity: { priceAdjustments: 12, csReplies: 34, riskIntercepts: 2, hoursSaved: 3.2 }
   },
   1002: {
     storeId: 1002,
@@ -96,7 +97,8 @@ const details: Record<AllMallId, StoreBusinessDetail> = {
       { name: '户外头灯 USB充电', gmv: 1280, orders: 45, sku: 'TB-00123' },
       { name: '急救包 户外便携', gmv: 920, orders: 32, sku: 'TB-00456' },
       { name: '多功能工兵铲', gmv: 780, orders: 15, sku: 'TB-00789' }
-    ]
+    ],
+    aiActivity: { priceAdjustments: 8, csReplies: 21, riskIntercepts: 1, hoursSaved: 2.1 }
   },
   1003: {
     storeId: 1003,
@@ -142,7 +144,8 @@ const details: Record<AllMallId, StoreBusinessDetail> = {
       { name: '竹制厨房用具套', gmv: 720, orders: 18, sku: 'JD-00078' },
       { name: '帆布袋 环保款', gmv: 580, orders: 25, sku: 'JD-00033' },
       { name: '大豆蜡烛 香薰', gmv: 450, orders: 20, sku: 'JD-00056' }
-    ]
+    ],
+    aiActivity: { priceAdjustments: 0, csReplies: 0, riskIntercepts: 0, hoursSaved: 0 }
   }
 };
 
@@ -160,6 +163,7 @@ export const storeBusinessApi = {
       adMetrics: { todaySpend: 0, roas: 0, cpm: 0, cpc: 0, ctr: 0, cvr: 0, budgetLimit: 0, trend: [], campaigns: [] },
       afterSales: { returnRate: 0, returnAmount: 0, negativeReviews: 0, unresolvedReviews: 0, storeRating: 0, disputes: { pending: 0, processing: 0 } },
       inventory: { totalSkus: 0, lowStockCount: 0, slowMovingCount: 0, outOfStockCount: 0, lowStockItems: [] },
-      topProducts: []
+      topProducts: [],
+      aiActivity: { priceAdjustments: 0, csReplies: 0, riskIntercepts: 0, hoursSaved: 0 }
     })
 };

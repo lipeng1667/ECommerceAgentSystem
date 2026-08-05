@@ -492,6 +492,13 @@ export interface StoreBusinessDetail {
     lowStockItems: { sku: string; name: string; stock: number; safetyStock: number }[];
   };
   topProducts: { name: string; gmv: number; orders: number; sku: string }[];
+  /** What the Agents did for this store today — powers the store card's "AI pulse" strip. */
+  aiActivity: {
+    priceAdjustments: number;
+    csReplies: number;
+    riskIntercepts: number;
+    hoursSaved: number;
+  };
 }
 
 // ===== WS-F: Notification channels & event matrix (appended) =====
