@@ -472,7 +472,7 @@ export function SetupConfigPage() {
                       background: getSessionHealthColor(record.status) === 'green' ? 'var(--ark-green)' : getSessionHealthColor(record.status) === 'red' ? 'var(--ark-red)' : getSessionHealthColor(record.status) === 'orange' ? 'var(--ark-orange)' : 'var(--ark-muted)',
                       flexShrink: 0
                     }} />
-                    {renderSessionTag(record.status)}
+                    {renderSessionTag(record.status, t)}
                   </Space>
                 )
               },

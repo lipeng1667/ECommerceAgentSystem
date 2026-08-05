@@ -68,21 +68,21 @@ export const SESSION_HEALTH_COLOR: Record<StoreStatus, string> = {
   revoked: 'default',
 };
 
-/** Session status display tag */
-export function renderSessionTag(status: StoreStatus): JSX.Element {
+/** Session status display tag. Labels resolve through i18n so they follow the UI language. */
+export function renderSessionTag(status: StoreStatus, t: (key: string) => string): JSX.Element {
   switch (status) {
     case 'connected':
-      return <Tag color="green">Active</Tag>;
+      return <Tag color="green">{t('stores.sessionActive')}</Tag>;
     case 'login_required':
-      return <Tag color="red">Expired</Tag>;
+      return <Tag color="red">{t('stores.sessionExpired')}</Tag>;
     case 'pending_login':
-      return <Tag color="orange">Pending</Tag>;
+      return <Tag color="orange">{t('stores.sessionPending')}</Tag>;
     case 'expired':
-      return <Tag color="red">Expired</Tag>;
+      return <Tag color="red">{t('stores.sessionExpired')}</Tag>;
     case 'revoked':
-      return <Tag>Revoked</Tag>;
+      return <Tag>{t('stores.sessionRevoked')}</Tag>;
     default:
-      return <Tag>Unknown</Tag>;
+      return <Tag>{t('stores.sessionUnknown')}</Tag>;
   }
 }
 

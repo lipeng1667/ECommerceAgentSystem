@@ -85,7 +85,7 @@ export function StoreListPage() {
           background: SESSION_DOT_COLOR[getSessionHealthColor(record.status)] ?? 'var(--ark-muted)',
           flexShrink: 0
         }} />
-        {renderSessionTag(record.status)}
+        {renderSessionTag(record.status, t)}
       </Space>
     )},
     {
