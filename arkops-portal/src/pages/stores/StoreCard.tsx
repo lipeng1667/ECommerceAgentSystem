@@ -9,18 +9,13 @@
  * Created: 2026-08-05
  */
 import { PauseCircleOutlined, RiseOutlined, FallOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useI18n } from '../../app/i18n';
 import type { Store, StoreBusinessDetail } from '../../types/domain';
-import type { StoreHealth, StoreHealthTone } from '../../utils/storeHealth';
+import type { StoreHealth } from '../../utils/storeHealth';
 import { getPlatformName, renderSessionTag } from '../../utils/storeDisplay';
-
-const TONE_COLOR: Record<StoreHealthTone, string> = {
-  good: 'var(--ark-green)',
-  warn: 'var(--ark-orange)',
-  bad: 'var(--ark-red)',
-  idle: 'var(--ark-muted)',
-};
+import { HealthRing, TONE_COLOR } from './storeHealthVisuals';
 
 /** Tiny inline GMV trend line. Returns a flat dashed baseline when there's no data. */
 function Sparkline({ values, color }: { values: number[]; color: string }) {
@@ -57,43 +52,6 @@ function Sparkline({ values, color }: { values: number[]; color: string }) {
   );
 }
 
-/** Circular 0–100 health gauge. Shows a dashed placeholder ring when score is null. */
-function HealthRing({ score, color }: { score: number | null; color: string }) {
-  const r = 19;
-  const circumference = 2 * Math.PI * r;
-  if (score == null) {
-    return (
-      <svg width={46} height={46} viewBox="0 0 46 46" aria-hidden>
-        <circle cx={23} cy={23} r={r} fill="none" stroke="var(--ark-border)" strokeWidth={4} strokeDasharray="4 4" />
-        <text x={23} y={27} textAnchor="middle" fontSize={13} fontWeight={500} fill="var(--ark-muted)">
-          —
-        </text>
-      </svg>
-    );
-  }
-  const offset = circumference * (1 - score / 100);
-  return (
-    <svg width={46} height={46} viewBox="0 0 46 46" aria-hidden>
-      <circle cx={23} cy={23} r={r} fill="none" stroke="var(--ark-border)" strokeWidth={4} />
-      <circle
-        cx={23}
-        cy={23}
-        r={r}
-        fill="none"
-        stroke={color}
-        strokeWidth={4}
-        strokeLinecap="round"
-        strokeDasharray={circumference}
-        strokeDashoffset={offset}
-        transform="rotate(-90 23 23)"
-      />
-      <text x={23} y={27} textAnchor="middle" fontSize={14} fontWeight={500} fill="var(--ark-ink)">
-        {score}
-      </text>
-    </svg>
-  );
-}
-
 interface StoreCardProps {
   store: Store;
   biz?: StoreBusinessDetail;
@@ -104,6 +62,7 @@ interface StoreCardProps {
 export function StoreCard({ store, biz, gmvShare, health }: StoreCardProps) {
   const { t } = useI18n();
   const navigate = useNavigate();
+  const [hovered, setHovered] = useState(false);
   const toneColor = TONE_COLOR[health.tone];
 
   const gmv = biz?.gmv.today ?? 0;
@@ -119,24 +78,35 @@ export function StoreCard({ store, biz, gmvShare, health }: StoreCardProps) {
   // Card border leans on the health tone so a whole card reads at a glance.
   const borderColor = health.tone === 'good' ? 'var(--ark-border)' : toneColor;
 
+  // The whole card is a link into the store detail page; inner actions that go
+  // elsewhere stop propagation so they aren't hijacked by the card click.
   return (
     <div
+      role="link"
+      tabIndex={0}
+      onClick={() => navigate(`/stores/${store.id}`)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') navigate(`/stores/${store.id}`);
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
-        border: `1px solid ${borderColor}`,
+        border: `1px solid ${hovered ? toneColor : borderColor}`,
         borderRadius: 12,
         background: 'var(--ark-panel)',
         padding: 16,
         display: 'flex',
         flexDirection: 'column',
         gap: 14,
+        cursor: 'pointer',
+        boxShadow: hovered ? 'var(--ark-card-shadow)' : 'none',
+        transform: hovered ? 'translateY(-2px)' : 'none',
+        transition: 'box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease',
       }}
     >
       {/* Header: identity + session pill */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-        <div
-          style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
-          onClick={() => navigate(`/stores/${store.id}`)}
-        >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div>
             <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--ark-ink)' }}>{store.name}</div>
             <div style={{ fontSize: 12, color: 'var(--ark-muted)' }}>
@@ -235,7 +205,10 @@ export function StoreCard({ store, biz, gmvShare, health }: StoreCardProps) {
             {t(health.verdictKey, health.verdictParams)}{' '}
             {health.action && (
               <a
-                onClick={() => navigate(health.action!.to)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(health.action!.to);
+                }}
                 style={{ color: health.tone === 'bad' ? 'var(--ark-red)' : 'var(--ark-blue)', cursor: 'pointer' }}
               >
                 {t(health.action.labelKey)}

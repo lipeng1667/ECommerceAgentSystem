@@ -33,6 +33,7 @@ import { StatusBadge } from '../../components/StatusBadge';
 import type { AllMallId, Store, StoreConnection, StoreServiceType } from '../../types/domain';
 import { parseAllMallId } from '../../utils/id';
 import { getExpiringInDays, getPlatformName } from '../../utils/storeDisplay';
+import { StoreAiHealthBanner } from './StoreAiHealthBanner';
 
 /**
  * D7.1: system-recommended authorization method per platform. Official OAuth is used
@@ -615,7 +616,7 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
       <Tabs
         defaultActiveKey="overview"
         items={[
-          { key: 'overview', label: t('storedetail.overviewTab'), children: <StoreBusinessOverview storeId={parsedStoreId} /> },
+          { key: 'overview', label: t('storedetail.overviewTab'), children: <StoreBusinessOverview storeId={parsedStoreId} store={store} /> },
           { key: 'settings', label: t('stores.settings'), children: settingsTab },
         ]}
       />
@@ -628,7 +629,7 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
  * `storeBusinessApi` mock data (GMV/orders trend, ad metrics, after-sales, inventory,
  * top products) that was fully modeled but unused until now.
  */
-function StoreBusinessOverview({ storeId }: { storeId: AllMallId | undefined }) {
+function StoreBusinessOverview({ storeId, store }: { storeId: AllMallId | undefined; store?: Store }) {
   const { t } = useI18n();
   const { data: detail, isLoading } = useQuery({
     queryKey: ['storeBusiness', storeId],
@@ -647,6 +648,10 @@ function StoreBusinessOverview({ storeId }: { storeId: AllMallId | undefined }) 
 
   return (
     <>
+      {/* Catch the same AI health read-out + pulse the merchant saw on the overview
+          card, so card→detail is one continuous AI narrative; the KPIs below are its
+          supporting evidence. */}
+      {store && <StoreAiHealthBanner store={store} biz={detail} />}
       <Row gutter={[16, 16]} className="store-kpi-row" style={{ marginBottom: 16 }}>
         <Col xs={12} lg={6}>
           <MetricCard
