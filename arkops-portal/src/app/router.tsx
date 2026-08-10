@@ -28,7 +28,6 @@ const AdManagementPage = lazy(() => import('../pages/ads/AdManagementPage').then
 const InventoryManagementPage = lazy(() => import('../pages/inventory/InventoryManagementPage').then((module) => ({ default: module.InventoryManagementPage })));
 const ReportsPage = lazy(() => import('../pages/reports/ReportsPage').then((module) => ({ default: module.ReportsPage })));
 const LiveManagementPage = lazy(() => import('../pages/livestream/LiveManagementPage').then((module) => ({ default: module.LiveManagementPage })));
-const ApiConfigPage = lazy(() => import('../pages/settings/ApiConfigPage').then((module) => ({ default: module.ApiConfigPage })));
 const StoreDetailPage = lazy(() => import('../pages/stores/StoreDetailPage').then((module) => ({ default: module.StoreDetailPage })));
 const StoreListPage = lazy(() => import('../pages/stores/StoreListPage').then((module) => ({ default: module.StoreListPage })));
 const StoreOnboardingPage = lazy(() => import('../pages/stores/StoreOnboardingPage').then((module) => ({ default: module.StoreOnboardingPage })));
@@ -132,9 +131,6 @@ const router = createBrowserRouter(
 
         // 报表导出
         { path: 'reports', element: guarded('/reports', <ReportsPage />, tableFallback) },
-
-        // API 与 Webhook
-        { path: 'api-config', element: guarded('/api-config', <ApiConfigPage />, tableFallback) },
 
         // 订单管理
         { path: 'orders', element: guarded('/orders', <OrderAutomationPage />, tableFallback) },

@@ -15,7 +15,6 @@
  */
 import {
   AlertOutlined,
-  ApiOutlined,
   AppstoreOutlined,
   AuditOutlined,
   BarChartOutlined,
@@ -271,13 +270,6 @@ export function AppShell() {
       key: '/reports',
       icon: <BarChartOutlined />,
       label: t('nav.reports'),
-    },
-
-    // 5h. API 与 Webhook
-    {
-      key: '/api-config',
-      icon: <ApiOutlined />,
-      label: t('nav.api'),
     },
 
     // 6. 自动化配置（场景优先；逐 Agent 专家视图从页内进入）
