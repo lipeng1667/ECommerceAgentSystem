@@ -4,7 +4,7 @@ import { stores, tasks } from './mockData';
 import { appendItem, insertFirst, replaceItem } from './mockRepository';
 import { nextId, generateConnectToken } from './idGenerator';
 import { recordAuditLog } from './auditLogger';
-import type { AllMallId, Store, StoreConfig, StoreConnection, StoreServiceType } from '../types/domain';
+import type { AllMallId, Store, StoreConfig, StoreConnection, StoreServiceType, ServiceGap, StoreSmartSummary, BulkListingCandidate } from '../types/domain';
 
 function logStoreAction(storeId: AllMallId, action: string, summary: string): void {
   recordAuditLog({
@@ -215,5 +215,90 @@ export const storesApi = {
     }
     logStoreAction(storeId, '添加连接', `添加服务连接: ${input.serviceName}`);
     return mockDelay(conn);
+  },
+
+  // ===== D7 Round 2: Store Smart Flow =====
+
+  /** Detect missing high-value services for a store. */
+  getServiceGaps: (storeId: AllMallId): Promise<ServiceGap[]> => {
+    const store = stores.find((s) => s.id === storeId);
+    if (!store || store.status === 'revoked') return mockDelay([]);
+    const existingTypes = new Set(store.connections?.map((c) => c.serviceType) ?? []);
+    const allServices: { type: StoreServiceType; name: string; agents: string[]; rationale: string; severity: ServiceGap['severity']; impact: number }[] = [
+      { type: 'advertising', name: '千川广告', agents: ['ad_optimizer', 'pricing_agent'], rationale: '店铺有大量订单但未开启广告投放，开通后可自动化投放和优化', severity: 'high', impact: 12000 },
+      { type: 'customer_service', name: '飞鸽客服', agents: ['coupon_agent', 'review_agent'], rationale: '店铺有订单但无法自动回复客户消息和处理售后', severity: 'high', impact: 8500 },
+      { type: 'logistics', name: '物流服务', agents: ['stock_alert'], rationale: '缺少物流授权，库存预警 Agent 无法获取实时履约数据', severity: 'medium', impact: 3000 },
+      { type: 'finance', name: '财务服务', agents: ['finance_audit'], rationale: '缺少财务授权，无法自动对账和生成财务报告', severity: 'low', impact: 1500 },
+    ];
+    const gaps: ServiceGap[] = allServices
+      .filter((svc) => !existingTypes.has(svc.type))
+      .map((svc, idx) => ({
+        id: (nextId('fieldConflicts', existingTypes.size) + idx) as AllMallId,
+        storeId,
+        serviceType: svc.type,
+        serviceName: svc.name,
+        blockedAgents: svc.agents,
+        rationale: svc.rationale,
+        estimatedGmvImpact: svc.impact,
+        severity: svc.severity,
+      }));
+    return mockDelay(gaps);
+  },
+
+  /** Generate smart summary after store connection. */
+  getSmartSummary: (storeId: AllMallId): Promise<StoreSmartSummary | null> => {
+    const store = stores.find((s) => s.id === storeId);
+    if (!store) return mockDelay(null);
+    const existingTypes = new Set(store.connections?.map((c) => c.serviceType) ?? []);
+    const gaps: StoreSmartSummary['serviceGaps'] = [];
+    if (!existingTypes.has('customer_service')) {
+      gaps.push({ serviceType: 'customer_service', serviceName: '飞鸽客服', blockedAgents: ['coupon_agent', 'review_agent'] });
+    }
+    if (!existingTypes.has('advertising')) {
+      gaps.push({ serviceType: 'advertising', serviceName: '千川广告', blockedAgents: ['ad_optimizer', 'pricing_agent'] });
+    }
+    const summary: StoreSmartSummary = {
+      storeId,
+      metrics: { products: 1236, skus: 3852, orders: 28410, reviews: 9642 },
+      serviceGaps: gaps,
+      recommendedFirstAction: gaps.length > 0
+        ? { type: 'fill_service_gap', title: '补全服务授权', description: `检测到 ${gaps.length} 项缺失服务，补全后可解锁全部 Agent 能力` }
+        : { type: 'start_agent', title: '开启首个 Agent', description: '推荐从差评巡检 Agent 开始，零风险观察店铺健康度' },
+      listableProductCount: 68,
+    };
+    return mockDelay(summary);
+  },
+
+  /** Get products that can be bulk-listed to a store that doesn't have them yet. */
+  getBulkListingCandidates: (storeId: AllMallId): Promise<BulkListingCandidate[]> => {
+    const baseId = nextId('products', 0);
+    const candidates: BulkListingCandidate[] = [
+      {
+        productId: baseId as AllMallId, spuCode: 'SPU-001',
+        name: 'iPhone 防摔硅胶手机壳', image: '', suggestedPrice: 29.90,
+        listedOnStores: ['拼多多旗舰店', '淘宝专营店'],
+      },
+      {
+        productId: (baseId + 1) as AllMallId, spuCode: 'SPU-002',
+        name: 'Type-C 快充数据线 1米', image: '', suggestedPrice: 15.90,
+        listedOnStores: ['拼多多旗舰店', '淘宝专营店', '京东旗舰店'],
+      },
+      {
+        productId: (baseId + 2) as AllMallId, spuCode: 'SPU-003',
+        name: '无线蓝牙耳机 降噪版', image: '', suggestedPrice: 89.00,
+        listedOnStores: ['拼多多旗舰店', '淘宝专营店'],
+      },
+      {
+        productId: (baseId + 3) as AllMallId, spuCode: 'SPU-004',
+        name: '手机支架 桌面折叠款', image: '', suggestedPrice: 12.50,
+        listedOnStores: ['拼多多旗舰店'],
+      },
+      {
+        productId: (baseId + 4) as AllMallId, spuCode: 'SPU-005',
+        name: '屏幕清洁套装 喷雾+布', image: '', suggestedPrice: 9.90,
+        listedOnStores: ['拼多多旗舰店', '淘宝专营店', '京东旗舰店'],
+      },
+    ];
+    return mockDelay(candidates);
   },
 };

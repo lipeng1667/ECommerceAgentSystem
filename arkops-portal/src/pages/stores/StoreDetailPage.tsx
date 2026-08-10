@@ -30,7 +30,7 @@ import { DetailSection } from '../../components/detail/DetailSection';
 import { MetricCard } from '../../components/metrics/MetricCard';
 import { PageHeader } from '../../components/PageHeader';
 import { StatusBadge } from '../../components/StatusBadge';
-import type { AllMallId, Store, StoreConnection, StoreServiceType } from '../../types/domain';
+import type { AllMallId, ServiceGap, Store, StoreConnection, StoreServiceType } from '../../types/domain';
 import { parseAllMallId } from '../../utils/id';
 import { getExpiringInDays, getPlatformName } from '../../utils/storeDisplay';
 import { StoreAiHealthBanner } from './StoreAiHealthBanner';
@@ -502,8 +502,21 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
               { value: 'api_key', label: t('stores.authApiKey') }
             ]} />
           </Form.Item>
-          <Form.Item label={t('stores.account')} name="account"><Input placeholder="seller@example.com" /></Form.Item>
-          <Form.Item label="API Key" name="apiKey"><Input placeholder={t('storewizard.apiKeyPlaceholder')} /></Form.Item>
+          <Form.Item noStyle shouldUpdate={(prev, cur) => prev.authMethod !== cur.authMethod}>
+            {({ getFieldValue }) => {
+              const method = getFieldValue('authMethod');
+              return (
+                <>
+                  <Form.Item label={t('stores.account')} name="account" rules={method === 'credentials' ? [{ required: true, message: t('stores.required') }] : []}>
+                    <Input placeholder="seller@example.com" />
+                  </Form.Item>
+                  <Form.Item label="API Key" name="apiKey" rules={method === 'api_key' ? [{ required: true, message: t('stores.required') }] : []}>
+                    <Input placeholder={t('storewizard.apiKeyPlaceholder')} />
+                  </Form.Item>
+                </>
+              );
+            }}
+          </Form.Item>
         </Form>
       </Modal>
     </>
@@ -613,6 +626,11 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
           style={{ marginBottom: 16 }}
         />
       )}
+      {/* D7 Round 2 (item 5): show missing services with impact estimation */}
+      <ServiceGapCard storeId={parsedStoreId} store={store} onAddService={(serviceType) => {
+        if (serviceType) connectionForm.setFieldsValue({ serviceType });
+        setConnectionModalOpen(true);
+      }} />
       <Tabs
         defaultActiveKey="overview"
         items={[
@@ -621,6 +639,69 @@ export function StoreDetailPage({ mode }: { mode?: 'new' }) {
         ]}
       />
     </div>
+  );
+}
+
+/**
+ * D7 Round 2 (item 5): Service Gap Detection Card.
+ * Detects missing high-value services and suggests activation with
+ * impact estimation and blocked-agent visibility.
+ */
+function ServiceGapCard({ storeId, store, onAddService }: { storeId: AllMallId | undefined; store?: Store; onAddService: (serviceType?: string) => void }) {
+  const { t } = useI18n();
+  const { data: gaps = [] } = useQuery({
+    queryKey: ['serviceGaps', storeId],
+    queryFn: () => storesApi.getServiceGaps(storeId!),
+    enabled: storeId !== undefined && store?.status === 'connected',
+  });
+
+  if (!storeId || store?.status !== 'connected' || gaps.length === 0) return null;
+
+  const severityColors: Record<ServiceGap['severity'], string> = { high: 'red', medium: 'orange', low: 'default' };
+  const severityTexts: Record<ServiceGap['severity'], string> = {
+    high: t('stores.serviceGapHigh'),
+    medium: t('stores.serviceGapMedium'),
+    low: t('stores.serviceGapLow'),
+  };
+
+  return (
+    <Card
+      size="small"
+      title={<><WarningOutlined style={{ color: 'var(--ark-orange)', marginRight: 8 }} />{t('stores.serviceGapTitle')}</>}
+      style={{ marginBottom: 16 }}
+    >
+      <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 16 }}>
+        {t('stores.serviceGapDescription')}
+      </Typography.Paragraph>
+      <Space direction="vertical" size={12} style={{ width: '100%' }}>
+        {gaps.map((gap) => (
+          <div key={gap.id} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--ark-bg-subtle)', borderRadius: 8 }}>
+            <div style={{ flex: 1 }}>
+              <Space size={4}>
+                <Typography.Text strong>{gap.serviceName}</Typography.Text>
+                <Tag color={severityColors[gap.severity]} style={{ fontSize: 10 }}>{severityTexts[gap.severity]}</Tag>
+              </Space>
+              <Typography.Paragraph type="secondary" style={{ fontSize: 12, margin: '4px 0' }}>
+                {gap.rationale}
+              </Typography.Paragraph>
+              <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+                {t('stores.serviceGapBlocks', { agents: gap.blockedAgents.map((a) => t(`agent.${a}`)).join('、') })}
+              </Typography.Text>
+            </div>
+            <Space direction="vertical" align="end" size={4}>
+              {gap.estimatedGmvImpact > 0 && (
+                <Typography.Text style={{ fontSize: 14, fontWeight: 600, color: 'var(--ark-green)', whiteSpace: 'nowrap' }}>
+                  {t('stores.serviceGapImpact')} +¥{gap.estimatedGmvImpact.toLocaleString()}
+                </Typography.Text>
+              )}
+              <Button size="small" type="link" onClick={() => onAddService(gap.serviceType)}>
+                {t('common.add')}
+              </Button>
+            </Space>
+          </div>
+        ))}
+      </Space>
+    </Card>
   );
 }
 
