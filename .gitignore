@@ -2,3 +2,6 @@ Business Plan/
 outputs/
 .claude
 .DS_Store
+.trae/
+autoallmall/node_modules/
+autoallmall/dist/
