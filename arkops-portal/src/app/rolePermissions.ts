@@ -37,6 +37,13 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, boolean>> = {
     '/dashboard': true, '/orders': true, '/products': true,
     '/agents': true, '/agents/exceptions': true, '/agents/approvals': true,
     '/inbox': true, // WS-B: Action Inbox
+    '/customer-service': true,
+    '/reviews': true,
+    '/promotions': true,
+    '/ads': true,
+    '/inventory': true,
+    '/livestream': true,
+    '/reports': true,
     '/stores': true, '/settings/stores': true, '/settings/members': true,
     '/settings/models': true, '/settings/billing': true,
     '/settings/audit-logs': true, '/settings/notifications': true,
@@ -46,6 +53,13 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, boolean>> = {
     '/dashboard': true, '/orders': true, '/products': true,
     '/agents': true, '/agents/exceptions': true, '/agents/approvals': true,
     '/inbox': true, // WS-B: Action Inbox
+    '/customer-service': true,
+    '/reviews': true,
+    '/promotions': true,
+    '/ads': true,
+    '/inventory': true,
+    '/livestream': true,
+    '/reports': true,
     '/stores': true, '/settings/stores': true, '/settings/members': true,
     '/settings/models': true, '/settings/billing': true,
     '/settings/audit-logs': true, '/settings/notifications': true,
@@ -55,6 +69,13 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, boolean>> = {
     '/dashboard': true, '/orders': true, '/products': true,
     '/agents': true, '/agents/exceptions': true, '/agents/approvals': true,
     '/inbox': true, // WS-B: Action Inbox
+    '/customer-service': true,
+    '/reviews': true,
+    '/promotions': true,
+    '/ads': true,
+    '/inventory': true,
+    '/livestream': true,
+    '/reports': true,
     '/stores': true, '/settings/stores': true, '/settings/members': false,
     '/settings/models': true, '/settings/billing': true,
     '/settings/audit-logs': true, '/settings/notifications': true,
@@ -64,6 +85,13 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, boolean>> = {
     '/dashboard': true, '/orders': true, '/products': true,
     '/agents': true, '/agents/exceptions': true, '/agents/approvals': true,
     '/inbox': true, // WS-B: Action Inbox
+    '/customer-service': true,
+    '/reviews': true,
+    '/promotions': true,
+    '/ads': true,
+    '/inventory': true,
+    '/livestream': true,
+    '/reports': true,
     '/stores': true, '/settings/stores': true, '/settings/members': false,
     '/settings/models': false, '/settings/billing': true,
     '/settings/audit-logs': false, '/settings/notifications': false,
@@ -73,6 +101,8 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, boolean>> = {
     '/dashboard': true, '/orders': false, '/products': false,
     '/agents': false, '/agents/exceptions': false, '/agents/approvals': false,
     '/inbox': false, // WS-B: Action Inbox
+    '/livestream': false,
+    '/reports': false,
     '/stores': false, '/settings/stores': false, '/settings/members': false,
     '/settings/models': false, '/settings/billing': true,
     '/settings/audit-logs': false, '/settings/notifications': false,
@@ -82,6 +112,13 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, boolean>> = {
     '/dashboard': true, '/orders': true, '/products': true,
     '/agents': true, '/agents/exceptions': true, '/agents/approvals': true,
     '/inbox': true, // WS-B: Action Inbox
+    '/customer-service': true,
+    '/reviews': true,
+    '/promotions': true,
+    '/ads': true,
+    '/inventory': true,
+    '/livestream': true,
+    '/reports': true,
     '/stores': true, '/settings/stores': true, '/settings/members': false,
     '/settings/models': true, '/settings/billing': true,
     '/settings/audit-logs': true, '/settings/notifications': false,
@@ -189,14 +226,16 @@ const ROLE_MENU_VISIBILITY: Record<Role, Set<string>> = {
   Admin: new Set('*'),
   Operator: new Set([
     '/dashboard', '/orders', '/products',
-    '/agents', '/agents/exceptions', '/agents/approvals', '/inbox', // WS-B
+    '/agents', '/agents/exceptions', '/agents/approvals', '/inbox', '/customer-service', '/reviews', '/promotions',
+    '/ads', '/inventory', '/livestream', '/reports',
     '/stores', '/settings/stores', '/settings/models',
     '/settings/billing', '/settings/audit-logs', '/settings/notifications',
     '/settings/guide', '/setup',
   ]),
   Approver: new Set([
     '/dashboard', '/orders', '/products',
-    '/agents', '/agents/exceptions', '/agents/approvals', '/inbox', // WS-B
+    '/agents', '/agents/exceptions', '/agents/approvals', '/inbox', '/customer-service', '/reviews', '/promotions',
+    '/ads', '/inventory', '/livestream', '/reports', '/api-config',
     '/setup', // D10: 自动化配置 front door for the /agents expert view
     '/stores', '/settings/stores', '/settings/billing',
     '/settings/guide',
@@ -204,7 +243,8 @@ const ROLE_MENU_VISIBILITY: Record<Role, Set<string>> = {
   Finance: new Set(['/dashboard', '/settings/billing']),
   Viewer: new Set([
     '/dashboard', '/orders', '/products',
-    '/agents', '/agents/exceptions', '/agents/approvals', '/inbox', // WS-B
+    '/agents', '/agents/exceptions', '/agents/approvals', '/inbox', '/customer-service', '/reviews', '/promotions',
+    '/ads', '/inventory', '/livestream', '/reports', '/api-config',
     '/setup', // D10: 自动化配置 front door for the /agents expert view
     '/stores', '/settings/stores', '/settings/models',
     '/settings/billing', '/settings/audit-logs', '/settings/guide',

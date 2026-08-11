@@ -32,6 +32,7 @@ import { DataTableCard } from '../../components/table/DataTableCard';
 import { TableActionGroup } from '../../components/table/TableActionGroup';
 import { CreateProductModal } from './CreateProductModal';
 import { ListToStoreModal } from './ListToStoreModal';
+import { BulkListToStoreModal } from './BulkListToStoreModal';
 import type { AllMallId, AttributeProvenance, AutoSyncChange, ListingStatus, Product, ProductListing, ProductMergeSuggestion, Store, SyncResult } from '../../types/domain';
 
 type TranslateFn = ReturnType<typeof useI18n>['t'];
@@ -314,6 +315,8 @@ export function ProductManagementPage() {
   const [activeTab, setActiveTab] = useState('products');
   const [createModalMode, setCreateModalMode] = useState<'manual' | 'recognize' | null>(null);
   const [logExpanded, setLogExpanded] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<AllMallId[]>([]);
+  const [bulkListModalOpen, setBulkListModalOpen] = useState(false);
   const navigate = useNavigate();
 
   const invalidateListings = () => queryClient.invalidateQueries({ queryKey: ['productListings'] });
@@ -587,7 +590,7 @@ export function ProductManagementPage() {
 
       <Tabs
         activeKey={activeTab}
-        onChange={setActiveTab}
+        onChange={(key) => { setActiveTab(key); setSelectedRowKeys([]); }}
         items={[
           {
             key: 'products',
@@ -634,6 +637,23 @@ export function ProductManagementPage() {
                   />
                 </PageFilterBar>
 
+                {selectedRowKeys.length > 0 && (
+                  <Alert
+                    type="info"
+                    showIcon
+                    message={t('products.bulkSelected', { count: selectedRowKeys.length })}
+                    action={
+                      <Space>
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => setBulkListModalOpen(true)}>
+                          {t('products.bulkListToStore')}
+                        </Button>
+                        <Button onClick={() => setSelectedRowKeys([])}>{t('common.clearSelection')}</Button>
+                      </Space>
+                    }
+                    style={{ marginBottom: 12 }}
+                  />
+                )}
+
                 <DataTableCard<Product>
                   rowKey="id"
                   columns={columns}
@@ -641,6 +661,11 @@ export function ProductManagementPage() {
                   pagination={{ pageSize: 10, showSizeChanger: true, pageSizeOptions: [10, 20, 50] }}
                   expandable={{ expandedRowRender, rowExpandable: () => true }}
                   scroll={{ x: 1200 }}
+                  rowSelection={{
+                    selectedRowKeys,
+                    onChange: (keys) => setSelectedRowKeys(keys as AllMallId[]),
+                    preserveSelectedRowKeys: true,
+                  }}
                 />
               </>
             ),
@@ -725,6 +750,17 @@ export function ProductManagementPage() {
         availableStores={listToStoreTarget ? availableStoresFor(listToStoreTarget.product) : []}
         initialStoreId={listToStoreTarget?.storeId}
         onClose={() => setListToStoreTarget(null)}
+      />
+
+      <BulkListToStoreModal
+        open={bulkListModalOpen}
+        products={filteredProducts.filter((p) => selectedRowKeys.includes(p.id))}
+        allListings={listings}
+        availableStores={(() => {
+          const selected = filteredProducts.filter((p) => selectedRowKeys.includes(p.id));
+          return stores.filter((s) => selected.some((p) => !listings.some((l) => l.storeId === s.id && l.productId === p.id)));
+        })()}
+        onClose={() => { setBulkListModalOpen(false); setSelectedRowKeys([]); }}
       />
 
       {createModalMode && (

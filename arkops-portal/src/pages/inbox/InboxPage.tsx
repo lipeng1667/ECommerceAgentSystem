@@ -45,6 +45,7 @@ import { useAuth } from '../../app/auth';
 import { useI18n } from '../../app/i18n';
 import { EmptyState } from '../../components/EmptyState';
 import { PageHeader } from '../../components/PageHeader';
+import { ProductThumb } from '../../components/products/ProductThumb';
 import { StatusBadge } from '../../components/StatusBadge';
 import { StoreConnectionEmptyState } from '../../components/StoreConnectionEmptyState';
 import { getExpiringInDays } from '../../utils/storeDisplay';
@@ -106,6 +107,8 @@ interface InboxEntry {
   store?: Store;
   order?: Order;
   listing?: ProductListing;
+  /** The product this listing belongs to (for product_draft entries to show thumbnail/price). */
+  product?: Product;
   newProductCandidate?: NewProductCandidate;
   mergeSuggestion?: ProductMergeSuggestion;
   fieldConflict?: FieldConflict;
@@ -432,6 +435,30 @@ export function InboxPage() {
     }
   });
 
+  // T-PROD-004: draft listing actions — submit for review, approve, reject
+  const submitDraftMutation = useMutation({
+    mutationFn: (listingId: number) => productListingsApi.updateStatus(listingId, 'pending_review'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['productListings'] });
+      itemToast(t('inbox.draftSubmitted'));
+    }
+  });
+  const approveListingMutation = useMutation({
+    mutationFn: (listingId: number) => productListingsApi.updateStatus(listingId, 'listed'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['productListings'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      itemToast(t('inbox.draftApproved'));
+    }
+  });
+  const rejectListingMutation = useMutation({
+    mutationFn: (listingId: number) => productListingsApi.updateStatus(listingId, 'draft'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['productListings'] });
+      itemToast(t('inbox.draftRejected'));
+    }
+  });
+
   const entries = useMemo<InboxEntry[]>(() => {
     const list: Omit<InboxEntry, 'batchable'>[] = [];
 
@@ -574,7 +601,8 @@ export function InboxPage() {
         storeName,
         urgencyRank: 3,
         createdAt: listing.lastSyncedAt,
-        listing
+        listing,
+        product
       });
     }
 
@@ -827,14 +855,75 @@ export function InboxPage() {
       );
     }
     if (entry.kind === 'product_draft' && entry.listing) {
+      const listing = entry.listing;
+      const isReviewer = user?.role === 'Owner' || user?.role === 'Admin' || user?.role === 'Approver';
+      const canSubmit = isReviewer || user?.role === 'Operator';
+      if (listing.status === 'draft' && canSubmit) {
+        return (
+          <Space size={4} wrap>
+            <Button
+              size="small"
+              type="primary"
+              icon={<CheckOutlined />}
+              loading={submitDraftMutation.isPending}
+              onClick={() => submitDraftMutation.mutate(listing.id)}
+            >
+              {t('inbox.submitForReview')}
+            </Button>
+            <Button
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => navigate(`/products/${listing.productId}`)}
+            >
+              {t('inbox.view')}
+            </Button>
+          </Space>
+        );
+      }
+      if (listing.status === 'pending_review' && isReviewer) {
+        return (
+          <Space size={4} wrap>
+            <Popconfirm
+              title={t('inbox.approveListingConfirm')}
+              onConfirm={() => approveListingMutation.mutate(listing.id)}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
+            >
+              <Button
+                size="small"
+                type="primary"
+                icon={<CheckOutlined />}
+                loading={approveListingMutation.isPending}
+              >
+                {t('inbox.approveListing')}
+              </Button>
+            </Popconfirm>
+            <Popconfirm
+              title={t('inbox.rejectListingConfirm')}
+              onConfirm={() => rejectListingMutation.mutate(listing.id)}
+              okText={t('common.confirm')}
+              cancelText={t('common.cancel')}
+            >
+              <Button
+                size="small"
+                danger
+                icon={<CloseOutlined />}
+                loading={rejectListingMutation.isPending}
+              >
+                {t('inbox.rejectListing')}
+              </Button>
+            </Popconfirm>
+          </Space>
+        );
+      }
       return (
         <Button
           size="small"
           type="primary"
           icon={<EyeOutlined />}
-          onClick={() => navigate(`/products/${entry.listing!.productId}`)}
+          onClick={() => navigate(`/products/${listing.productId}`)}
         >
-          {t('inbox.goToListing')}
+          {t('inbox.view')}
         </Button>
       );
     }
@@ -1055,7 +1144,11 @@ export function InboxPage() {
                               : <Tag color="orange" style={{ margin: 0 }}>{t('inbox.expiringTag', { days: entry.expiresInDays })}</Tag>
                           )}
                         </Space>
-                        <div>
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                          {entry.kind === 'product_draft' && entry.product && (
+                            <div style={{ flexShrink: 0 }}><ProductThumb src={entry.product.images[0]} size={48} /></div>
+                          )}
+                          <div style={{ flex: 1, minWidth: 0 }}>
                           {entry.kind === 'approval' && entry.approval ? (
                             <Link to={`/approvals/${entry.approval.id}`}>
                               <Typography.Text strong>{entry.title}</Typography.Text>
@@ -1077,10 +1170,12 @@ export function InboxPage() {
                         )}
                         <Typography.Text type="secondary" style={{ fontSize: 11 }}>
                           {entry.storeName}
+                          {entry.kind === 'product_draft' && entry.listing ? ` · ¥${entry.listing.sellingPrice.toFixed(2)}` : ''}
                           {entry.approval ? ` · ${t(`agent.${entry.approval.agentType}`)}` : ''}
                           {entry.exception ? ` · ${t(`agent.${entry.exception.agentType}`)}` : ''}
                           {entry.createdAt ? ` · ${formatAge(t, entry.createdAt, clock)}` : ''}
                         </Typography.Text>
+                      </div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
                         {urgency && (

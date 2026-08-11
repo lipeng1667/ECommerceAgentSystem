@@ -13,6 +13,7 @@ const AgentListPage = lazy(() => import('../pages/agents/AgentListPage').then((m
 const ApprovalDetailPage = lazy(() => import('../pages/approvals/ApprovalDetailPage').then((module) => ({ default: module.ApprovalDetailPage })));
 const AuditLogsPage = lazy(() => import('../pages/audit/AuditLogsPage').then((module) => ({ default: module.AuditLogsPage })));
 const BillingSettingsPage = lazy(() => import('../pages/billing/BillingSettingsPage').then((module) => ({ default: module.BillingSettingsPage })));
+const CustomerServicePage = lazy(() => import('../pages/customerService/CustomerServicePage').then((module) => ({ default: module.CustomerServicePage })));
 const DashboardPage = lazy(() => import('../pages/dashboard/DashboardPage').then((module) => ({ default: module.DashboardPage })));
 const InboxPage = lazy(() => import('../pages/inbox/InboxPage').then((module) => ({ default: module.InboxPage }))); // WS-B
 const LoginPage = lazy(() => import('../pages/auth/LoginPage').then((module) => ({ default: module.LoginPage })));
@@ -22,9 +23,15 @@ const NotificationsSettingsPage = lazy(() => import('../pages/settings/Notificat
 const OrderAutomationPage = lazy(() => import('../pages/orders/OrderAutomationPage').then((module) => ({ default: module.OrderAutomationPage })));
 const ProductDetailPage = lazy(() => import('../pages/products/ProductDetailPage').then((module) => ({ default: module.ProductDetailPage })));
 const ProductManagementPage = lazy(() => import('../pages/products/ProductManagementPage').then((module) => ({ default: module.ProductManagementPage })));
+const PromotionManagementPage = lazy(() => import('../pages/promotions/PromotionManagementPage').then((module) => ({ default: module.PromotionManagementPage })));
+const AdManagementPage = lazy(() => import('../pages/ads/AdManagementPage').then((module) => ({ default: module.AdManagementPage })));
+const InventoryManagementPage = lazy(() => import('../pages/inventory/InventoryManagementPage').then((module) => ({ default: module.InventoryManagementPage })));
+const ReportsPage = lazy(() => import('../pages/reports/ReportsPage').then((module) => ({ default: module.ReportsPage })));
+const LiveManagementPage = lazy(() => import('../pages/livestream/LiveManagementPage').then((module) => ({ default: module.LiveManagementPage })));
 const StoreDetailPage = lazy(() => import('../pages/stores/StoreDetailPage').then((module) => ({ default: module.StoreDetailPage })));
 const StoreListPage = lazy(() => import('../pages/stores/StoreListPage').then((module) => ({ default: module.StoreListPage })));
 const StoreOnboardingPage = lazy(() => import('../pages/stores/StoreOnboardingPage').then((module) => ({ default: module.StoreOnboardingPage })));
+const ReviewManagementPage = lazy(() => import('../pages/reviews/ReviewManagementPage').then((module) => ({ default: module.ReviewManagementPage })));
 const SetupConfigPage = lazy(() => import('../pages/setup/SetupConfigPage').then((module) => ({ default: module.SetupConfigPage })));
 const UsageGuideSettingsPage = lazy(() => import('../pages/guide/UsageGuideSettingsPage').then((module) => ({ default: module.UsageGuideSettingsPage })));
 
@@ -103,6 +110,27 @@ const router = createBrowserRouter(
 
         // 行动收件箱（WS-B, D2）— 审批 + 异常 + 重新登录统一队列
         { path: 'inbox', element: guarded('/inbox', <InboxPage />, tableFallback) },
+
+        // 客服消息
+        { path: 'customer-service', element: guarded('/customer-service', <CustomerServicePage />) },
+
+        // 评价管理
+        { path: 'reviews', element: guarded('/reviews', <ReviewManagementPage />, tableFallback) },
+
+        // 促销活动
+        { path: 'promotions', element: guarded('/promotions', <PromotionManagementPage />, tableFallback) },
+
+        // 广告投放
+        { path: 'ads', element: guarded('/ads', <AdManagementPage />, tableFallback) },
+
+        // 库存管理
+        { path: 'inventory', element: guarded('/inventory', <InventoryManagementPage />, tableFallback) },
+
+        // 直播管理
+        { path: 'livestream', element: guarded('/livestream', <LiveManagementPage />, tableFallback) },
+
+        // 报表导出
+        { path: 'reports', element: guarded('/reports', <ReportsPage />, tableFallback) },
 
         // 订单管理
         { path: 'orders', element: guarded('/orders', <OrderAutomationPage />, tableFallback) },

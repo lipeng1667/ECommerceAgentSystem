@@ -17,11 +17,14 @@ import {
   AlertOutlined,
   AppstoreOutlined,
   AuditOutlined,
+  BarChartOutlined,
   BellOutlined,
   CheckSquareOutlined,
   CloseOutlined,
+  CustomerServiceOutlined,
   DashboardOutlined,
   DesktopOutlined,
+  GiftOutlined,
   InboxOutlined, // WS-B
   PayCircleOutlined,
   ExperimentOutlined as LabOutlined,
@@ -32,7 +35,10 @@ import {
   SearchOutlined,
   SettingOutlined,
   ShoppingCartOutlined,
+  ShoppingOutlined,
   ShopOutlined,
+  PlaySquareOutlined,
+  StarOutlined,
   SunOutlined,
   TeamOutlined,
   ThunderboltOutlined,
@@ -215,6 +221,55 @@ export function AppShell() {
           )}
         </span>
       )
+    },
+
+    // 5a. 客服消息
+    {
+      key: '/customer-service',
+      icon: <CustomerServiceOutlined />,
+      label: t('nav.customerService'),
+    },
+
+    // 5b. 评价管理
+    {
+      key: '/reviews',
+      icon: <StarOutlined />,
+      label: t('nav.reviews'),
+    },
+
+    // 5c. 促销活动
+    {
+      key: '/promotions',
+      icon: <GiftOutlined />,
+      label: t('nav.promotions'),
+    },
+
+    // 5d. 广告投放
+    {
+      key: '/ads',
+      icon: <ThunderboltOutlined />,
+      label: t('nav.ads'),
+    },
+
+    // 5e. 库存管理
+    {
+      key: '/inventory',
+      icon: <ShoppingOutlined />,
+      label: t('nav.inventory'),
+    },
+
+    // 5f. 直播管理
+    {
+      key: '/livestream',
+      icon: <PlaySquareOutlined />,
+      label: t('nav.live'),
+    },
+
+    // 5g. 报表导出
+    {
+      key: '/reports',
+      icon: <BarChartOutlined />,
+      label: t('nav.reports'),
     },
 
     // 6. 自动化配置（场景优先；逐 Agent 专家视图从页内进入）

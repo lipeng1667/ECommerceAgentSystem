@@ -39,7 +39,7 @@ import {
   message,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { agentsApi } from '../../api/agents';
@@ -48,6 +48,105 @@ import { storesApi } from '../../api/stores';
 import { useAuth } from '../../app/auth';
 import { useI18n } from '../../app/i18n';
 import { queueDailyLoopTour } from '../../components/OnboardingTour';
+import type { AllMallId, StoreSmartSummary } from '../../types/domain';
+
+// ===== D7 Round 2: Smart Summary & Bulk Listing Components =====
+
+/** D7R2 (item 4): Post-connection smart analysis — what was found, what's missing, what to do next. */
+function SmartSummaryCard({ storeId }: { storeId: AllMallId }) {
+  const { t } = useI18n();
+  const navigate = useNavigate();
+  const { data: summary } = useQuery({
+    queryKey: ['smartSummary', storeId],
+    queryFn: () => storesApi.getSmartSummary(storeId),
+    enabled: !!storeId,
+  });
+
+  if (!summary) return null;
+
+  const { metrics, serviceGaps, recommendedFirstAction, listableProductCount } = summary;
+  const hasGaps = serviceGaps.length > 0;
+
+  return (
+    <Card
+      size="small"
+      title={<><RocketOutlined style={{ marginRight: 8 }} />{t('stores.smartSummaryTitle')}</>}
+      style={{ marginBottom: 16 }}
+    >
+      {/* Metrics row */}
+      <Row gutter={[12, 8]} style={{ marginBottom: 12 }}>
+        <Col span={6}>
+          <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('stores.smartSummaryProducts', { count: metrics.products })}</Typography.Text>
+          <Typography.Text strong style={{ fontSize: 18 }}>{metrics.products.toLocaleString()}</Typography.Text>
+        </Col>
+        <Col span={6}>
+          <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('stores.smartSummaryOrders', { count: metrics.orders })}</Typography.Text>
+          <Typography.Text strong style={{ fontSize: 18 }}>{metrics.orders.toLocaleString()}</Typography.Text>
+        </Col>
+        <Col span={6}>
+          <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block' }}>SKU</Typography.Text>
+          <Typography.Text strong style={{ fontSize: 18 }}>{metrics.skus.toLocaleString()}</Typography.Text>
+        </Col>
+        <Col span={6}>
+          <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t('stores.smartSummaryReviews', { count: metrics.reviews })}</Typography.Text>
+          <Typography.Text strong style={{ fontSize: 18 }}>{metrics.reviews.toLocaleString()}</Typography.Text>
+        </Col>
+      </Row>
+
+      {/* Service gaps warning */}
+      {hasGaps && (
+        <Alert
+          type="warning"
+          showIcon
+          message={t('stores.smartSummaryServiceGap', { count: serviceGaps.length })}
+          description={
+            <div style={{ marginTop: 4 }}>
+              {serviceGaps.map((gap) => (
+                <div key={gap.serviceType} style={{ fontSize: 12, marginBottom: 2 }}>
+                  {t('stores.smartSummaryServiceGapDetail', {
+                    name: gap.serviceName,
+                    agents: gap.blockedAgents.map((a) => t(`agent.${a}`)).join('、'),
+                  })}
+                </div>
+              ))}
+            </div>
+          }
+          style={{ marginBottom: 12 }}
+        />
+      )}
+
+      {/* Recommended action */}
+      <Alert
+        type="info"
+        showIcon
+        icon={<RocketOutlined />}
+        message={recommendedFirstAction.title}
+        description={recommendedFirstAction.description}
+        action={
+          <Space direction="vertical" size={4}>
+            {recommendedFirstAction.type === 'fill_service_gap' && (
+              <Button
+                size="small"
+                type="primary"
+                onClick={() => navigate(`/stores/${storeId}`, { state: { tab: 'settings' } })}
+              >
+                {t('stores.smartSummaryFillGap')}
+              </Button>
+            )}
+            {listableProductCount > 0 && (
+              <Button
+                size="small"
+                onClick={() => navigate(`/stores/${storeId}`, { state: { tab: 'overview' } })}
+              >
+                {t('stores.smartSummaryListingCta', { count: listableProductCount })}
+              </Button>
+            )}
+          </Space>
+        }
+      />
+    </Card>
+  );
+}
 
 type Journey = 'import' | 'migrate';
 type PlatformKey = 'pinduoduo' | 'taobao' | 'jd';
@@ -764,6 +863,9 @@ export function StoreOnboardingPage() {
           ))}
         </Row>
         <Alert type="success" showIcon message="每日自动同步已开启" description="订单每 15 分钟、商品与库存每小时、评价和经营指标每天自动更新。" />
+
+        {/* D7 Round 2 (item 4): Smart analysis summary after connection */}
+        {storeCreated && <SmartSummaryCard storeId={storeCreated.id} />}
 
         {/* A9: guided first-agent moment — the onboarding arc ends at the first approval. */}
         <Card className="onboarding-first-agent-card">
