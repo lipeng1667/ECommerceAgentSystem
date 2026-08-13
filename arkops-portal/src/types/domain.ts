@@ -845,6 +845,15 @@ export interface CustomerSession {
   status: SessionStatus;
   tags: string[];
   platformId: string;
+  /**
+   * First-response time in seconds (buyer's first message → first reply). Undefined
+   * while still unanswered. Drives the CS SLA board's first-response-rate metric.
+   */
+  firstResponseSeconds?: number;
+  /** Who produced the first response — the AI Agent (秒回) or a human seat. */
+  handledBy?: 'ai' | 'human';
+  /** Whether this pending session needs a human (negotiation, complaint, escalation). */
+  needsHuman?: boolean;
 }
 
 export interface CustomerMessage {

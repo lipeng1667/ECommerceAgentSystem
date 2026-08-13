@@ -12,18 +12,18 @@ const min = (m: number) => new Date(now - m * 60000).toISOString();
 const hr = (h: number) => new Date(now - h * 3600000).toISOString();
 
 const sessions: CustomerSession[] = [
-  { id: 10001, storeId: 1001, buyerName: '张女士', lastMessage: '那大概什么时候能到货？', lastMessageAt: min(3), unreadCount: 2, status: 'pending_reply', tags: ['物流查询'], platformId: 'pinduoduo' },
-  { id: 10002, storeId: 1001, buyerName: '李同学', lastMessage: '好的，那就换一个颜色吧', lastMessageAt: min(15), unreadCount: 0, status: 'replied', tags: ['换货'], platformId: 'pinduoduo' },
-  { id: 10003, storeId: 1002, buyerName: '王老板', lastMessage: '这个价格能不能再优惠点？我批发', lastMessageAt: min(8), unreadCount: 1, status: 'pending_reply', tags: ['议价', '批发'], platformId: 'taobao' },
-  { id: 10004, storeId: 1002, buyerName: '赵女士', lastMessage: '收到货发现有瑕疵，麻烦处理一下', lastMessageAt: min(25), unreadCount: 0, status: 'replied', tags: ['质量投诉'], platformId: 'taobao' },
-  { id: 10005, storeId: 1003, buyerName: '刘先生', lastMessage: '退款为什么还没到账？已经三天了', lastMessageAt: min(5), unreadCount: 3, status: 'pending_reply', tags: ['退款'], platformId: 'jd' },
-  { id: 10006, storeId: 1003, buyerName: '陈小姐', lastMessage: '谢谢，已经收到了', lastMessageAt: hr(2), unreadCount: 0, status: 'closed', tags: ['好评'], platformId: 'jd' },
-  { id: 10007, storeId: 1001, buyerName: '周女士', lastMessage: '你好，这个商品有优惠券可以用吗？', lastMessageAt: min(45), unreadCount: 0, status: 'replied', tags: ['促销咨询'], platformId: 'pinduoduo' },
-  { id: 10008, storeId: 1002, buyerName: '吴先生', lastMessage: '尺寸不合适，可以退换吗？', lastMessageAt: min(2), unreadCount: 1, status: 'pending_reply', tags: ['退货', '尺码'], platformId: 'taobao' },
-  { id: 10009, storeId: 1003, buyerName: '郑女士', lastMessage: '能帮我催一下快递吗？很急用', lastMessageAt: min(12), unreadCount: 1, status: 'pending_reply', tags: ['催发货'], platformId: 'jd' },
-  { id: 10010, storeId: 1001, buyerName: '孙先生', lastMessage: '好的没问题', lastMessageAt: hr(5), unreadCount: 0, status: 'closed', tags: ['已解决'], platformId: 'pinduoduo' },
-  { id: 10011, storeId: 1002, buyerName: '马女士', lastMessage: '你们的客服态度也太差了', lastMessageAt: min(30), unreadCount: 0, status: 'replied', tags: ['投诉', '客服'], platformId: 'taobao' },
-  { id: 10012, storeId: 1003, buyerName: '黄先生', lastMessage: '赠品是不是漏发了？', lastMessageAt: min(7), unreadCount: 1, status: 'pending_reply', tags: ['漏发'], platformId: 'jd' },
+  { id: 10001, storeId: 1001, buyerName: '张女士', lastMessage: '那大概什么时候能到货？', lastMessageAt: min(3), unreadCount: 2, status: 'pending_reply', tags: ['物流查询'], platformId: 'pinduoduo', handledBy: 'ai', needsHuman: false },
+  { id: 10002, storeId: 1001, buyerName: '李同学', lastMessage: '好的，那就换一个颜色吧', lastMessageAt: min(15), unreadCount: 0, status: 'replied', tags: ['换货'], platformId: 'pinduoduo', firstResponseSeconds: 4, handledBy: 'ai' },
+  { id: 10003, storeId: 1002, buyerName: '王老板', lastMessage: '这个价格能不能再优惠点？我批发', lastMessageAt: min(8), unreadCount: 1, status: 'pending_reply', tags: ['议价', '批发'], platformId: 'taobao', handledBy: 'human', needsHuman: true },
+  { id: 10004, storeId: 1002, buyerName: '赵女士', lastMessage: '收到货发现有瑕疵，麻烦处理一下', lastMessageAt: min(25), unreadCount: 0, status: 'replied', tags: ['质量投诉'], platformId: 'taobao', firstResponseSeconds: 165, handledBy: 'human' },
+  { id: 10005, storeId: 1003, buyerName: '刘先生', lastMessage: '退款为什么还没到账？已经三天了', lastMessageAt: min(5), unreadCount: 3, status: 'pending_reply', tags: ['退款'], platformId: 'jd', handledBy: 'ai', needsHuman: false },
+  { id: 10006, storeId: 1003, buyerName: '陈小姐', lastMessage: '谢谢，已经收到了', lastMessageAt: hr(2), unreadCount: 0, status: 'closed', tags: ['好评'], platformId: 'jd', firstResponseSeconds: 3, handledBy: 'ai' },
+  { id: 10007, storeId: 1001, buyerName: '周女士', lastMessage: '你好，这个商品有优惠券可以用吗？', lastMessageAt: min(45), unreadCount: 0, status: 'replied', tags: ['促销咨询'], platformId: 'pinduoduo', firstResponseSeconds: 5, handledBy: 'ai' },
+  { id: 10008, storeId: 1002, buyerName: '吴先生', lastMessage: '尺寸不合适，可以退换吗？', lastMessageAt: min(2), unreadCount: 1, status: 'pending_reply', tags: ['退货', '尺码'], platformId: 'taobao', handledBy: 'ai', needsHuman: false },
+  { id: 10009, storeId: 1003, buyerName: '郑女士', lastMessage: '能帮我催一下快递吗？很急用', lastMessageAt: min(12), unreadCount: 1, status: 'pending_reply', tags: ['催发货'], platformId: 'jd', handledBy: 'human', needsHuman: true },
+  { id: 10010, storeId: 1001, buyerName: '孙先生', lastMessage: '好的没问题', lastMessageAt: hr(5), unreadCount: 0, status: 'closed', tags: ['已解决'], platformId: 'pinduoduo', firstResponseSeconds: 7, handledBy: 'ai' },
+  { id: 10011, storeId: 1002, buyerName: '马女士', lastMessage: '你们的客服态度也太差了', lastMessageAt: min(30), unreadCount: 0, status: 'replied', tags: ['投诉', '客服'], platformId: 'taobao', firstResponseSeconds: 380, handledBy: 'human' },
+  { id: 10012, storeId: 1003, buyerName: '黄先生', lastMessage: '赠品是不是漏发了？', lastMessageAt: min(7), unreadCount: 1, status: 'pending_reply', tags: ['漏发'], platformId: 'jd', handledBy: 'human', needsHuman: true },
 ];
 
 const messages: Record<AllMallId, CustomerMessage[]> = {
