@@ -17,7 +17,7 @@ import {
   AlertOutlined,
   AppstoreOutlined,
   AuditOutlined,
-  BarChartOutlined,
+  ApartmentOutlined,
   BellOutlined,
   CheckSquareOutlined,
   CloseOutlined,
@@ -91,7 +91,17 @@ const routeMenuPrefixes = [
   '/stores',
   '/dashboard',
   '/settings',
+  // D-nav/B: 业务运营 group members — each keeps its own highlighted entry inside the group.
+  '/customer-service',
+  '/reviews',
+  '/promotions',
+  '/ads',
+  '/inventory',
+  '/livestream',
 ];
+
+/** 业务运营 group members — used to auto-open the group and fold reports into the dashboard. */
+const BUSINESS_GROUP_PATHS = ['/customer-service', '/reviews', '/promotions', '/ads', '/inventory', '/livestream'];
 
 function getSelectedMenuKey(pathname: string) {
   if (pathname === '/') return '/dashboard';
@@ -107,12 +117,16 @@ function getSelectedMenuKey(pathname: string) {
   // pages under /agents are the "expert view" reached from a button there, not their own
   // nav item, so they highlight the 自动化配置 entry.
   if (pathname === '/agents' || pathname.startsWith('/agents/')) return '/setup';
+  // D-nav/B: 报表 folded into 经营总览 — no own nav item, so highlight the dashboard.
+  if (pathname === '/reports' || pathname.startsWith('/reports/')) return '/dashboard';
   return routeMenuPrefixes.find((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) ?? pathname;
 }
 
 function getActiveMenuGroup(selectedKey: string): string | null {
   // D9: 待办中心 is a single top-level item now, so it has no group to expand.
   if (selectedKey.startsWith('/settings/') && selectedKey !== '/settings/billing' && selectedKey !== '/settings/guide') return 'settings-group';
+  // D-nav/B: business-line pages live under the 业务运营 group — open it when one is active.
+  if (BUSINESS_GROUP_PATHS.includes(selectedKey)) return 'business-group';
   return null;
 }
 
@@ -223,53 +237,21 @@ export function AppShell() {
       )
     },
 
-    // 5a. 客服消息
+    // 5a. 业务运营 — D-nav/B: the per-line pages are the手动兜底/专家视图 of the Agent
+    // scenarios, so they fold into one collapsible group instead of 6 flat top-level
+    // items. 报表 moved into 经营总览; each line is also reachable from its scenario card.
     {
-      key: '/customer-service',
-      icon: <CustomerServiceOutlined />,
-      label: t('nav.customerService'),
-    },
-
-    // 5b. 评价管理
-    {
-      key: '/reviews',
-      icon: <StarOutlined />,
-      label: t('nav.reviews'),
-    },
-
-    // 5c. 促销活动
-    {
-      key: '/promotions',
-      icon: <GiftOutlined />,
-      label: t('nav.promotions'),
-    },
-
-    // 5d. 广告投放
-    {
-      key: '/ads',
-      icon: <ThunderboltOutlined />,
-      label: t('nav.ads'),
-    },
-
-    // 5e. 库存管理
-    {
-      key: '/inventory',
-      icon: <ShoppingOutlined />,
-      label: t('nav.inventory'),
-    },
-
-    // 5f. 直播管理
-    {
-      key: '/livestream',
-      icon: <PlaySquareOutlined />,
-      label: t('nav.live'),
-    },
-
-    // 5g. 报表导出
-    {
-      key: '/reports',
-      icon: <BarChartOutlined />,
-      label: t('nav.reports'),
+      key: 'business-group',
+      icon: <ApartmentOutlined />,
+      label: t('nav.businessOps'),
+      children: [
+        { key: '/customer-service', icon: <CustomerServiceOutlined />, label: t('nav.customerService') },
+        { key: '/reviews', icon: <StarOutlined />, label: t('nav.reviews') },
+        { key: '/promotions', icon: <GiftOutlined />, label: t('nav.promotions') },
+        { key: '/ads', icon: <ThunderboltOutlined />, label: t('nav.ads') },
+        { key: '/inventory', icon: <ShoppingOutlined />, label: t('nav.inventory') },
+        { key: '/livestream', icon: <PlaySquareOutlined />, label: t('nav.live') },
+      ],
     },
 
     // 6. 自动化配置（场景优先；逐 Agent 专家视图从页内进入）

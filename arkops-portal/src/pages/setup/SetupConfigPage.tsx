@@ -78,6 +78,25 @@ const SCENARIO_ICONS: Record<ScenarioKey, React.ReactNode> = {
   listing_content: <ShoppingOutlined />,
 };
 
+/**
+ * D-nav/B: each scenario's "manual view" — the business-line pages that are the手动兜底/
+ * 专家视图 of this scenario. They live in the 业务运营 nav group but are narratively
+ * owned by the scenario, so they're reachable straight from the card.
+ */
+const SCENARIO_MANUAL_VIEWS: Record<ScenarioKey, { to: string; labelKey: string }[]> = {
+  pricing_promo: [
+    { to: '/promotions', labelKey: 'nav.promotions' },
+    { to: '/ads', labelKey: 'nav.ads' },
+  ],
+  cs_aftersales: [
+    { to: '/customer-service', labelKey: 'nav.customerService' },
+    { to: '/reviews', labelKey: 'nav.reviews' },
+  ],
+  inventory: [{ to: '/inventory', labelKey: 'nav.inventory' }],
+  listing_content: [{ to: '/livestream', labelKey: 'nav.live' }],
+  fulfillment_risk: [],
+};
+
 const AUTONOMY_LEVELS: AutonomyLevel[] = ['L1', 'L2', 'L3'];
 
 export function SetupConfigPage() {
@@ -343,6 +362,22 @@ export function SetupConfigPage() {
                     ))}
                   </div>
                 </div>
+
+                {/* 手动视图 — the business-line pages this scenario owns (手动兜底/专家视图) */}
+                {SCENARIO_MANUAL_VIEWS[def.key].length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+                      {t('scenario.manualViews')}:
+                    </Typography.Text>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 4 }}>
+                      {SCENARIO_MANUAL_VIEWS[def.key].map((view) => (
+                        <Link key={view.to} to={view.to} style={{ fontSize: 12 }}>
+                          {t(view.labelKey)} →
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* D3: 自主等级拨盘 */}
                 <div style={{ marginBottom: 12 }}>

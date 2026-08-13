@@ -1,5 +1,6 @@
 import {
   AlertOutlined,
+  BarChartOutlined,
   DashboardOutlined,
   LineChartOutlined,
   PayCircleOutlined,
@@ -152,6 +153,7 @@ function TaskStatusDonut({
 export function DashboardPage() {
   const { t } = useI18n();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { isDemo, enterDemo } = useDemoMode();
   const [timeRange, setTimeRange] = useState<DashboardTimeRange>('today');
   // 集成（D3）：店铺范围来自 Shell 级持久过滤器（WS-E storeScope context），页面不再自维护。
@@ -266,6 +268,10 @@ export function DashboardPage() {
                 { label: t('dashboardv2.range30d'), value: '30d' },
               ]}
             />
+            {/* D-nav/B: 报表 folded in here — reached from 经营总览, not its own nav item. */}
+            <Button size="small" icon={<BarChartOutlined />} onClick={() => navigate('/reports')}>
+              {t('dashboard.reportsEntry')}
+            </Button>
           </Space>
         }
       />
