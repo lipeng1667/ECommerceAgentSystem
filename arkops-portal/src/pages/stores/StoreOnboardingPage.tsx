@@ -44,10 +44,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { agentsApi } from '../../api/agents';
 import { approvalsApi } from '../../api/approvals';
+import { generateGatewaySessionId } from '../../api/kioskGateway';
 import { storesApi } from '../../api/stores';
 import { useAuth } from '../../app/auth';
 import { useI18n } from '../../app/i18n';
 import { queueDailyLoopTour } from '../../components/OnboardingTour';
+import { PlatformLoginStreamModal } from '../../components/PlatformLoginStreamModal';
 import type { AllMallId, StoreSmartSummary } from '../../types/domain';
 
 // ===== D7 Round 2: Smart Summary & Bulk Listing Components =====
@@ -210,6 +212,9 @@ interface WizardSavedState {
   targetAuthorized: boolean;
   targetAuthAttempts: number;
   storeCreated: { id: number; name: string; platform: string } | null;
+  /** Opaque handles binding a real gateway login session before the AllMall store record exists. */
+  gatewaySessionId: string;
+  gatewayTargetSessionId: string;
 }
 
 const WIZARD_STORAGE_KEY = 'allmall-store-wizard';
@@ -239,6 +244,15 @@ const platforms: PlatformOption[] = [
   { key: 'taobao', name: '淘宝', short: '淘', color: '#ff6a00', soft: '#fff7e6', description: '千牛商家工作台' },
   { key: 'jd', name: '京东', short: '京', color: '#e1251b', soft: '#fff1f0', description: '京麦商家中心' },
 ];
+
+/**
+ * Platforms with a real, gateway-backed login (docs/pdd-login-method2.md — the
+ * only one end-to-end validated so far). Anything not listed here keeps the
+ * simulated connectStore()/authorizeTarget() flow until its own gateway support lands.
+ */
+const GATEWAY_LOGIN_URLS: Partial<Record<PlatformKey, string>> = {
+  pinduoduo: 'https://mms.pinduoduo.com/login/',
+};
 
 const syncEntities: SyncEntity[] = [
   { key: 'products', name: '商品', description: '在售、下架商品及图片', count: 1236 },
@@ -375,6 +389,12 @@ export function StoreOnboardingPage() {
   const [targetAuthAttempts, setTargetAuthAttempts] = useState(saved?.targetAuthAttempts ?? 0);
   const [targetAuthError, setTargetAuthError] = useState(false);
   const [targetConnecting, setTargetConnecting] = useState(false);
+  // Real gateway-backed login (docs/pdd-login-method2.md): which side, if any, currently
+  // has the streaming login modal open. Session ids are stable per wizard run so a reload
+  // mid-login reuses the same gateway-side profile instead of orphaning one.
+  const [pddLoginOpenFor, setPddLoginOpenFor] = useState<'source' | 'target' | null>(null);
+  const [gatewaySessionId] = useState(() => saved?.gatewaySessionId ?? generateGatewaySessionId());
+  const [gatewayTargetSessionId] = useState(() => saved?.gatewayTargetSessionId ?? generateGatewaySessionId());
   // A1: the store record created when the first sync completes.
   const [storeCreated, setStoreCreated] = useState<WizardSavedState['storeCreated']>(saved?.storeCreated ?? null);
   // A9: first-agent moment state (not persisted — re-runnable after a reload).
@@ -426,6 +446,7 @@ export function StoreOnboardingPage() {
       selectedEntities, orderRange, syncProgress, syncInterrupted, syncResumed,
       migrationScope, selectedCategories, priceMode, priceAdjustment, stockMode, safeStock,
       optimizeContent, publishProgress, targetAuthorized, targetAuthAttempts, storeCreated,
+      gatewaySessionId, gatewayTargetSessionId,
     };
     try {
       localStorage.setItem(WIZARD_STORAGE_KEY, JSON.stringify(payload));
@@ -435,7 +456,8 @@ export function StoreOnboardingPage() {
   }, [journey, step, sourcePlatform, targetPlatform, storeName, connected, authAttempts,
     selectedEntities, orderRange, syncProgress, syncInterrupted, syncResumed,
     migrationScope, selectedCategories, priceMode, priceAdjustment, stockMode, safeStock,
-    optimizeContent, publishProgress, targetAuthorized, targetAuthAttempts, storeCreated]);
+    optimizeContent, publishProgress, targetAuthorized, targetAuthAttempts, storeCreated,
+    gatewaySessionId, gatewayTargetSessionId]);
 
   // A1: if a reload reset the in-memory mock data, re-insert the connected store.
   useEffect(() => {
@@ -742,7 +764,15 @@ export function StoreOnboardingPage() {
               <div className="onboarding-permission-row"><CheckCircleFilled /> 读取订单、评价与经营指标</div>
               <div className="onboarding-permission-row muted"><SafetyCertificateOutlined /> 只读访问，不会修改商品或处理订单</div>
             </Space>
-            <Button type="primary" size="large" block loading={connecting} disabled={connected} onClick={connectStore} style={{ marginTop: 24 }}>
+            <Button
+              type="primary"
+              size="large"
+              block
+              loading={connecting}
+              disabled={connected}
+              onClick={() => (GATEWAY_LOGIN_URLS[sourcePlatform] ? setPddLoginOpenFor('source') : connectStore())}
+              style={{ marginTop: 24 }}
+            >
               {connected ? '已安全连接' : authError ? t('storewizard.retryAuth') : `打开${source.name}并授权`}
             </Button>
             {/* D7: API path demoted to a context fallback — only visible when
@@ -957,7 +987,13 @@ export function StoreOnboardingPage() {
               ) : (
                 <>
                   {/* A6: the target store must be authorized before drafts can be written to it. */}
-                  <Button type="primary" block loading={targetConnecting} onClick={authorizeTarget} style={{ marginTop: 12 }}>
+                  <Button
+                    type="primary"
+                    block
+                    loading={targetConnecting}
+                    onClick={() => (GATEWAY_LOGIN_URLS[targetPlatform] ? setPddLoginOpenFor('target') : authorizeTarget())}
+                    style={{ marginTop: 12 }}
+                  >
                     {targetAuthError ? t('storewizard.retryAuth') : t('storewizard.authorizeTarget', { platform: target.name })}
                   </Button>
                   <div className="onboarding-target-status"><SafetyCertificateOutlined /> {t('storewizard.targetAuthRequired')}</div>
@@ -1234,6 +1270,35 @@ export function StoreOnboardingPage() {
             </div>
           </main>
         </div>
+      )}
+
+      {/* Real gateway-backed login (docs/pdd-login-method2.md) — only rendered for
+          platforms in GATEWAY_LOGIN_URLS; other platforms keep the simulated flow. */}
+      {user && GATEWAY_LOGIN_URLS[sourcePlatform] && (
+        <PlatformLoginStreamModal
+          open={pddLoginOpenFor === 'source'}
+          onClose={() => setPddLoginOpenFor(null)}
+          onSuccess={() => {
+            setConnected(true);
+            setPddLoginOpenFor(null);
+          }}
+          userId={user.id}
+          sessionStoreId={gatewaySessionId}
+          platform={{ key: sourcePlatform, name: source.name, loginUrl: GATEWAY_LOGIN_URLS[sourcePlatform]! }}
+        />
+      )}
+      {user && GATEWAY_LOGIN_URLS[targetPlatform] && (
+        <PlatformLoginStreamModal
+          open={pddLoginOpenFor === 'target'}
+          onClose={() => setPddLoginOpenFor(null)}
+          onSuccess={() => {
+            setTargetAuthorized(true);
+            setPddLoginOpenFor(null);
+          }}
+          userId={user.id}
+          sessionStoreId={gatewayTargetSessionId}
+          platform={{ key: targetPlatform, name: target.name, loginUrl: GATEWAY_LOGIN_URLS[targetPlatform]! }}
+        />
       )}
     </div>
   );

@@ -1031,6 +1031,40 @@ body {
 .onboarding-connect-card,
 .onboarding-publish-card { margin-bottom: 18px; }
 
+.pdd-login-stream-loading {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 48px 0;
+}
+
+.pdd-login-stream-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1280 / 800;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--ark-border);
+  background: #0b0c0f;
+}
+
+.pdd-login-stream-frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.pdd-login-stream-footnote {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--ark-muted);
+  font-size: 12px;
+  margin-top: 10px;
+}
+
 .onboarding-store-summary {
   display: flex;
   gap: 14px;
