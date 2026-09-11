@@ -44,6 +44,19 @@ function getGatewayBaseUrl(): string | null {
   return url ? url.replace(/\/$/, '') : null;
 }
 
+/**
+ * Origin the streaming login page loads from. It must be the gateway itself, because
+ * the page's CDP websocket and static assets are same-origin there. In dev the /api
+ * fetches may instead be routed through a Vite proxy (VITE_KIOSK_GATEWAY_URL=/gateway
+ * → no CORS), so the stream origin is configured separately and defaults to the API base.
+ */
+function getStreamBaseUrl(): string | null {
+  const url = (import.meta.env.VITE_KIOSK_GATEWAY_STREAM_URL ?? import.meta.env.VITE_KIOSK_GATEWAY_URL) as
+    | string
+    | undefined;
+  return url ? url.replace(/\/$/, '') : null;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const base = getGatewayBaseUrl();
   if (!base) throw new KioskGatewayNotConfiguredError();
@@ -64,8 +77,9 @@ export function generateGatewaySessionId(): string {
 export const kioskGatewayApi = {
   isConfigured: () => getGatewayBaseUrl() !== null,
 
-  /** URL for the gateway's own bundled canvas-streaming login page. */
-  loginStreamUrl: (token: string) => `${getGatewayBaseUrl()}/login-stream?token=${encodeURIComponent(token)}`,
+  /** URL for the gateway's own bundled canvas-streaming login page (loaded direct from
+   * the gateway origin, not the proxy, so its websocket/assets stay same-origin). */
+  loginStreamUrl: (token: string) => `${getStreamBaseUrl()}/login-stream?token=${encodeURIComponent(token)}`,
 
   createSession: (input: { userId: string; storeId: string; loginUrl: string }) =>
     request<KioskSession>('/api/session', {
