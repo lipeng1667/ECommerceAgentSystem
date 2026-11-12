@@ -1,7 +1,3 @@
-Business Plan/
-outputs/
-.claude
 .DS_Store
+.claude/
 .trae/
-autoallmall/node_modules/
-autoallmall/dist/

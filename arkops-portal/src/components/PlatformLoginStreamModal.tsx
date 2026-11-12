@@ -30,7 +30,7 @@ const TERMINAL_FAIL_STATES = new Set(['timeout', 'failed']);
 
 /**
  * Embeds the kiosk-gateway's own /login-stream page (CDP screencast canvas +
- * input relay, built server-side per docs/pdd-login-method2.md) so the user
+ * input relay, built server-side per docs/integration/pdd-login-method2.md) so the user
  * can hand-complete a real platform login. This component only brokers the
  * session token and polls completion status — it does not reimplement the
  * streaming protocol.

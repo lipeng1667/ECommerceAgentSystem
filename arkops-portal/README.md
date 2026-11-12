@@ -96,7 +96,7 @@ vite --host 0.0.0.0
 Default local URL:
 
 ```text
-http://localhost:5173/
+http://localhost:5174/
 ```
 
 ### Local Experience Accounts
@@ -353,7 +353,7 @@ MuleRun session binding, runtime events, approvals, artifacts, and audit logs sh
 
 ## API and Database Contract Notes
 
-Future API and database work must follow the repository-level conventions in the root `README.md`:
+Future API work must follow the conventions in `docs/integration/api-data-conventions.md`:
 
 - All AllMall-owned IDs use `int64` / `long`.
 - `platformId` is the database relationship field.
@@ -365,7 +365,7 @@ Future API and database work must follow the repository-level conventions in the
 Relevant interface document:
 
 ```text
-../docs/architecture/AllMall_SaaS_Agent_Interface_Specification_V0.3.html
+docs/integration/AllMall_SaaS_Agent_Interface_Specification_V0.3.html
 ```
 
 ## Suggested Directory Structure
@@ -376,6 +376,9 @@ Current structure:
 arkops-portal/
   product-design.md
   README.md
+  docs/
+    product/
+    integration/
   index.html
   package.json
   src/
@@ -424,6 +427,8 @@ Use this table as the first stop when a collaborator or AI coding tool needs to 
 | Path | Type | Purpose | Change when |
 | --- | --- | --- | --- |
 | `README.md` | Documentation | Frontend implementation guide, directory map, collaboration rules, and AI-assisted coding workflow. | Project structure, coding workflow, navigation, or collaboration conventions change. |
+| `docs/product/` | Documentation | Product roadmaps, PRDs, reviews, audit records, and business scenarios. | Product requirements or review evidence change. |
+| `docs/integration/` | Documentation | Frontend API/data contracts and external login gateway integration references. | API contracts or integration behavior change. |
 | `product-design.md` | Product spec | Canonical product scope for navigation, roles, modules, and roadmap. | Page scope, navigation, user roles, or module behavior changes. |
 | `package.json` | Config | Defines scripts and frontend dependencies. | Adding/removing packages or scripts. |
 | `package-lock.json` | Lockfile | Locks exact dependency versions. | `npm install` changes dependencies. |
@@ -749,6 +754,6 @@ Dedicated creation pages must include:
 - Current implementation is frontend-only with mock data.
 - Backend API, database, auth service, and MuleRun runtime integration are still pending.
 - Before adding new pages, confirm the navigation and module scope in `product-design.md`.
-- Before adding API contracts, follow the root README API/data conventions.
-- Before replacing mock APIs, align with the SaaS-to-Agent interface specification and future database design.
+- Before adding API contracts, follow `docs/integration/api-data-conventions.md`.
+- Before replacing mock APIs, align with the API/data conventions and SaaS-to-Agent interface specification in `docs/integration/`.
 - Keep new AllMall-owned mock IDs numeric; use string fields only for external refs or display codes.

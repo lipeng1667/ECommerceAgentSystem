@@ -1,6 +1,6 @@
 /**
  * Client for the kiosk-gateway service (OpenClaw-hosted remote browser login),
- * per docs/pdd-login-method2.md. The gateway serves its own /login-stream page
+ * per docs/integration/pdd-login-method2.md. The gateway serves its own /login-stream page
  * (CDP screencast canvas + input relay + IME) — this client only needs to
  * request a session token and poll status; the streaming UI is embedded via
  * iframe, not reimplemented here.

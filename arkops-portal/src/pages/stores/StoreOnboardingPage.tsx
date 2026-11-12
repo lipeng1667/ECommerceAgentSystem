@@ -246,7 +246,7 @@ const platforms: PlatformOption[] = [
 ];
 
 /**
- * Platforms with a real, gateway-backed login (docs/pdd-login-method2.md — the
+ * Platforms with a real, gateway-backed login (docs/integration/pdd-login-method2.md — the
  * only one end-to-end validated so far). Anything not listed here keeps the
  * simulated connectStore()/authorizeTarget() flow until its own gateway support lands.
  */
@@ -389,7 +389,7 @@ export function StoreOnboardingPage() {
   const [targetAuthAttempts, setTargetAuthAttempts] = useState(saved?.targetAuthAttempts ?? 0);
   const [targetAuthError, setTargetAuthError] = useState(false);
   const [targetConnecting, setTargetConnecting] = useState(false);
-  // Real gateway-backed login (docs/pdd-login-method2.md): which side, if any, currently
+  // Real gateway-backed login (docs/integration/pdd-login-method2.md): which side, if any, currently
   // has the streaming login modal open. Session ids are stable per wizard run so a reload
   // mid-login reuses the same gateway-side profile instead of orphaning one.
   const [pddLoginOpenFor, setPddLoginOpenFor] = useState<'source' | 'target' | null>(null);
@@ -1272,7 +1272,7 @@ export function StoreOnboardingPage() {
         </div>
       )}
 
-      {/* Real gateway-backed login (docs/pdd-login-method2.md) — only rendered for
+      {/* Real gateway-backed login (docs/integration/pdd-login-method2.md) — only rendered for
           platforms in GATEWAY_LOGIN_URLS; other platforms keep the simulated flow. */}
       {user && GATEWAY_LOGIN_URLS[sourcePlatform] && (
         <PlatformLoginStreamModal
